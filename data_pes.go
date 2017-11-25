@@ -1,5 +1,7 @@
 package astits
 
+import "github.com/asticode/go-astilog"
+
 // P-STD buffer scales
 const (
 	PSTDBufferScale128Bytes  = 0
@@ -131,6 +133,13 @@ func parsePESHeader(i []byte, offset *int) (h *PESHeader, dataStart, dataEnd int
 	if h.PacketLength > 0 {
 		dataEnd = *offset + int(h.PacketLength)
 	} else {
+		dataEnd = len(i)
+	}
+
+	// Check for incomplete data
+	// TODO Throw away the data?
+	if dataEnd > len(i) {
+		astilog.Debug("PES dataEnd > len(i), needs fixing")
 		dataEnd = len(i)
 	}
 
