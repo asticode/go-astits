@@ -15,6 +15,7 @@ import (
 	"syscall"
 
 	"github.com/asticode/go-astilog"
+	"github.com/asticode/go-astitools/flag"
 	"github.com/asticode/go-astits"
 	"github.com/pkg/errors"
 )
@@ -28,6 +29,7 @@ var (
 
 func main() {
 	// Init
+	var s = astiflag.Subcommand()
 	flag.Parse()
 	astilog.FlagInit()
 
@@ -49,24 +51,33 @@ func main() {
 	// Create the demuxer
 	var dmx = astits.New(ctx, r)
 
-	// Fetch the programs
-	var pgms []*Program
-	if pgms, err = programs(dmx); err != nil {
-		astilog.Fatal(errors.Wrap(err, "astits: fetching programs failed"))
-	}
-
-	// Print
-	switch *format {
-	case "json":
-		var e = json.NewEncoder(os.Stdout)
-		e.SetIndent("", "  ")
-		if err = e.Encode(pgms); err != nil {
-			astilog.Fatal(errors.Wrap(err, "astits: json encoding to stdout failed"))
+	// Switch on subcommand
+	switch s {
+	case "data":
+		// Fetch data
+		if err = data(dmx); err != nil {
+			astilog.Fatal(errors.Wrap(err, "astits: fetching data failed"))
 		}
 	default:
-		fmt.Println("Programs are:")
-		for _, pgm := range pgms {
-			fmt.Printf("* %s\n", pgm)
+		// Fetch the programs
+		var pgms []*Program
+		if pgms, err = programs(dmx); err != nil {
+			astilog.Fatal(errors.Wrap(err, "astits: fetching programs failed"))
+		}
+
+		// Print
+		switch *format {
+		case "json":
+			var e = json.NewEncoder(os.Stdout)
+			e.SetIndent("", "  ")
+			if err = e.Encode(pgms); err != nil {
+				astilog.Fatal(errors.Wrap(err, "astits: json encoding to stdout failed"))
+			}
+		default:
+			fmt.Println("Programs are:")
+			for _, pgm := range pgms {
+				fmt.Printf("* %s\n", pgm)
+			}
 		}
 	}
 }
@@ -130,6 +141,39 @@ func buildReader() (r io.Reader, err error) {
 	return
 }
 
+func data(dmx *astits.Demuxer) (err error) {
+	// Loop through data
+	var d *astits.Data
+	for {
+		// Get next data
+		if d, err = dmx.NextData(); err != nil {
+			if err == astits.ErrNoMorePackets {
+				break
+			}
+			err = errors.Wrap(err, "astits: getting nex data failed")
+			return
+		}
+
+		// Log data
+		if d.EIT != nil {
+			astilog.Infof("EIT: %d", d.PID)
+		} else if d.NIT != nil {
+			astilog.Infof("NIT: %d", d.PID)
+		} else if d.PAT != nil {
+			astilog.Infof("PAT: %d", d.PID)
+		} else if d.PES != nil {
+			astilog.Infof("PES: %d (len: %d)", d.PID, len(d.PES.Data))
+		} else if d.PMT != nil {
+			astilog.Infof("PMT: %d", d.PID)
+		} else if d.SDT != nil {
+			astilog.Infof("SDT: %d", d.PID)
+		} else if d.TOT != nil {
+			astilog.Infof("TOT: %d", d.PID)
+		}
+	}
+	return
+}
+
 func programs(dmx *astits.Demuxer) (o []*Program, err error) {
 	// Loop through data
 	var d *astits.Data
@@ -146,7 +190,7 @@ func programs(dmx *astits.Demuxer) (o []*Program, err error) {
 				}
 				err = fmt.Errorf("astits: no PMT found for program(s) %s", strings.Join(pgmsNotProcessed, ", "))
 			} else {
-				err = errors.Wrap(err, "astits: getting next packet failed")
+				err = errors.Wrap(err, "astits: getting next data failed")
 			}
 			return
 		}

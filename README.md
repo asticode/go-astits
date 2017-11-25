@@ -78,13 +78,13 @@ for {
 
 This library provides a CLI that will automatically get installed in `GOPATH/bin` on `go get` execution.
 
-With it, you can list available streams that way:
+## List streams
 
-    $ astits -i <path to your file>
+    $ astits -i <path to your file> -f <format: text|json (default: text)>
     
-And get the results in JSON format that way:
+## List data
 
-    $ astits -i <path to your file> -f json
+    $ astits data -i <path to your file>
 
 # Features and roadmap
 
