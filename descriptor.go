@@ -18,6 +18,7 @@ const (
 	DescriptorTagAC3                        = 0x6a
 	DescriptorTagEnhancedAC3                = 0x7a
 	DescriptorTagExtendedEvent              = 0x4e
+	DescriptorTagExtension                  = 0x7f
 	DescriptorTagISO639LanguageAndAudioType = 0xa
 	DescriptorTagMaximumBitrate             = 0xe
 	DescriptorTagNetworkName                = 0x40
@@ -26,6 +27,12 @@ const (
 	DescriptorTagStreamIdentifier           = 0x52
 	DescriptorTagSubtitling                 = 0x59
 	DescriptorTagTeletext                   = 0x56
+)
+
+// Descriptor extension tags
+// Page: 111 | Chapter: 6.1 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+const (
+	DescriptorTagExtensionSupplementaryAudio = 0x6
 )
 
 // Service types
@@ -50,6 +57,7 @@ type Descriptor struct {
 	AC3                        *DescriptorAC3
 	EnhancedAC3                *DescriptorEnhancedAC3
 	ExtendedEvent              *DescriptorExtendedEvent
+	Extension                  *DescriptorExtension
 	ISO639LanguageAndAudioType *DescriptorISO639LanguageAndAudioType
 	Length                     uint8
 	MaximumBitrate             *DescriptorMaximumBitrate
@@ -257,6 +265,68 @@ func newDescriptorExtendedEventItem(i []byte, offset *int) (d *DescriptorExtende
 	return
 }
 
+// DescriptorExtension represents an extension descriptor
+// Page: 72 | https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+type DescriptorExtension struct {
+	SupplementaryAudio *DescriptorExtensionSupplementaryAudio
+	Tag                uint8
+}
+
+func newDescriptorExtension(i []byte) (d *DescriptorExtension) {
+	// Init
+	d = &DescriptorExtension{Tag: uint8(i[0])}
+
+	// Switch on tag
+	var b = i[1:]
+	switch d.Tag {
+	case DescriptorTagExtensionSupplementaryAudio:
+		d.SupplementaryAudio = newDescriptorExtensionSupplementaryAudio(b)
+	default:
+		// TODO Remove this log
+		astilog.Debugf("unlisted extension tag 0x%x", d.Tag)
+	}
+	return
+}
+
+// DescriptorExtensionSupplementaryAudio represents a supplementary audio extension descriptor
+// Page: 130 | https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+type DescriptorExtensionSupplementaryAudio struct {
+	EditorialClassification uint8
+	HasLanguageCode         bool
+	LanguageCode            []byte
+	MixType                 bool
+	PrivateData             []byte
+}
+
+func newDescriptorExtensionSupplementaryAudio(i []byte) (d *DescriptorExtensionSupplementaryAudio) {
+	// Init
+	d = &DescriptorExtensionSupplementaryAudio{}
+	var offset int
+
+	// Mix type
+	d.MixType = i[offset]&0x80 > 0
+
+	// Editorial classification
+	d.EditorialClassification = uint8(i[offset] >> 2 & 0x1f)
+
+	// Language code flag
+	d.HasLanguageCode = i[offset]&0x1 > 0
+	offset += 1
+
+	// Language code
+	if d.HasLanguageCode {
+		d.LanguageCode = i[offset : offset+3]
+		offset += 3
+	}
+
+	// Private data
+	for offset < len(i) {
+		d.PrivateData = append(d.PrivateData, i[offset])
+		offset += 1
+	}
+	return
+}
+
 // DescriptorISO639LanguageAndAudioType represents an ISO639 language descriptor
 type DescriptorISO639LanguageAndAudioType struct {
 	Language []byte
@@ -431,6 +501,8 @@ func parseDescriptors(i []byte, offset *int) (o []*Descriptor) {
 					d.EnhancedAC3 = newDescriptorEnhancedAC3(b)
 				case DescriptorTagExtendedEvent:
 					d.ExtendedEvent = newDescriptorExtendedEvent(b)
+				case DescriptorTagExtension:
+					d.Extension = newDescriptorExtension(b)
 				case DescriptorTagISO639LanguageAndAudioType:
 					d.ISO639LanguageAndAudioType = newDescriptorISO639LanguageAndAudioType(b)
 				case DescriptorTagMaximumBitrate:
