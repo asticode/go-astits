@@ -17,6 +17,7 @@ const (
 const (
 	DescriptorTagAC3                        = 0x6a
 	DescriptorTagComponent                  = 0x50
+	DescriptorTagContent                    = 0x54
 	DescriptorTagEnhancedAC3                = 0x7a
 	DescriptorTagExtendedEvent              = 0x4e
 	DescriptorTagExtension                  = 0x7f
@@ -57,6 +58,7 @@ const (
 type Descriptor struct {
 	AC3                        *DescriptorAC3
 	Component                  *DescriptorComponent
+	Content                    *DescriptorContent
 	EnhancedAC3                *DescriptorEnhancedAC3
 	ExtendedEvent              *DescriptorExtendedEvent
 	Extension                  *DescriptorExtension
@@ -156,6 +158,38 @@ func newDescriptorComponent(i []byte) (d *DescriptorComponent) {
 	for offset < len(i) {
 		d.Text = append(d.Text, i[offset])
 		offset += 1
+	}
+	return
+}
+
+// DescriptorContent represents a content descriptor
+// Page: 58 | https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+type DescriptorContent struct {
+	Items []*DescriptorContentItem
+}
+
+// DescriptorContentItem represents a content item descriptor
+// Check page 59 of https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf for content nibble
+// levels associations
+type DescriptorContentItem struct {
+	ContentNibbleLevel1 uint8
+	ContentNibbleLevel2 uint8
+	UserByte            uint8
+}
+
+func newDescriptorContent(i []byte) (d *DescriptorContent) {
+	// Init
+	d = &DescriptorContent{}
+	var offset int
+
+	// Add items
+	for offset < len(i) {
+		d.Items = append(d.Items, &DescriptorContentItem{
+			ContentNibbleLevel1: uint8(i[offset] >> 4),
+			ContentNibbleLevel2: uint8(i[offset] & 0xf),
+			UserByte:            uint8(i[offset+1]),
+		})
+		offset += 2
 	}
 	return
 }
@@ -544,6 +578,8 @@ func parseDescriptors(i []byte, offset *int) (o []*Descriptor) {
 					d.AC3 = newDescriptorAC3(b)
 				case DescriptorTagComponent:
 					d.Component = newDescriptorComponent(b)
+				case DescriptorTagContent:
+					d.Content = newDescriptorContent(b)
 				case DescriptorTagEnhancedAC3:
 					d.EnhancedAC3 = newDescriptorEnhancedAC3(b)
 				case DescriptorTagExtendedEvent:
