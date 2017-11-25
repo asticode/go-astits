@@ -23,7 +23,7 @@ func descriptorsBytes(w *astibinary.Writer) {
 func TestParseDescriptor(t *testing.T) {
 	// Init
 	w := astibinary.New()
-	w.Write(uint16(128)) // Descriptors length
+	w.Write(uint16(141)) // Descriptors length
 	// AC3
 	w.Write(uint8(DescriptorTagAC3)) // Tag
 	w.Write(uint8(9))                // Length
@@ -105,6 +105,25 @@ func TestParseDescriptor(t *testing.T) {
 	w.Write([]byte("content"))                 // Item #1 content
 	w.Write(uint8(4))                          // Text length
 	w.Write([]byte("text"))                    // Text
+	// Enhanced AC3
+	w.Write(uint8(DescriptorTagEnhancedAC3)) // Tag
+	w.Write(uint8(12))                       // Length
+	w.Write("1")                             // Component type flag
+	w.Write("1")                             // BSID flag
+	w.Write("1")                             // MainID flag
+	w.Write("1")                             // ASVC flag
+	w.Write("1")                             // Mix info exists
+	w.Write("1")                             // SubStream1 flag
+	w.Write("1")                             // SubStream2 flag
+	w.Write("1")                             // SubStream3 flag
+	w.Write(uint8(1))                        // Component type
+	w.Write(uint8(2))                        // BSID
+	w.Write(uint8(3))                        // MainID
+	w.Write(uint8(4))                        // ASVC
+	w.Write(uint8(5))                        // SubStream1
+	w.Write(uint8(6))                        // SubStream2
+	w.Write(uint8(7))                        // SubStream3
+	w.Write([]byte("info"))                  // Additional info
 
 	// Assert
 	var offset int
@@ -173,5 +192,24 @@ func TestParseDescriptor(t *testing.T) {
 		}},
 		LastDescriptorNumber: 0x2,
 		Number:               0x1,
-		Text:                 []byte("text")})
+		Text:                 []byte("text"),
+	})
+	assert.Equal(t, *ds[10].EnhancedAC3, DescriptorEnhancedAC3{
+		AdditionalInfo:   []byte("info"),
+		ASVC:             uint8(4),
+		BSID:             uint8(2),
+		ComponentType:    uint8(1),
+		HasASVC:          true,
+		HasBSID:          true,
+		HasComponentType: true,
+		HasMainID:        true,
+		HasSubStream1:    true,
+		HasSubStream2:    true,
+		HasSubStream3:    true,
+		MainID:           uint8(3),
+		MixInfoExists:    true,
+		SubStream1:       5,
+		SubStream2:       6,
+		SubStream3:       7,
+	})
 }

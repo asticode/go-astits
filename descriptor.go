@@ -16,6 +16,7 @@ const (
 // Page: 42 | Chapter: 6.1 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
 const (
 	DescriptorTagAC3                        = 0x6a
+	DescriptorTagEnhancedAC3                = 0x7a
 	DescriptorTagExtendedEvent              = 0x4e
 	DescriptorTagISO639LanguageAndAudioType = 0xa
 	DescriptorTagMaximumBitrate             = 0xe
@@ -47,6 +48,7 @@ const (
 // Descriptor represents a descriptor
 type Descriptor struct {
 	AC3                        *DescriptorAC3
+	EnhancedAC3                *DescriptorEnhancedAC3
 	ExtendedEvent              *DescriptorExtendedEvent
 	ISO639LanguageAndAudioType *DescriptorISO639LanguageAndAudioType
 	Length                     uint8
@@ -61,7 +63,7 @@ type Descriptor struct {
 }
 
 // DescriptorAC3 represents an AC3 descriptor
-// Page: 165 | https://books.google.fr/books?id=6dgWB3-rChYC&printsec=frontcover&hl=fr
+// Page: 165 | https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
 type DescriptorAC3 struct {
 	AdditionalInfo   []byte
 	ASVC             uint8
@@ -96,6 +98,74 @@ func newDescriptorAC3(i []byte) (d *DescriptorAC3) {
 	}
 	if d.HasASVC {
 		d.ASVC = uint8(i[offset])
+		offset += 1
+	}
+	for offset < len(i) {
+		d.AdditionalInfo = append(d.AdditionalInfo, i[offset])
+		offset += 1
+	}
+	return
+}
+
+// DescriptorEnhancedAC3 represents an enhanced AC3 descriptor
+// Page: 166 | https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+type DescriptorEnhancedAC3 struct {
+	AdditionalInfo   []byte
+	ASVC             uint8
+	BSID             uint8
+	ComponentType    uint8
+	HasASVC          bool
+	HasBSID          bool
+	HasComponentType bool
+	HasMainID        bool
+	HasSubStream1    bool
+	HasSubStream2    bool
+	HasSubStream3    bool
+	MainID           uint8
+	MixInfoExists    bool
+	SubStream1       uint8
+	SubStream2       uint8
+	SubStream3       uint8
+}
+
+func newDescriptorEnhancedAC3(i []byte) (d *DescriptorEnhancedAC3) {
+	var offset int
+	d = &DescriptorEnhancedAC3{}
+	d.HasComponentType = uint8(i[offset]&0x80) > 0
+	d.HasBSID = uint8(i[offset]&0x40) > 0
+	d.HasMainID = uint8(i[offset]&0x20) > 0
+	d.HasASVC = uint8(i[offset]&0x10) > 0
+	d.MixInfoExists = uint8(i[offset]&0x8) > 0
+	d.HasSubStream1 = uint8(i[offset]&0x4) > 0
+	d.HasSubStream2 = uint8(i[offset]&0x2) > 0
+	d.HasSubStream3 = uint8(i[offset]&0x1) > 0
+	offset += 1
+	if d.HasComponentType {
+		d.ComponentType = uint8(i[offset])
+		offset += 1
+	}
+	if d.HasBSID {
+		d.BSID = uint8(i[offset])
+		offset += 1
+	}
+	if d.HasMainID {
+		d.MainID = uint8(i[offset])
+		offset += 1
+	}
+	if d.HasASVC {
+		d.ASVC = uint8(i[offset])
+		offset += 1
+	}
+	if d.HasSubStream1 {
+		d.SubStream1 = uint8(i[offset])
+		offset += 1
+	}
+	if d.HasSubStream2 {
+		d.SubStream2 = uint8(i[offset])
+		offset += 1
+	}
+	if d.HasSubStream3 {
+		d.SubStream3 = uint8(i[offset])
 		offset += 1
 	}
 	for offset < len(i) {
@@ -357,6 +427,8 @@ func parseDescriptors(i []byte, offset *int) (o []*Descriptor) {
 				switch d.Tag {
 				case DescriptorTagAC3:
 					d.AC3 = newDescriptorAC3(b)
+				case DescriptorTagEnhancedAC3:
+					d.EnhancedAC3 = newDescriptorEnhancedAC3(b)
 				case DescriptorTagExtendedEvent:
 					d.ExtendedEvent = newDescriptorExtendedEvent(b)
 				case DescriptorTagISO639LanguageAndAudioType:
