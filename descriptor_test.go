@@ -23,7 +23,7 @@ func descriptorsBytes(w *astibinary.Writer) {
 func TestParseDescriptor(t *testing.T) {
 	// Init
 	w := astibinary.New()
-	w.Write(uint16(171)) // Descriptors length
+	w.Write(uint16(177)) // Descriptors length
 	// AC3
 	w.Write(uint8(DescriptorTagAC3)) // Tag
 	w.Write(uint8(9))                // Length
@@ -149,6 +149,11 @@ func TestParseDescriptor(t *testing.T) {
 	w.Write("0001")                      // Item #1 content nibble level 1
 	w.Write("0010")                      // Item #1 content nibble level 2
 	w.Write(uint8(3))                    // Item #1 user byte
+	// Parental rating
+	w.Write(uint8(DescriptorTagParentalRating)) // Tag
+	w.Write(uint8(4))                           // Length
+	w.Write([]byte("cou"))                      // Item #1 country code
+	w.Write(uint8(2))                           // Item #1 rating
 
 	// Assert
 	var offset int
@@ -256,5 +261,9 @@ func TestParseDescriptor(t *testing.T) {
 		ContentNibbleLevel1: 1,
 		ContentNibbleLevel2: 2,
 		UserByte:            3,
+	}}})
+	assert.Equal(t, *ds[14].ParentalRating, DescriptorParentalRating{Items: []*DescriptorParentalRatingItem{{
+		CountryCode: []byte("cou"),
+		Rating:      2,
 	}}})
 }

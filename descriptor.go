@@ -24,6 +24,7 @@ const (
 	DescriptorTagISO639LanguageAndAudioType = 0xa
 	DescriptorTagMaximumBitrate             = 0xe
 	DescriptorTagNetworkName                = 0x40
+	DescriptorTagParentalRating             = 0x55
 	DescriptorTagService                    = 0x48
 	DescriptorTagShortEvent                 = 0x4d
 	DescriptorTagStreamIdentifier           = 0x52
@@ -66,6 +67,7 @@ type Descriptor struct {
 	Length                     uint8
 	MaximumBitrate             *DescriptorMaximumBitrate
 	NetworkName                *DescriptorNetworkName
+	ParentalRating             *DescriptorParentalRating
 	Service                    *DescriptorService
 	ShortEvent                 *DescriptorShortEvent
 	StreamIdentifier           *DescriptorStreamIdentifier
@@ -436,6 +438,43 @@ func newDescriptorNetworkName(i []byte) *DescriptorNetworkName {
 	return &DescriptorNetworkName{Name: i}
 }
 
+// DescriptorParentalRating represents a parental rating descriptor
+// Page: 93 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+type DescriptorParentalRating struct {
+	Items []*DescriptorParentalRatingItem
+}
+
+// DescriptorParentalRatingItem represents a parental rating item descriptor
+type DescriptorParentalRatingItem struct {
+	CountryCode []byte
+	Rating      uint8
+}
+
+// MinimumAge returns the minimum age for the parental rating
+func (d DescriptorParentalRatingItem) MinimumAge() int {
+	// Undefined or user defined ratings
+	if d.Rating == 0 || d.Rating > 0x10 {
+		return 0
+	}
+	return int(d.Rating) + 3
+}
+
+func newDescriptorParentalRating(i []byte) (d *DescriptorParentalRating) {
+	// Init
+	d = &DescriptorParentalRating{}
+	var offset int
+
+	// Add items
+	for offset < len(i) {
+		d.Items = append(d.Items, &DescriptorParentalRatingItem{
+			CountryCode: i[offset : offset+3],
+			Rating:      uint8(i[offset+3]),
+		})
+		offset += 4
+	}
+	return
+}
+
 // DescriptorService represents a service descriptor
 // Page: 96 | Chapter: 6.2.33 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
 type DescriptorService struct {
@@ -592,6 +631,8 @@ func parseDescriptors(i []byte, offset *int) (o []*Descriptor) {
 					d.MaximumBitrate = newDescriptorMaximumBitrate(b)
 				case DescriptorTagNetworkName:
 					d.NetworkName = newDescriptorNetworkName(b)
+				case DescriptorTagParentalRating:
+					d.ParentalRating = newDescriptorParentalRating(b)
 				case DescriptorTagService:
 					d.Service = newDescriptorService(b)
 				case DescriptorTagShortEvent:
