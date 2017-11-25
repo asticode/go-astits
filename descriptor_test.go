@@ -23,7 +23,7 @@ func descriptorsBytes(w *astibinary.Writer) {
 func TestParseDescriptor(t *testing.T) {
 	// Init
 	w := astibinary.New()
-	w.Write(uint16(97)) // Descriptors length
+	w.Write(uint16(128)) // Descriptors length
 	// AC3
 	w.Write(uint8(DescriptorTagAC3)) // Tag
 	w.Write(uint8(9))                // Length
@@ -92,6 +92,19 @@ func TestParseDescriptor(t *testing.T) {
 	w.Write("00011")                      // Item #2 type
 	w.Write("100")                        // Item #2 magazine
 	w.Write("00100011")                   // Item #2 page number
+	// Extended event
+	w.Write(uint8(DescriptorTagExtendedEvent)) // Tag
+	w.Write(uint8(30))                         // Length
+	w.Write("0001")                            // Number
+	w.Write("0010")                            // Last descriptor number
+	w.Write([]byte("lan"))                     // ISO 639 language code
+	w.Write(uint8(20))                         // Length of items
+	w.Write(uint8(11))                         // Item #1 description length
+	w.Write([]byte("description"))             // Item #1 description
+	w.Write(uint8(7))                          // Item #1 content length
+	w.Write([]byte("content"))                 // Item #1 content
+	w.Write(uint8(4))                          // Text length
+	w.Write([]byte("text"))                    // Text
 
 	// Assert
 	var offset int
@@ -152,4 +165,13 @@ func TestParseDescriptor(t *testing.T) {
 			Type:     uint8(3),
 		},
 	}})
+	assert.Equal(t, *ds[9].ExtendedEvent, DescriptorExtendedEvent{
+		ISO639LanguageCode: []byte("lan"),
+		Items: []*DescriptorExtendedEventItem{{
+			Content:     []byte("content"),
+			Description: []byte("description"),
+		}},
+		LastDescriptorNumber: 0x2,
+		Number:               0x1,
+		Text:                 []byte("text")})
 }

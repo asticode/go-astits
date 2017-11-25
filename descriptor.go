@@ -1,6 +1,8 @@
 package astits
 
-import "github.com/asticode/go-astilog"
+import (
+	"github.com/asticode/go-astilog"
+)
 
 // Audio types
 // Page: 683 | https://books.google.fr/books?id=6dgWB3-rChYC&printsec=frontcover&hl=fr
@@ -14,6 +16,7 @@ const (
 // Page: 42 | Chapter: 6.1 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
 const (
 	DescriptorTagAC3                        = 0x6a
+	DescriptorTagExtendedEvent              = 0x4e
 	DescriptorTagISO639LanguageAndAudioType = 0xa
 	DescriptorTagMaximumBitrate             = 0xe
 	DescriptorTagNetworkName                = 0x40
@@ -44,6 +47,7 @@ const (
 // Descriptor represents a descriptor
 type Descriptor struct {
 	AC3                        *DescriptorAC3
+	ExtendedEvent              *DescriptorExtendedEvent
 	ISO639LanguageAndAudioType *DescriptorISO639LanguageAndAudioType
 	Length                     uint8
 	MaximumBitrate             *DescriptorMaximumBitrate
@@ -97,6 +101,88 @@ func newDescriptorAC3(i []byte) (d *DescriptorAC3) {
 	for offset < len(i) {
 		d.AdditionalInfo = append(d.AdditionalInfo, i[offset])
 		offset += 1
+	}
+	return
+}
+
+// DescriptorExtendedEvent represents an extended event descriptor
+type DescriptorExtendedEvent struct {
+	ISO639LanguageCode   []byte
+	Items                []*DescriptorExtendedEventItem
+	LastDescriptorNumber uint8
+	Number               uint8
+	Text                 []byte
+}
+
+// DescriptorExtendedEventItem represents an extended event item descriptor
+type DescriptorExtendedEventItem struct {
+	Content     []byte
+	Description []byte
+}
+
+func newDescriptorExtendedEvent(i []byte) (d *DescriptorExtendedEvent) {
+	// Init
+	d = &DescriptorExtendedEvent{}
+	var offset int
+
+	// Number
+	d.Number = uint8(i[offset] >> 4)
+
+	// Last descriptor number
+	d.LastDescriptorNumber = uint8(i[offset] & 0xf)
+	offset += 1
+
+	// ISO 639 language code
+	d.ISO639LanguageCode = i[offset : offset+3]
+	offset += 3
+
+	// Items length
+	var itemsLength = int(i[offset])
+	offset += 1
+
+	// Items
+	var offsetEnd = offset + itemsLength
+	for offset < offsetEnd {
+		d.Items = append(d.Items, newDescriptorExtendedEventItem(i, &offset))
+	}
+
+	// Text length
+	var textLength = int(i[offset])
+	offset += 1
+
+	// Text
+	offsetEnd = offset + textLength
+	for offset < offsetEnd {
+		d.Text = append(d.Text, i[offset])
+		offset += 1
+	}
+	return
+}
+
+func newDescriptorExtendedEventItem(i []byte, offset *int) (d *DescriptorExtendedEventItem) {
+	// Init
+	d = &DescriptorExtendedEventItem{}
+
+	// Description length
+	var descriptionLength = int(i[*offset])
+	*offset += 1
+
+	// Description
+	var offsetEnd = *offset + descriptionLength
+	for *offset < offsetEnd {
+		d.Description = append(d.Description, i[*offset])
+		*offset += 1
+	}
+
+	// Content length
+	var contentLength = int(i[*offset])
+	*offset += 1
+
+	// Content
+	offsetEnd = *offset + contentLength
+	for *offset < offsetEnd {
+		d.Content = append(d.Content, i[*offset])
+		*offset += 1
 	}
 	return
 }
@@ -271,6 +357,8 @@ func parseDescriptors(i []byte, offset *int) (o []*Descriptor) {
 				switch d.Tag {
 				case DescriptorTagAC3:
 					d.AC3 = newDescriptorAC3(b)
+				case DescriptorTagExtendedEvent:
+					d.ExtendedEvent = newDescriptorExtendedEvent(b)
 				case DescriptorTagISO639LanguageAndAudioType:
 					d.ISO639LanguageAndAudioType = newDescriptorISO639LanguageAndAudioType(b)
 				case DescriptorTagMaximumBitrate:
@@ -289,7 +377,7 @@ func parseDescriptors(i []byte, offset *int) (o []*Descriptor) {
 					d.Teletext = newDescriptorTeletext(b)
 				default:
 					// TODO Remove this log
-					astilog.Debugf("unlisted descriptor tag %d", d.Tag)
+					astilog.Debugf("unlisted descriptor tag 0x%x", d.Tag)
 				}
 				*offset += int(d.Length)
 			}
