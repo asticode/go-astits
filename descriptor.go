@@ -16,6 +16,7 @@ const (
 // Page: 42 | Chapter: 6.1 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
 const (
 	DescriptorTagAC3                        = 0x6a
+	DescriptorTagComponent                  = 0x50
 	DescriptorTagEnhancedAC3                = 0x7a
 	DescriptorTagExtendedEvent              = 0x4e
 	DescriptorTagExtension                  = 0x7f
@@ -55,6 +56,7 @@ const (
 // Descriptor represents a descriptor
 type Descriptor struct {
 	AC3                        *DescriptorAC3
+	Component                  *DescriptorComponent
 	EnhancedAC3                *DescriptorEnhancedAC3
 	ExtendedEvent              *DescriptorExtendedEvent
 	Extension                  *DescriptorExtension
@@ -110,6 +112,49 @@ func newDescriptorAC3(i []byte) (d *DescriptorAC3) {
 	}
 	for offset < len(i) {
 		d.AdditionalInfo = append(d.AdditionalInfo, i[offset])
+		offset += 1
+	}
+	return
+}
+
+// DescriptorComponent represents a component descriptor
+// Page: 51 | https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+type DescriptorComponent struct {
+	ComponentTag       uint8
+	ComponentType      uint8
+	ISO639LanguageCode []byte
+	StreamContent      uint8
+	StreamContentExt   uint8
+	Text               []byte
+}
+
+func newDescriptorComponent(i []byte) (d *DescriptorComponent) {
+	// Init
+	d = &DescriptorComponent{}
+	var offset int
+
+	// Stream content ext
+	d.StreamContentExt = uint8(i[offset] >> 4)
+
+	// Stream content
+	d.StreamContent = uint8(i[offset] & 0xf)
+	offset += 1
+
+	// Component type
+	d.ComponentType = uint8(i[offset])
+	offset += 1
+
+	// Component tag
+	d.ComponentTag = uint8(i[offset])
+	offset += 1
+
+	// ISO639 language code
+	d.ISO639LanguageCode = i[offset : offset+3]
+	offset += 3
+
+	// Text
+	for offset < len(i) {
+		d.Text = append(d.Text, i[offset])
 		offset += 1
 	}
 	return
@@ -497,6 +542,8 @@ func parseDescriptors(i []byte, offset *int) (o []*Descriptor) {
 				switch d.Tag {
 				case DescriptorTagAC3:
 					d.AC3 = newDescriptorAC3(b)
+				case DescriptorTagComponent:
+					d.Component = newDescriptorComponent(b)
 				case DescriptorTagEnhancedAC3:
 					d.EnhancedAC3 = newDescriptorEnhancedAC3(b)
 				case DescriptorTagExtendedEvent:

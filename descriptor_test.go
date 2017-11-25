@@ -23,7 +23,7 @@ func descriptorsBytes(w *astibinary.Writer) {
 func TestParseDescriptor(t *testing.T) {
 	// Init
 	w := astibinary.New()
-	w.Write(uint16(155)) // Descriptors length
+	w.Write(uint16(167)) // Descriptors length
 	// AC3
 	w.Write(uint8(DescriptorTagAC3)) // Tag
 	w.Write(uint8(9))                // Length
@@ -134,6 +134,15 @@ func TestParseDescriptor(t *testing.T) {
 	w.Write("1")                                             // Language code flag
 	w.Write([]byte("lan"))                                   // Language code
 	w.Write([]byte("private"))                               // Private data
+	// Component
+	w.Write(uint8(DescriptorTagComponent)) // Tag
+	w.Write(uint8(10))                     // TODO Length
+	w.Write("1010")                        // Stream content ext
+	w.Write("0101")                        // Stream content
+	w.Write(uint8(1))                      // Component type
+	w.Write(uint8(2))                      // Component tag
+	w.Write([]byte("lan"))                 // ISO639 language code
+	w.Write([]byte("text"))                // Text
 
 	// Assert
 	var offset int
@@ -228,5 +237,13 @@ func TestParseDescriptor(t *testing.T) {
 		LanguageCode:            []byte("lan"),
 		MixType:                 true,
 		PrivateData:             []byte("private"),
+	})
+	assert.Equal(t, *ds[12].Component, DescriptorComponent{
+		ComponentTag:       2,
+		ComponentType:      1,
+		ISO639LanguageCode: []byte("lan"),
+		StreamContentExt:   10,
+		StreamContent:      5,
+		Text:               []byte("text"),
 	})
 }
