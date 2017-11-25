@@ -49,10 +49,8 @@ ctx, cancel := context.WithCancel(context.Background())
 ch := make(chan os.Signal, 1)
 signal.Notify(ch, syscall.SIGTERM)
 go func() {
-    for s := range ch {
-        cancel()
-        return
-    }
+    <-ch
+    cancel()
 }()
 
 // Open your file or initialize any kind of io.Reader
