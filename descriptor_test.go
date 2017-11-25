@@ -23,7 +23,7 @@ func descriptorsBytes(w *astibinary.Writer) {
 func TestParseDescriptor(t *testing.T) {
 	// Init
 	w := astibinary.New()
-	w.Write(uint16(177)) // Descriptors length
+	w.Write(uint16(193)) // Descriptors length
 	// AC3
 	w.Write(uint8(DescriptorTagAC3)) // Tag
 	w.Write(uint8(9))                // Length
@@ -154,6 +154,16 @@ func TestParseDescriptor(t *testing.T) {
 	w.Write(uint8(4))                           // Length
 	w.Write([]byte("cou"))                      // Item #1 country code
 	w.Write(uint8(2))                           // Item #1 rating
+	// Local time offset
+	w.Write(uint8(DescriptorTagLocalTimeOffset)) // Tag
+	w.Write(uint8(13))                           // Length
+	w.Write([]byte("cou"))                       // Country code
+	w.Write("101010")                            // Country region ID
+	w.Write("1")                                 // Reserved
+	w.Write("1")                                 // Local time offset polarity
+	w.Write(dvbDurationMinutesBytes)             // Local time offset
+	w.Write(dvbTimeBytes)                        // Time of change
+	w.Write(dvbDurationMinutesBytes)             // Next time offset
 
 	// Assert
 	var offset int
@@ -265,5 +275,13 @@ func TestParseDescriptor(t *testing.T) {
 	assert.Equal(t, *ds[14].ParentalRating, DescriptorParentalRating{Items: []*DescriptorParentalRatingItem{{
 		CountryCode: []byte("cou"),
 		Rating:      2,
+	}}})
+	assert.Equal(t, *ds[15].LocalTimeOffset, DescriptorLocalTimeOffset{Items: []*DescriptorLocalTimeOffsetItem{{
+		CountryCode:             []byte("cou"),
+		CountryRegionID:         42,
+		LocalTimeOffset:         dvbDurationMinutes,
+		LocalTimeOffsetPolarity: true,
+		NextTimeOffset:          dvbDurationMinutes,
+		TimeOfChange:            dvbTime,
 	}}})
 }

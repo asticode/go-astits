@@ -55,7 +55,7 @@ func parseEITSection(i []byte, offset *int, offsetSectionsEnd int, tableIDExtens
 		e.StartTime = parseDVBTime(i, offset)
 
 		// Duration
-		e.Duration = parseDVBDuration(i, offset)
+		e.Duration = parseDVBDurationSeconds(i, offset)
 
 		// Running status
 		e.RunningStatus = uint8(i[*offset]) >> 5

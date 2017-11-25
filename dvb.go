@@ -27,13 +27,21 @@ func parseDVBTime(i []byte, offset *int) (t time.Time) {
 	*offset += 2
 
 	// Time
-	t = t.Add(parseDVBDuration(i, offset))
+	t = t.Add(parseDVBDurationSeconds(i, offset))
 	return
 }
 
-// parseDVBDuration parses a duration
+// parseDVBDurationMinutes parses a minutes duration
+// 16 bit field containing the duration of the event in hours, minutes. format: 4 digits, 4 - bit BCD = 18 bit
+func parseDVBDurationMinutes(i []byte, offset *int) (d time.Duration) {
+	d = parseDVBDurationByte(i[*offset])*time.Hour + parseDVBDurationByte(i[*offset+1])*time.Minute
+	*offset += 2
+	return
+}
+
+// parseDVBDurationSeconds parses a seconds duration
 // 24 bit field containing the duration of the event in hours, minutes, seconds. format: 6 digits, 4 - bit BCD = 24 bit
-func parseDVBDuration(i []byte, offset *int) (d time.Duration) {
+func parseDVBDurationSeconds(i []byte, offset *int) (d time.Duration) {
 	d = parseDVBDurationByte(i[*offset])*time.Hour + parseDVBDurationByte(i[*offset+1])*time.Minute + parseDVBDurationByte(i[*offset+2])*time.Second
 	*offset += 3
 	return

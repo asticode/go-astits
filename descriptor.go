@@ -1,6 +1,8 @@
 package astits
 
 import (
+	"time"
+
 	"github.com/asticode/go-astilog"
 )
 
@@ -22,6 +24,7 @@ const (
 	DescriptorTagExtendedEvent              = 0x4e
 	DescriptorTagExtension                  = 0x7f
 	DescriptorTagISO639LanguageAndAudioType = 0xa
+	DescriptorTagLocalTimeOffset            = 0x58
 	DescriptorTagMaximumBitrate             = 0xe
 	DescriptorTagNetworkName                = 0x40
 	DescriptorTagParentalRating             = 0x55
@@ -65,6 +68,7 @@ type Descriptor struct {
 	Extension                  *DescriptorExtension
 	ISO639LanguageAndAudioType *DescriptorISO639LanguageAndAudioType
 	Length                     uint8
+	LocalTimeOffset            *DescriptorLocalTimeOffset
 	MaximumBitrate             *DescriptorMaximumBitrate
 	NetworkName                *DescriptorNetworkName
 	ParentalRating             *DescriptorParentalRating
@@ -421,6 +425,56 @@ func newDescriptorISO639LanguageAndAudioType(i []byte) *DescriptorISO639Language
 	}
 }
 
+// DescriptorLocalTimeOffset represents a local time offset descriptor
+// Page: 84 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+type DescriptorLocalTimeOffset struct {
+	Items []*DescriptorLocalTimeOffsetItem
+}
+
+// DescriptorLocalTimeOffsetItem represents a local time offset item descriptor
+type DescriptorLocalTimeOffsetItem struct {
+	CountryCode             []byte
+	CountryRegionID         uint8
+	LocalTimeOffset         time.Duration
+	LocalTimeOffsetPolarity bool
+	NextTimeOffset          time.Duration
+	TimeOfChange            time.Time
+}
+
+func newDescriptorLocalTimeOffset(i []byte) (d *DescriptorLocalTimeOffset) {
+	// Init
+	d = &DescriptorLocalTimeOffset{}
+	var offset int
+
+	// Add items
+	for offset < len(i) {
+		// Init
+		var itm = &DescriptorLocalTimeOffsetItem{}
+		d.Items = append(d.Items, itm)
+
+		// Country code
+		itm.CountryCode = i[offset : offset+3]
+		offset += 3
+
+		// Country region ID
+		itm.CountryRegionID = uint8(i[offset] >> 2)
+
+		// Local time offset polarity
+		itm.LocalTimeOffsetPolarity = i[offset]&0x1 > 0
+		offset += 1
+
+		// Local time offset
+		itm.LocalTimeOffset = parseDVBDurationMinutes(i, &offset)
+
+		// Time of change
+		itm.TimeOfChange = parseDVBTime(i, &offset)
+
+		// Next time offset
+		itm.NextTimeOffset = parseDVBDurationMinutes(i, &offset)
+	}
+	return
+}
+
 // DescriptorMaximumBitrate represents a maximum bitrate descriptor
 type DescriptorMaximumBitrate struct {
 	Bitrate uint32 // In bytes/second
@@ -432,7 +486,9 @@ func newDescriptorMaximumBitrate(i []byte) *DescriptorMaximumBitrate {
 
 // DescriptorNetworkName represents a network name descriptor
 // Page: 93 | Chapter: 6.2.27 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
-type DescriptorNetworkName struct{ Name []byte }
+type DescriptorNetworkName struct {
+	Name []byte
+}
 
 func newDescriptorNetworkName(i []byte) *DescriptorNetworkName {
 	return &DescriptorNetworkName{Name: i}
@@ -627,6 +683,8 @@ func parseDescriptors(i []byte, offset *int) (o []*Descriptor) {
 					d.Extension = newDescriptorExtension(b)
 				case DescriptorTagISO639LanguageAndAudioType:
 					d.ISO639LanguageAndAudioType = newDescriptorISO639LanguageAndAudioType(b)
+				case DescriptorTagLocalTimeOffset:
+					d.LocalTimeOffset = newDescriptorLocalTimeOffset(b)
 				case DescriptorTagMaximumBitrate:
 					d.MaximumBitrate = newDescriptorMaximumBitrate(b)
 				case DescriptorTagNetworkName:
