@@ -74,6 +74,18 @@ for {
 }
 ```
 
+# CLI
+
+This library provides a CLI that will automatically get installed in `GOPATH/bin` on `go get` execution.
+
+With it, you can list available streams that way:
+
+    $ astits -i <path to your file>
+    
+And get the results in JSON format that way:
+
+    $ astits -i <path to your file> -f json
+
 # Features and roadmap
 
 - [x] Parse PES packets
