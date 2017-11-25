@@ -115,7 +115,7 @@ func parsePSISection(i []byte, offset *int) (s *PSISection, stop bool, err error
 	}
 
 	// Check whether there's a syntax section
-	if s.Header.SectionLength > 0 && s.Header.SectionSyntaxIndicator {
+	if s.Header.SectionLength > 0 {
 		// Parse syntax
 		s.Syntax = parsePSISectionSyntax(i, offset, s.Header, offsetSectionsEnd)
 
