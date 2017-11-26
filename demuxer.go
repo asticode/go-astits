@@ -22,13 +22,14 @@ var (
 // http://seidl.cs.vsb.cz/download/dvb/DVB_Poster.pdf
 // http://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.13.01_40/en_300468v011301o.pdf
 type Demuxer struct {
-	ctx           context.Context
-	dataBuffer    []*Data
-	packetPool    *packetPool
-	packetSize    int
-	packetsParser PacketsParser
-	programMap    programMap
-	r             io.Reader
+	ctx              context.Context
+	dataBuffer       []*Data
+	optPacketSize    int
+	optPacketsParser PacketsParser
+	packetBuffer     *packetBuffer
+	packetPool       *packetPool
+	programMap       programMap
+	r                io.Reader
 }
 
 // PacketsParser represents an object capable of parsing a set of packets containing a unique payload spanning over those packets
@@ -55,52 +56,15 @@ func New(ctx context.Context, r io.Reader, opts ...func(*Demuxer)) (d *Demuxer) 
 // OptPacketSize returns the option to set the packet size
 func OptPacketSize(packetSize int) func(*Demuxer) {
 	return func(d *Demuxer) {
-		d.packetSize = packetSize
+		d.optPacketSize = packetSize
 	}
 }
 
 // OptPacketsParser returns the option to set the packets parser
 func OptPacketsParser(p PacketsParser) func(*Demuxer) {
 	return func(d *Demuxer) {
-		d.packetsParser = p
+		d.optPacketsParser = p
 	}
-}
-
-// autoDetectPacketSize updates the packet size based on the first bytes
-// Minimum packet size is 188 and is bounded by 2 sync bytes
-// Assumption is made that the first byte of the reader is a sync byte
-func (dmx *Demuxer) autoDetectPacketSize() (err error) {
-	// Read first bytes
-	const l = 193
-	var b = make([]byte, l)
-	if _, err = dmx.r.Read(b); err != nil {
-		err = errors.Wrapf(err, "astits: reading first %d bytes failed", l)
-		return
-	}
-
-	// Packet must start with a sync byte
-	if b[0] != syncByte {
-		err = ErrPacketMustStartWithASyncByte
-		return
-	}
-
-	// Look for sync bytes
-	for idx, b := range b {
-		if b == syncByte && idx >= 188 {
-			// Update packet size
-			dmx.packetSize = idx
-
-			// Sync reader
-			var ls = dmx.packetSize - (l - dmx.packetSize)
-			if _, err = dmx.r.Read(make([]byte, ls)); err != nil {
-				err = errors.Wrapf(err, "astits: reading %d bytes to sync reader failed", ls)
-				return
-			}
-			return
-		}
-	}
-	err = fmt.Errorf("astits: only one sync byte detected in first %d bytes", l)
-	return
 }
 
 // NextPacket retrieves the next packet
@@ -110,35 +74,19 @@ func (dmx *Demuxer) NextPacket() (p *Packet, err error) {
 		return
 	}
 
-	// Auto detect packet size
-	if dmx.packetSize == 0 {
-		// Auto detect packet size
-		if err = dmx.autoDetectPacketSize(); err != nil {
-			err = errors.Wrap(err, "astits: auto detecting packet size failed")
-			return
-		}
-
-		// Rewind
-		if _, err = dmx.Rewind(); err != nil {
-			err = errors.Wrap(err, "astits: rewinding failed")
+	// Create packet buffer if not exists
+	if dmx.packetBuffer == nil {
+		if dmx.packetBuffer, err = newPacketBuffer(dmx.r, dmx.optPacketSize); err != nil {
+			err = errors.Wrap(err, "astits: creating packet buffer failed")
 			return
 		}
 	}
 
-	// Read
-	var b = make([]byte, dmx.packetSize)
-	if _, err = io.ReadFull(dmx.r, b); err != nil {
-		if err == io.EOF || err == io.ErrUnexpectedEOF {
-			err = ErrNoMorePackets
-		} else {
-			err = errors.Wrapf(err, "astits: reading %d bytes failed", dmx.packetSize)
+	// Fetch next packet from buffer
+	if p, err = dmx.packetBuffer.next(); err != nil {
+		if err != ErrNoMorePackets {
+			err = errors.Wrap(err, "astits: fetching next packet from buffer failed")
 		}
-		return
-	}
-
-	// Parse packet
-	if p, err = parsePacket(b); err != nil {
-		err = errors.Wrap(err, "astits: building packet failed")
 		return
 	}
 	return
@@ -176,7 +124,7 @@ func (dmx *Demuxer) NextData() (d *Data, err error) {
 		}
 
 		// Parse data
-		if ds, err = parseData(ps, dmx.packetsParser, dmx.programMap); err != nil {
+		if ds, err = parseData(ps, dmx.optPacketsParser, dmx.programMap); err != nil {
 			err = errors.Wrap(err, "astits: building new data failed")
 			return
 		}
@@ -206,12 +154,67 @@ func (dmx *Demuxer) NextData() (d *Data, err error) {
 // Rewind rewinds the demuxer reader
 func (dmx *Demuxer) Rewind() (n int64, err error) {
 	dmx.dataBuffer = []*Data{}
+	dmx.packetBuffer = nil
 	dmx.packetPool = newPacketPool()
-	if s, ok := dmx.r.(io.Seeker); ok {
+	if n, err = rewind(dmx.r); err != nil {
+		err = errors.Wrap(err, "astits: rewinding reader failed")
+		return
+	}
+	return
+}
+
+// rewind rewinds the reader if possible, otherwise n = -1
+func rewind(r io.Reader) (n int64, err error) {
+	if s, ok := r.(io.Seeker); ok {
 		if n, err = s.Seek(0, 0); err != nil {
 			err = errors.Wrap(err, "astits: seeking to 0 failed")
 			return
 		}
+		return
 	}
+	n = -1
+	return
+}
+
+// autoDetectPacketSize updates the packet size based on the first bytes
+// Minimum packet size is 188 and is bounded by 2 sync bytes
+// Assumption is made that the first byte of the reader is a sync byte
+func autoDetectPacketSize(r io.Reader) (packetSize int, err error) {
+	// Read first bytes
+	const l = 193
+	var b = make([]byte, l)
+	if _, err = r.Read(b); err != nil {
+		err = errors.Wrapf(err, "astits: reading first %d bytes failed", l)
+		return
+	}
+
+	// Packet must start with a sync byte
+	if b[0] != syncByte {
+		err = ErrPacketMustStartWithASyncByte
+		return
+	}
+
+	// Look for sync bytes
+	for idx, b := range b {
+		if b == syncByte && idx >= 188 {
+			// Update packet size
+			packetSize = idx
+
+			// Rewind or sync reader
+			var n int64
+			if n, err = rewind(r); err != nil {
+				err = errors.Wrap(err, "astits: rewinding failed")
+				return
+			} else if n == -1 {
+				var ls = packetSize - (l - packetSize)
+				if _, err = r.Read(make([]byte, ls)); err != nil {
+					err = errors.Wrapf(err, "astits: reading %d bytes to sync reader failed", ls)
+					return
+				}
+			}
+			return
+		}
+	}
+	err = fmt.Errorf("astits: only one sync byte detected in first %d bytes", l)
 	return
 }

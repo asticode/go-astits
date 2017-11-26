@@ -18,32 +18,6 @@ func TestDemuxerNew(t *testing.T) {
 	assert.Equal(t, fmt.Sprintf("%p", pp), fmt.Sprintf("%p", dmx.packetsParser))
 }
 
-func TestDemuxerAutoDetectPacketSize(t *testing.T) {
-	// Packet should start with a sync byte
-	w := astibinary.New()
-	w.Write(uint8(2))
-	w.Write(byte(syncByte))
-	dmx := New(context.Background(), bytes.NewReader(w.Bytes()))
-	err := dmx.autoDetectPacketSize()
-	assert.EqualError(t, err, ErrPacketMustStartWithASyncByte.Error())
-
-	// Valid packet size
-	w.Reset()
-	w.Write(byte(syncByte))
-	w.Write(make([]byte, 20))
-	w.Write(byte(syncByte))
-	w.Write(make([]byte, 166))
-	w.Write(byte(syncByte))
-	w.Write(make([]byte, 187))
-	w.Write([]byte("test"))
-	r := bytes.NewReader(w.Bytes())
-	dmx = New(context.Background(), r)
-	err = dmx.autoDetectPacketSize()
-	assert.NoError(t, err)
-	assert.Equal(t, 188, dmx.packetSize)
-	assert.Equal(t, 4, r.Len())
-}
-
 func TestDemuxerNextPacket(t *testing.T) {
 	// Ctx error
 	ctx, cancel := context.WithCancel(context.Background())
@@ -64,7 +38,7 @@ func TestDemuxerNextPacket(t *testing.T) {
 	p, err := dmx.NextPacket()
 	assert.NoError(t, err)
 	assert.Equal(t, p1, p)
-	assert.Equal(t, 192, dmx.packetSize)
+	assert.Equal(t, 192, dmx.packetBuffer.packetSize)
 
 	// Second packet
 	p, err = dmx.NextPacket()
@@ -103,6 +77,30 @@ func TestDemuxerNextData(t *testing.T) {
 	assert.EqualError(t, err, ErrNoMorePackets.Error())
 }
 
+func TestAutoDetectPacketSize(t *testing.T) {
+	// Packet should start with a sync byte
+	w := astibinary.New()
+	w.Write(uint8(2))
+	w.Write(byte(syncByte))
+	_, err := autoDetectPacketSize(bytes.NewReader(w.Bytes()))
+	assert.EqualError(t, err, ErrPacketMustStartWithASyncByte.Error())
+
+	// Valid packet size
+	w.Reset()
+	w.Write(byte(syncByte))
+	w.Write(make([]byte, 20))
+	w.Write(byte(syncByte))
+	w.Write(make([]byte, 166))
+	w.Write(byte(syncByte))
+	w.Write(make([]byte, 187))
+	w.Write([]byte("test"))
+	r := bytes.NewReader(w.Bytes())
+	p, err := autoDetectPacketSize(r)
+	assert.NoError(t, err)
+	assert.Equal(t, 188, p)
+	assert.Equal(t, 380, r.Len())
+}
+
 func TestDemuxerRewind(t *testing.T) {
 	r := bytes.NewReader([]byte("content"))
 	dmx := New(context.Background(), r)
@@ -117,4 +115,5 @@ func TestDemuxerRewind(t *testing.T) {
 	assert.Equal(t, 7, r.Len())
 	assert.Equal(t, 0, len(dmx.dataBuffer))
 	assert.Equal(t, 0, len(dmx.packetPool.b))
+	assert.Nil(t, dmx.packetBuffer)
 }
