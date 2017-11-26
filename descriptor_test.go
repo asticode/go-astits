@@ -23,7 +23,7 @@ func descriptorsBytes(w *astibinary.Writer) {
 func TestParseDescriptor(t *testing.T) {
 	// Init
 	w := astibinary.New()
-	w.Write(uint16(205)) // Descriptors length
+	w.Write(uint16(211)) // Descriptors length
 	// AC3
 	w.Write(uint8(DescriptorTagAC3)) // Tag
 	w.Write(uint8(9))                // Length
@@ -179,6 +179,18 @@ func TestParseDescriptor(t *testing.T) {
 	w.Write("00001")                         // Item #1 type
 	w.Write("010")                           // Item #1 magazine
 	w.Write("00010010")                      // Item #1 page number
+	// AVC video
+	w.Write(uint8(DescriptorTagAVCVideo)) // Tag
+	w.Write(uint8(4))                     // Length
+	w.Write(uint8(1))                     // Profile idc
+	w.Write("1")                          // Constraint set0 flag
+	w.Write("1")                          // Constraint set1 flag
+	w.Write("1")                          // Constraint set1 flag
+	w.Write("10101")                      // Compatible flags
+	w.Write(uint8(2))                     // Level idc
+	w.Write("1")                          // AVC still present
+	w.Write("1")                          // AVC 24 hour picture flag
+	w.Write("000000")                     // Reserved
 
 	// Assert
 	var offset int
@@ -312,4 +324,14 @@ func TestParseDescriptor(t *testing.T) {
 		Page:     uint8(12),
 		Type:     uint8(1),
 	}}})
+	assert.Equal(t, *ds[18].AVCVideo, DescriptorAVCVideo{
+		AVC24HourPictureFlag: true,
+		AVCStillPresent:      true,
+		CompatibleFlags:      21,
+		ConstraintSet0Flag:   true,
+		ConstraintSet1Flag:   true,
+		ConstraintSet2Flag:   true,
+		LevelIDC:             2,
+		ProfileIDC:           1,
+	})
 }

@@ -18,6 +18,7 @@ const (
 // Page: 42 | Chapter: 6.1 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
 const (
 	DescriptorTagAC3                        = 0x6a
+	DescriptorTagAVCVideo                   = 0x28
 	DescriptorTagComponent                  = 0x50
 	DescriptorTagContent                    = 0x54
 	DescriptorTagEnhancedAC3                = 0x7a
@@ -74,6 +75,7 @@ const (
 // Descriptor represents a descriptor
 type Descriptor struct {
 	AC3                        *DescriptorAC3
+	AVCVideo                   *DescriptorAVCVideo
 	Component                  *DescriptorComponent
 	Content                    *DescriptorContent
 	EnhancedAC3                *DescriptorEnhancedAC3
@@ -137,6 +139,47 @@ func newDescriptorAC3(i []byte) (d *DescriptorAC3) {
 		d.AdditionalInfo = append(d.AdditionalInfo, i[offset])
 		offset += 1
 	}
+	return
+}
+
+// DescriptorAVCVideo represents an AVC video descriptor
+// No doc found unfortunately, basing the implementation on https://github.com/gfto/bitstream/blob/master/mpeg/psi/desc_28.h
+type DescriptorAVCVideo struct {
+	AVC24HourPictureFlag bool
+	AVCStillPresent      bool
+	CompatibleFlags      uint8
+	ConstraintSet0Flag   bool
+	ConstraintSet1Flag   bool
+	ConstraintSet2Flag   bool
+	LevelIDC             uint8
+	ProfileIDC           uint8
+}
+
+func newDescriptorAVCVideo(i []byte) (d *DescriptorAVCVideo) {
+	// Init
+	d = &DescriptorAVCVideo{}
+	var offset int
+
+	// Profile idc
+	d.ProfileIDC = uint8(i[offset])
+	offset += 1
+
+	// Flags
+	d.ConstraintSet0Flag = i[offset]&0x80 > 0
+	d.ConstraintSet1Flag = i[offset]&0x40 > 0
+	d.ConstraintSet2Flag = i[offset]&0x20 > 0
+	d.CompatibleFlags = i[offset] & 0x1f
+	offset += 1
+
+	// Level idc
+	d.LevelIDC = uint8(i[offset])
+	offset += 1
+
+	// AVC still present
+	d.AVCStillPresent = i[offset]&0x80 > 0
+
+	// AVC 24 hour picture flag
+	d.AVC24HourPictureFlag = i[offset]&0x40 > 0
 	return
 }
 
@@ -745,6 +788,8 @@ func parseDescriptors(i []byte, offset *int) (o []*Descriptor) {
 				switch d.Tag {
 				case DescriptorTagAC3:
 					d.AC3 = newDescriptorAC3(b)
+				case DescriptorTagAVCVideo:
+					d.AVCVideo = newDescriptorAVCVideo(b)
 				case DescriptorTagComponent:
 					d.Component = newDescriptorComponent(b)
 				case DescriptorTagContent:
