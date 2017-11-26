@@ -23,7 +23,7 @@ func descriptorsBytes(w *astibinary.Writer) {
 func TestParseDescriptor(t *testing.T) {
 	// Init
 	w := astibinary.New()
-	w.Write(uint16(198)) // Descriptors length
+	w.Write(uint16(205)) // Descriptors length
 	// AC3
 	w.Write(uint8(DescriptorTagAC3)) // Tag
 	w.Write(uint8(9))                // Length
@@ -166,12 +166,19 @@ func TestParseDescriptor(t *testing.T) {
 	w.Write(dvbDurationMinutesBytes)             // Next time offset
 	// VBI data
 	w.Write(uint8(DescriptorTagVBIData))        // Tag
-	w.Write(uint8(3))                           // TODO Length
+	w.Write(uint8(3))                           // Length
 	w.Write(uint8(VBIDataServiceIDEBUTeletext)) // Service #1 id
-	w.Write(uint8(1))                           // TODO Service #1 descriptor length
+	w.Write(uint8(1))                           // Service #1 descriptor length
 	w.Write("00")                               // Service #1 descriptor reserved
 	w.Write("1")                                // Service #1 descriptor field polarity
 	w.Write("10101")                            // Service #1 descriptor line offset
+	// VBI Teletext
+	w.Write(uint8(DescriptorTagVBITeletext)) // Tag
+	w.Write(uint8(5))                        // Length
+	w.Write([]byte("lan"))                   // Item #1 language
+	w.Write("00001")                         // Item #1 type
+	w.Write("010")                           // Item #1 magazine
+	w.Write("00010010")                      // Item #1 page number
 
 	// Assert
 	var offset int
@@ -298,5 +305,11 @@ func TestParseDescriptor(t *testing.T) {
 			FieldParity: true,
 			LineOffset:  21,
 		}},
+	}}})
+	assert.Equal(t, *ds[17].VBITeletext, DescriptorTeletext{Items: []*DescriptorTeletextItem{{
+		Language: []byte("lan"),
+		Magazine: uint8(2),
+		Page:     uint8(12),
+		Type:     uint8(1),
 	}}})
 }

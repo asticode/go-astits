@@ -34,6 +34,7 @@ const (
 	DescriptorTagSubtitling                 = 0x59
 	DescriptorTagTeletext                   = 0x56
 	DescriptorTagVBIData                    = 0x45
+	DescriptorTagVBITeletext                = 0x46
 )
 
 // Descriptor extension tags
@@ -91,6 +92,7 @@ type Descriptor struct {
 	Tag                        uint8 // the tag defines the structure of the contained data following the descriptor length.
 	Teletext                   *DescriptorTeletext
 	VBIData                    *DescriptorVBIData
+	VBITeletext                *DescriptorTeletext
 }
 
 // DescriptorAC3 represents an AC3 descriptor
@@ -775,6 +777,8 @@ func parseDescriptors(i []byte, offset *int) (o []*Descriptor) {
 					d.Teletext = newDescriptorTeletext(b)
 				case DescriptorTagVBIData:
 					d.VBIData = newDescriptorVBIData(b)
+				case DescriptorTagVBITeletext:
+					d.VBITeletext = newDescriptorTeletext(b)
 				default:
 					// TODO Remove this log
 					astilog.Debugf("unlisted descriptor tag 0x%x", d.Tag)
