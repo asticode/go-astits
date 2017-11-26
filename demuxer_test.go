@@ -93,3 +93,19 @@ func TestDemuxerNextData(t *testing.T) {
 	_, err := dmx.NextData()
 	assert.EqualError(t, err, ErrNoMorePackets.Error())
 }
+
+func TestDemuxerRewind(t *testing.T) {
+	r := bytes.NewReader([]byte("content"))
+	dmx := New(context.Background(), r)
+	dmx.packetBuffer.add(&Packet{Header: &PacketHeader{PID: 1}})
+	dmx.dataBuffer = append(dmx.dataBuffer, &Data{})
+	b := make([]byte, 2)
+	_, err := r.Read(b)
+	assert.NoError(t, err)
+	n, err := dmx.Rewind()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(0), n)
+	assert.Equal(t, 7, r.Len())
+	assert.Equal(t, 0, len(dmx.dataBuffer))
+	assert.Equal(t, 0, len(dmx.packetBuffer.b))
+}
