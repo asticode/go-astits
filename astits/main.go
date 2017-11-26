@@ -23,12 +23,14 @@ import (
 // Flags
 var (
 	ctx, cancel = context.WithCancel(context.Background())
+	dataTypes   = astiflag.NewStringsMap()
 	format      = flag.String("f", "", "the format")
 	inputPath   = flag.String("i", "", "the input path")
 )
 
 func main() {
 	// Init
+	flag.Var(dataTypes, "d", "the datatypes whitelist")
 	var s = astiflag.Subcommand()
 	flag.Parse()
 	astilog.FlagInit()
@@ -144,6 +146,7 @@ func buildReader() (r io.Reader, err error) {
 func data(dmx *astits.Demuxer) (err error) {
 	// Loop through data
 	var d *astits.Data
+	astilog.Debug("Fetching data...")
 	for {
 		// Get next data
 		if d, err = dmx.NextData(); err != nil {
@@ -155,19 +158,19 @@ func data(dmx *astits.Demuxer) (err error) {
 		}
 
 		// Log data
-		if d.EIT != nil {
+		if _, ok := dataTypes["eit"]; (ok || len(dataTypes) == 0) && d.EIT != nil {
 			astilog.Infof("EIT: %d", d.PID)
-		} else if d.NIT != nil {
+		} else if _, ok := dataTypes["nit"]; (ok || len(dataTypes) == 0) && d.NIT != nil {
 			astilog.Infof("NIT: %d", d.PID)
-		} else if d.PAT != nil {
+		} else if _, ok := dataTypes["pat"]; (ok || len(dataTypes) == 0) && d.PAT != nil {
 			astilog.Infof("PAT: %d", d.PID)
-		} else if d.PES != nil {
-			astilog.Infof("PES: %d (len: %d)", d.PID, len(d.PES.Data))
-		} else if d.PMT != nil {
+		} else if _, ok := dataTypes["pes"]; (ok || len(dataTypes) == 0) && d.PES != nil {
+			astilog.Infof("PES: %d", d.PID)
+		} else if _, ok := dataTypes["pmt"]; (ok || len(dataTypes) == 0) && d.PMT != nil {
 			astilog.Infof("PMT: %d", d.PID)
-		} else if d.SDT != nil {
+		} else if _, ok := dataTypes["sdt"]; (ok || len(dataTypes) == 0) && d.SDT != nil {
 			astilog.Infof("SDT: %d", d.PID)
-		} else if d.TOT != nil {
+		} else if _, ok := dataTypes["tot"]; (ok || len(dataTypes) == 0) && d.TOT != nil {
 			astilog.Infof("TOT: %d", d.PID)
 		}
 	}

@@ -84,7 +84,7 @@ This library provides a CLI that will automatically get installed in `GOPATH/bin
     
 ## List data
 
-    $ astits data -i <path to your file>
+    $ astits data -i <path to your file> -d <data type: eit|nit|... (repeatable argument | if empty, all data types are shown)>
 
 # Features and roadmap
 
