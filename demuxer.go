@@ -24,7 +24,7 @@ var (
 type Demuxer struct {
 	ctx           context.Context
 	dataBuffer    []*Data
-	packetBuffer  *packetBuffer
+	packetPool    *packetPool
 	PacketSize    int
 	PacketsParser PacketsParser
 	programMap    programMap
@@ -38,10 +38,10 @@ type PacketsParser func(ps []*Packet) (ds []*Data, skip bool, err error)
 // New creates a new transport stream based on a reader
 func New(ctx context.Context, r io.Reader) *Demuxer {
 	return &Demuxer{
-		ctx:          ctx,
-		packetBuffer: newPacketBuffer(),
-		programMap:   newProgramMap(),
-		r:            r,
+		ctx:        ctx,
+		packetPool: newPacketPool(),
+		programMap: newProgramMap(),
+		r:          r,
 	}
 }
 
@@ -139,8 +139,8 @@ func (dmx *Demuxer) NextData() (d *Data, err error) {
 	for {
 		// Get next packet
 		if p, err = dmx.NextPacket(); err != nil {
-			// If no more packets, we still need to dump the buffer
-			if ps = dmx.packetBuffer.dump(); err != ErrNoMorePackets || len(ps) == 0 {
+			// If no more packets, we still need to dump the pool
+			if ps = dmx.packetPool.dump(); err != ErrNoMorePackets || len(ps) == 0 {
 				if err == ErrNoMorePackets {
 					return
 				}
@@ -148,8 +148,8 @@ func (dmx *Demuxer) NextData() (d *Data, err error) {
 				return
 			}
 		} else {
-			// Add packet to the buffer
-			if ps = dmx.packetBuffer.add(p); len(ps) == 0 {
+			// Add packet to the pool
+			if ps = dmx.packetPool.add(p); len(ps) == 0 {
 				continue
 			}
 		}
@@ -185,7 +185,7 @@ func (dmx *Demuxer) NextData() (d *Data, err error) {
 // Rewind rewinds the demuxer reader
 func (dmx *Demuxer) Rewind() (n int64, err error) {
 	dmx.dataBuffer = []*Data{}
-	dmx.packetBuffer = newPacketBuffer()
+	dmx.packetPool = newPacketPool()
 	if s, ok := dmx.r.(io.Seeker); ok {
 		if n, err = s.Seek(0, 0); err != nil {
 			err = errors.Wrap(err, "astits: seeking to 0 failed")

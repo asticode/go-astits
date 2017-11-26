@@ -5,22 +5,22 @@ import (
 	"sync"
 )
 
-// packetBuffer represents a buffer of packets
-type packetBuffer struct {
+// packetPool represents a pool of packets
+type packetPool struct {
 	b map[uint16][]*Packet // Indexed by PID
 	m *sync.Mutex
 }
 
-// newPacketBuffer creates a new packet buffer
-func newPacketBuffer() *packetBuffer {
-	return &packetBuffer{
+// newPacketPool creates a new packet pool
+func newPacketPool() *packetPool {
+	return &packetPool{
 		b: make(map[uint16][]*Packet),
 		m: &sync.Mutex{},
 	}
 }
 
-// add adds a new packet to the buffer
-func (b *packetBuffer) add(p *Packet) (ps []*Packet) {
+// add adds a new packet to the pool
+func (b *packetPool) add(p *Packet) (ps []*Packet) {
 	// Lock
 	b.m.Lock()
 	defer b.m.Unlock()
@@ -48,8 +48,8 @@ func (b *packetBuffer) add(p *Packet) (ps []*Packet) {
 	return
 }
 
-// dump dumps the packet buffer by looking for the first item with packets inside
-func (b *packetBuffer) dump() (ps []*Packet) {
+// dump dumps the packet pool by looking for the first item with packets inside
+func (b *packetPool) dump() (ps []*Packet) {
 	b.m.Lock()
 	defer b.m.Unlock()
 	var keys []int

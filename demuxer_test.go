@@ -97,7 +97,7 @@ func TestDemuxerNextData(t *testing.T) {
 func TestDemuxerRewind(t *testing.T) {
 	r := bytes.NewReader([]byte("content"))
 	dmx := New(context.Background(), r)
-	dmx.packetBuffer.add(&Packet{Header: &PacketHeader{PID: 1}})
+	dmx.packetPool.add(&Packet{Header: &PacketHeader{PID: 1}})
 	dmx.dataBuffer = append(dmx.dataBuffer, &Data{})
 	b := make([]byte, 2)
 	_, err := r.Read(b)
@@ -107,5 +107,5 @@ func TestDemuxerRewind(t *testing.T) {
 	assert.Equal(t, int64(0), n)
 	assert.Equal(t, 7, r.Len())
 	assert.Equal(t, 0, len(dmx.dataBuffer))
-	assert.Equal(t, 0, len(dmx.packetBuffer.b))
+	assert.Equal(t, 0, len(dmx.packetPool.b))
 }

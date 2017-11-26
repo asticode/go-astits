@@ -12,8 +12,8 @@ func TestHasDiscontinuity(t *testing.T) {
 	assert.True(t, hasDiscontinuity([]*Packet{{Header: &PacketHeader{ContinuityCounter: 15}}}, &Packet{Header: &PacketHeader{ContinuityCounter: 1}}))
 }
 
-func TestPacketBuffer(t *testing.T) {
-	b := newPacketBuffer()
+func TestPacketPool(t *testing.T) {
+	b := newPacketPool()
 	ps := b.add(&Packet{Header: &PacketHeader{ContinuityCounter: 0, PID: 1}})
 	assert.Len(t, ps, 0)
 	ps = b.add(&Packet{Header: &PacketHeader{ContinuityCounter: 1, PayloadUnitStartIndicator: true, PID: 1}})
