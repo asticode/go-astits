@@ -97,12 +97,10 @@ func (dmx *Demuxer) NextPacket() (p *Packet, err error) {
 			return
 		}
 
-		// Rewind if possible
-		if s, ok := dmx.r.(io.Seeker); ok {
-			if _, err = s.Seek(0, 0); err != nil {
-				err = errors.Wrap(err, "astits: seeking to 0 failed")
-				return
-			}
+		// Rewind
+		if _, err = dmx.Rewind(); err != nil {
+			err = errors.Wrap(err, "astits: rewinding failed")
+			return
 		}
 	}
 
@@ -182,4 +180,15 @@ func (dmx *Demuxer) NextData() (d *Data, err error) {
 			return
 		}
 	}
+}
+
+// Rewind rewinds the demuxer reader
+func (dmx *Demuxer) Rewind() (n int64, err error) {
+	if s, ok := dmx.r.(io.Seeker); ok {
+		if n, err = s.Seek(0, 0); err != nil {
+			err = errors.Wrap(err, "astits: seeking to 0 failed")
+			return
+		}
+	}
+	return
 }
