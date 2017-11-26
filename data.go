@@ -36,9 +36,14 @@ func parseData(ps []*Packet, prs PacketsParser, pm programMap) (ds []*Data, err 
 	}
 
 	// Reconstruct payload
-	var payload []byte
+	var l int
 	for _, p := range ps {
-		payload = append(payload, p.Payload...)
+		l += len(p.Payload)
+	}
+	var payload = make([]byte, l)
+	var c int
+	for _, p := range ps {
+		c += copy(payload[c:], p.Payload)
 	}
 
 	// Parse PID
