@@ -18,17 +18,24 @@ import (
 	"github.com/asticode/go-astitools/flag"
 	"github.com/asticode/go-astits"
 	"github.com/pkg/errors"
+	"github.com/pkg/profile"
 )
 
 // Flags
 var (
-	ctx, cancel = context.WithCancel(context.Background())
-	dataTypes   = astiflag.NewStringsMap()
-	format      = flag.String("f", "", "the format")
-	inputPath   = flag.String("i", "", "the input path")
+	ctx, cancel    = context.WithCancel(context.Background())
+	dataTypes      = astiflag.NewStringsMap()
+	format         = flag.String("f", "", "the format")
+	inputPath      = flag.String("i", "", "the input path")
+	profileEnabled = flag.Bool("p", false, "if yes, profiling is enabled")
 )
 
 func main() {
+	// Start profiling
+	if *profileEnabled {
+		defer profile.Start(profile.MemProfile, profile.CPUProfile, profile.ProfilePath(".")).Stop()
+	}
+
 	// Init
 	flag.Var(dataTypes, "d", "the datatypes whitelist")
 	var s = astiflag.Subcommand()
