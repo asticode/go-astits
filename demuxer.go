@@ -184,6 +184,8 @@ func (dmx *Demuxer) NextData() (d *Data, err error) {
 
 // Rewind rewinds the demuxer reader
 func (dmx *Demuxer) Rewind() (n int64, err error) {
+	dmx.dataBuffer = []*Data{}
+	dmx.packetBuffer = newPacketBuffer()
 	if s, ok := dmx.r.(io.Seeker); ok {
 		if n, err = s.Seek(0, 0); err != nil {
 			err = errors.Wrap(err, "astits: seeking to 0 failed")
