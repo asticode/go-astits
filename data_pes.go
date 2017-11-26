@@ -18,6 +18,7 @@ const (
 
 // Stream IDs
 const (
+	StreamIDPrivateStream1 = 189
 	StreamIDPaddingStream  = 190
 	StreamIDPrivateStream2 = 191
 )
