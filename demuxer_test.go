@@ -3,11 +3,20 @@ package astits
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/asticode/go-astitools/binary"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestDemuxerNew(t *testing.T) {
+	ps := 1
+	pp := func(ps []*Packet) (ds []*Data, skip bool, err error) { return }
+	dmx := New(context.Background(), nil, OptPacketSize(ps), OptPacketsParser(pp))
+	assert.Equal(t, ps, dmx.packetSize)
+	assert.Equal(t, fmt.Sprintf("%p", pp), fmt.Sprintf("%p", dmx.packetsParser))
+}
 
 func TestDemuxerAutoDetectPacketSize(t *testing.T) {
 	// Packet should start with a sync byte
@@ -31,7 +40,7 @@ func TestDemuxerAutoDetectPacketSize(t *testing.T) {
 	dmx = New(context.Background(), r)
 	err = dmx.autoDetectPacketSize()
 	assert.NoError(t, err)
-	assert.Equal(t, 188, dmx.PacketSize)
+	assert.Equal(t, 188, dmx.packetSize)
 	assert.Equal(t, 4, r.Len())
 }
 
@@ -55,7 +64,7 @@ func TestDemuxerNextPacket(t *testing.T) {
 	p, err := dmx.NextPacket()
 	assert.NoError(t, err)
 	assert.Equal(t, p1, p)
-	assert.Equal(t, 192, dmx.PacketSize)
+	assert.Equal(t, 192, dmx.packetSize)
 
 	// Second packet
 	p, err = dmx.NextPacket()

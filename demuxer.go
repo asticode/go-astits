@@ -25,8 +25,8 @@ type Demuxer struct {
 	ctx           context.Context
 	dataBuffer    []*Data
 	packetPool    *packetPool
-	PacketSize    int
-	PacketsParser PacketsParser
+	packetSize    int
+	packetsParser PacketsParser
 	programMap    programMap
 	r             io.Reader
 }
@@ -36,12 +36,33 @@ type Demuxer struct {
 type PacketsParser func(ps []*Packet) (ds []*Data, skip bool, err error)
 
 // New creates a new transport stream based on a reader
-func New(ctx context.Context, r io.Reader) *Demuxer {
-	return &Demuxer{
+func New(ctx context.Context, r io.Reader, opts ...func(*Demuxer)) (d *Demuxer) {
+	// Init
+	d = &Demuxer{
 		ctx:        ctx,
 		packetPool: newPacketPool(),
 		programMap: newProgramMap(),
 		r:          r,
+	}
+
+	// Apply options
+	for _, opt := range opts {
+		opt(d)
+	}
+	return
+}
+
+// OptPacketSize returns the option to set the packet size
+func OptPacketSize(packetSize int) func(*Demuxer) {
+	return func(d *Demuxer) {
+		d.packetSize = packetSize
+	}
+}
+
+// OptPacketsParser returns the option to set the packets parser
+func OptPacketsParser(p PacketsParser) func(*Demuxer) {
+	return func(d *Demuxer) {
+		d.packetsParser = p
 	}
 }
 
@@ -67,10 +88,10 @@ func (dmx *Demuxer) autoDetectPacketSize() (err error) {
 	for idx, b := range b {
 		if b == syncByte && idx >= 188 {
 			// Update packet size
-			dmx.PacketSize = idx
+			dmx.packetSize = idx
 
 			// Sync reader
-			var ls = dmx.PacketSize - (l - dmx.PacketSize)
+			var ls = dmx.packetSize - (l - dmx.packetSize)
 			if _, err = dmx.r.Read(make([]byte, ls)); err != nil {
 				err = errors.Wrapf(err, "astits: reading %d bytes to sync reader failed", ls)
 				return
@@ -90,7 +111,7 @@ func (dmx *Demuxer) NextPacket() (p *Packet, err error) {
 	}
 
 	// Auto detect packet size
-	if dmx.PacketSize == 0 {
+	if dmx.packetSize == 0 {
 		// Auto detect packet size
 		if err = dmx.autoDetectPacketSize(); err != nil {
 			err = errors.Wrap(err, "astits: auto detecting packet size failed")
@@ -105,12 +126,12 @@ func (dmx *Demuxer) NextPacket() (p *Packet, err error) {
 	}
 
 	// Read
-	var b = make([]byte, dmx.PacketSize)
+	var b = make([]byte, dmx.packetSize)
 	if _, err = io.ReadFull(dmx.r, b); err != nil {
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			err = ErrNoMorePackets
 		} else {
-			err = errors.Wrapf(err, "astits: reading %d bytes failed", dmx.PacketSize)
+			err = errors.Wrapf(err, "astits: reading %d bytes failed", dmx.packetSize)
 		}
 		return
 	}
@@ -155,7 +176,7 @@ func (dmx *Demuxer) NextData() (d *Data, err error) {
 		}
 
 		// Parse data
-		if ds, err = parseData(ps, dmx.PacketsParser, dmx.programMap); err != nil {
+		if ds, err = parseData(ps, dmx.packetsParser, dmx.programMap); err != nil {
 			err = errors.Wrap(err, "astits: building new data failed")
 			return
 		}

@@ -74,6 +74,22 @@ for {
 }
 ```
 
+## Options
+
+In order to pass options to the demuxer, look for the methods prefixed with `Opt` and add them upon calling `New`:
+
+```go
+// This is your custom packets parser
+p := func(ps []*astits.Packet) (ds []*astits.Data, skip bool, err error) {
+        // This is your logic
+        skip = true
+        return
+}
+
+// Now you can create a demuxer with the proper options
+dmx := New(ctx, f, OptPacketSize(192), OptPacketsParser(p))
+```
+
 # CLI
 
 This library provides a CLI that will automatically get installed in `GOPATH/bin` on `go get` execution.
