@@ -42,7 +42,8 @@ func main() {
 	var r io.Reader
 	var err error
 	if r, err = buildReader(); err != nil {
-		astilog.Fatal(errors.Wrap(err, "astits: parsing input failed"))
+		astilog.Error(errors.Wrap(err, "astits: parsing input failed"))
+		return
 	}
 
 	// Make sure the reader is closed properly
@@ -58,13 +59,15 @@ func main() {
 	case "data":
 		// Fetch data
 		if err = data(dmx); err != nil {
-			astilog.Fatal(errors.Wrap(err, "astits: fetching data failed"))
+			astilog.Error(errors.Wrap(err, "astits: fetching data failed"))
+			return
 		}
 	default:
 		// Fetch the programs
 		var pgms []*Program
 		if pgms, err = programs(dmx); err != nil {
-			astilog.Fatal(errors.Wrap(err, "astits: fetching programs failed"))
+			astilog.Error(errors.Wrap(err, "astits: fetching programs failed"))
+			return
 		}
 
 		// Print
@@ -73,7 +76,8 @@ func main() {
 			var e = json.NewEncoder(os.Stdout)
 			e.SetIndent("", "  ")
 			if err = e.Encode(pgms); err != nil {
-				astilog.Fatal(errors.Wrap(err, "astits: json encoding to stdout failed"))
+				astilog.Error(errors.Wrap(err, "astits: json encoding to stdout failed"))
+				return
 			}
 		default:
 			fmt.Println("Programs are:")
@@ -144,6 +148,33 @@ func buildReader() (r io.Reader, err error) {
 }
 
 func data(dmx *astits.Demuxer) (err error) {
+	// Determine which data to log
+	var logAll, logEIT, logNIT, logPAT, logPES, logPMT, logSDT, logTOT bool
+	if _, ok := dataTypes["all"]; ok {
+		logAll = true
+	}
+	if _, ok := dataTypes["eit"]; ok {
+		logEIT = true
+	}
+	if _, ok := dataTypes["nit"]; ok {
+		logNIT = true
+	}
+	if _, ok := dataTypes["pat"]; ok {
+		logPAT = true
+	}
+	if _, ok := dataTypes["pes"]; ok {
+		logPES = true
+	}
+	if _, ok := dataTypes["pmt"]; ok {
+		logPMT = true
+	}
+	if _, ok := dataTypes["sdt"]; ok {
+		logSDT = true
+	}
+	if _, ok := dataTypes["tot"]; ok {
+		logTOT = true
+	}
+
 	// Loop through data
 	var d *astits.Data
 	astilog.Debug("Fetching data...")
@@ -158,19 +189,19 @@ func data(dmx *astits.Demuxer) (err error) {
 		}
 
 		// Log data
-		if _, ok := dataTypes["eit"]; (ok || len(dataTypes) == 0) && d.EIT != nil {
+		if d.EIT != nil && (logAll || logEIT) {
 			astilog.Infof("EIT: %d", d.PID)
-		} else if _, ok := dataTypes["nit"]; (ok || len(dataTypes) == 0) && d.NIT != nil {
+		} else if d.NIT != nil && (logAll || logNIT) {
 			astilog.Infof("NIT: %d", d.PID)
-		} else if _, ok := dataTypes["pat"]; (ok || len(dataTypes) == 0) && d.PAT != nil {
+		} else if d.PAT != nil && (logAll || logPAT) {
 			astilog.Infof("PAT: %d", d.PID)
-		} else if _, ok := dataTypes["pes"]; (ok || len(dataTypes) == 0) && d.PES != nil {
+		} else if d.PES != nil && (logAll || logPES) {
 			astilog.Infof("PES: %d", d.PID)
-		} else if _, ok := dataTypes["pmt"]; (ok || len(dataTypes) == 0) && d.PMT != nil {
+		} else if d.PMT != nil && (logAll || logPMT) {
 			astilog.Infof("PMT: %d", d.PID)
-		} else if _, ok := dataTypes["sdt"]; (ok || len(dataTypes) == 0) && d.SDT != nil {
+		} else if d.SDT != nil && (logAll || logSDT) {
 			astilog.Infof("SDT: %d", d.PID)
-		} else if _, ok := dataTypes["tot"]; (ok || len(dataTypes) == 0) && d.TOT != nil {
+		} else if d.TOT != nil && (logAll || logTOT) {
 			astilog.Infof("TOT: %d", d.PID)
 		}
 	}

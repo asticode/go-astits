@@ -26,26 +26,25 @@ func (b *packetBuffer) add(p *Packet) (ps []*Packet) {
 	defer b.m.Unlock()
 
 	// Init buffer or empty buffer if discontinuity
-	if _, ok := b.b[p.Header.PID]; !ok || hasDiscontinuity(b.b[p.Header.PID], p) {
-		b.b[p.Header.PID] = []*Packet{}
+	var mps []*Packet
+	var ok bool
+	if mps, ok = b.b[p.Header.PID]; !ok || hasDiscontinuity(mps, p) {
+		mps = []*Packet{}
 	}
 
 	// Add packet
-	if len(b.b[p.Header.PID]) > 0 || (len(b.b[p.Header.PID]) == 0 && p.Header.PayloadUnitStartIndicator) {
-		b.b[p.Header.PID] = append(b.b[p.Header.PID], p)
+	if len(mps) > 0 || (len(mps) == 0 && p.Header.PayloadUnitStartIndicator) {
+		mps = append(mps, p)
 	}
 
 	// Check payload unit start indicator
-	if p.Header.PayloadUnitStartIndicator {
-		// This is the first packet in the buffer
-		if len(b.b[p.Header.PID]) == 1 {
-			return
-		}
-
-		// Extract the set of packets
-		ps = b.b[p.Header.PID][:len(b.b[p.Header.PID])-1]
-		b.b[p.Header.PID] = []*Packet{p}
+	if p.Header.PayloadUnitStartIndicator && len(mps) > 1 {
+		ps = mps[:len(mps)-1]
+		mps = []*Packet{p}
 	}
+
+	// Assign
+	b.b[p.Header.PID] = mps
 	return
 }
 
