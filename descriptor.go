@@ -33,6 +33,7 @@ const (
 	DescriptorTagStreamIdentifier           = 0x52
 	DescriptorTagSubtitling                 = 0x59
 	DescriptorTagTeletext                   = 0x56
+	DescriptorTagVBIData                    = 0x45
 )
 
 // Descriptor extension tags
@@ -58,6 +59,17 @@ const (
 	TeletextTypeTeletextSubtitlePageForHearingImpairedPeople = 0x5
 )
 
+// VBI data service id
+// Page: 109 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+const (
+	VBIDataServiceIDClosedCaptioning     = 0x6
+	VBIDataServiceIDEBUTeletext          = 0x1
+	VBIDataServiceIDInvertedTeletext     = 0x2
+	VBIDataServiceIDMonochrome442Samples = 0x7
+	VBIDataServiceIDVPS                  = 0x4
+	VBIDataServiceIDWSS                  = 0x5
+)
+
 // Descriptor represents a descriptor
 type Descriptor struct {
 	AC3                        *DescriptorAC3
@@ -78,6 +90,7 @@ type Descriptor struct {
 	Subtitling                 *DescriptorSubtitling
 	Tag                        uint8 // the tag defines the structure of the contained data following the descriptor length.
 	Teletext                   *DescriptorTeletext
+	VBIData                    *DescriptorVBIData
 }
 
 // DescriptorAC3 represents an AC3 descriptor
@@ -647,6 +660,65 @@ func newDescriptorTeletext(i []byte) (d *DescriptorTeletext) {
 	return
 }
 
+// DescriptorVBIData represents a VBI data descriptor
+// Page: 108 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+type DescriptorVBIData struct {
+	Services []*DescriptorVBIDataService
+}
+
+// DescriptorVBIDataService represents a vbi data service descriptor
+type DescriptorVBIDataService struct {
+	DataServiceID uint8
+	Descriptors   []*DescriptorVBIDataDescriptor
+}
+
+// DescriptorVBIDataItem represents a vbi data descriptor item
+type DescriptorVBIDataDescriptor struct {
+	FieldParity bool
+	LineOffset  uint8
+}
+
+func newDescriptorVBIData(i []byte) (d *DescriptorVBIData) {
+	// Init
+	d = &DescriptorVBIData{}
+	var offset int
+
+	// Items
+	for offset < len(i) {
+		// Init
+		var srv = &DescriptorVBIDataService{}
+
+		// Data service ID
+		srv.DataServiceID = uint8(i[offset])
+		offset += 1
+
+		// Data service descriptor length
+		var dataServiceDescriptorLength = int(i[offset])
+		offset += 1
+
+		// Data service descriptor
+		var offsetEnd = offset + dataServiceDescriptorLength
+		for offset < offsetEnd {
+			if srv.DataServiceID == VBIDataServiceIDClosedCaptioning ||
+				srv.DataServiceID == VBIDataServiceIDEBUTeletext ||
+				srv.DataServiceID == VBIDataServiceIDInvertedTeletext ||
+				srv.DataServiceID == VBIDataServiceIDMonochrome442Samples ||
+				srv.DataServiceID == VBIDataServiceIDVPS ||
+				srv.DataServiceID == VBIDataServiceIDWSS {
+				srv.Descriptors = append(srv.Descriptors, &DescriptorVBIDataDescriptor{
+					FieldParity: i[offset]&0x20 > 0,
+					LineOffset:  uint8(i[offset] & 0x1f),
+				})
+				offset += 1
+			}
+		}
+
+		// Append service
+		d.Services = append(d.Services, srv)
+	}
+	return
+}
+
 // parseDescriptors parses descriptors
 func parseDescriptors(i []byte, offset *int) (o []*Descriptor) {
 	// Get length
@@ -701,6 +773,8 @@ func parseDescriptors(i []byte, offset *int) (o []*Descriptor) {
 					d.Subtitling = newDescriptorSubtitling(b)
 				case DescriptorTagTeletext:
 					d.Teletext = newDescriptorTeletext(b)
+				case DescriptorTagVBIData:
+					d.VBIData = newDescriptorVBIData(b)
 				default:
 					// TODO Remove this log
 					astilog.Debugf("unlisted descriptor tag 0x%x", d.Tag)

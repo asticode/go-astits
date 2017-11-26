@@ -23,7 +23,7 @@ func descriptorsBytes(w *astibinary.Writer) {
 func TestParseDescriptor(t *testing.T) {
 	// Init
 	w := astibinary.New()
-	w.Write(uint16(193)) // Descriptors length
+	w.Write(uint16(198)) // Descriptors length
 	// AC3
 	w.Write(uint8(DescriptorTagAC3)) // Tag
 	w.Write(uint8(9))                // Length
@@ -164,6 +164,14 @@ func TestParseDescriptor(t *testing.T) {
 	w.Write(dvbDurationMinutesBytes)             // Local time offset
 	w.Write(dvbTimeBytes)                        // Time of change
 	w.Write(dvbDurationMinutesBytes)             // Next time offset
+	// VBI data
+	w.Write(uint8(DescriptorTagVBIData))        // Tag
+	w.Write(uint8(3))                           // TODO Length
+	w.Write(uint8(VBIDataServiceIDEBUTeletext)) // Service #1 id
+	w.Write(uint8(1))                           // TODO Service #1 descriptor length
+	w.Write("00")                               // Service #1 descriptor reserved
+	w.Write("1")                                // Service #1 descriptor field polarity
+	w.Write("10101")                            // Service #1 descriptor line offset
 
 	// Assert
 	var offset int
@@ -283,5 +291,12 @@ func TestParseDescriptor(t *testing.T) {
 		LocalTimeOffsetPolarity: true,
 		NextTimeOffset:          dvbDurationMinutes,
 		TimeOfChange:            dvbTime,
+	}}})
+	assert.Equal(t, *ds[16].VBIData, DescriptorVBIData{Services: []*DescriptorVBIDataService{{
+		DataServiceID: VBIDataServiceIDEBUTeletext,
+		Descriptors: []*DescriptorVBIDataDescriptor{{
+			FieldParity: true,
+			LineOffset:  21,
+		}},
 	}}})
 }
