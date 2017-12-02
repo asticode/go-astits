@@ -23,19 +23,15 @@ import (
 
 // Flags
 var (
-	ctx, cancel    = context.WithCancel(context.Background())
-	dataTypes      = astiflag.NewStringsMap()
-	format         = flag.String("f", "", "the format")
-	inputPath      = flag.String("i", "", "the input path")
-	profileEnabled = flag.Bool("p", false, "if yes, profiling is enabled")
+	ctx, cancel     = context.WithCancel(context.Background())
+	cpuProfiling    = flag.Bool("cp", false, "if yes, cpu profiling is enabled")
+	dataTypes       = astiflag.NewStringsMap()
+	format          = flag.String("f", "", "the format")
+	inputPath       = flag.String("i", "", "the input path")
+	memoryProfiling = flag.Bool("mp", false, "if yes, memory profiling is enabled")
 )
 
 func main() {
-	// Start profiling
-	if *profileEnabled {
-		defer profile.Start(profile.MemProfile, profile.CPUProfile, profile.ProfilePath(".")).Stop()
-	}
-
 	// Init
 	flag.Var(dataTypes, "d", "the datatypes whitelist")
 	var s = astiflag.Subcommand()
@@ -44,6 +40,13 @@ func main() {
 
 	// Handle signals
 	handleSignals()
+
+	// Start profiling
+	if *cpuProfiling {
+		defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
+	} else if *memoryProfiling {
+		defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop()
+	}
 
 	// Build the reader
 	var r io.Reader

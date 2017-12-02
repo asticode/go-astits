@@ -14,8 +14,8 @@ func TestDemuxerNew(t *testing.T) {
 	ps := 1
 	pp := func(ps []*Packet) (ds []*Data, skip bool, err error) { return }
 	dmx := New(context.Background(), nil, OptPacketSize(ps), OptPacketsParser(pp))
-	assert.Equal(t, ps, dmx.packetSize)
-	assert.Equal(t, fmt.Sprintf("%p", pp), fmt.Sprintf("%p", dmx.packetsParser))
+	assert.Equal(t, ps, dmx.optPacketSize)
+	assert.Equal(t, fmt.Sprintf("%p", pp), fmt.Sprintf("%p", dmx.optPacketsParser))
 }
 
 func TestDemuxerNextPacket(t *testing.T) {
