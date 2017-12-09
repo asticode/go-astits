@@ -69,6 +69,8 @@ func OptPacketsParser(p PacketsParser) func(*Demuxer) {
 // NextPacket retrieves the next packet
 func (dmx *Demuxer) NextPacket() (p *Packet, err error) {
 	// Check ctx error
+	// TODO Handle ctx error another way since if the read blocks, everything blocks
+	// Maybe execute everything in a goroutine and listen the ctx channel in the same for loop
 	if err = dmx.ctx.Err(); err != nil {
 		return
 	}
