@@ -240,13 +240,16 @@ func programs(dmx *astits.Demuxer) (o []*Program, err error) {
 		}
 
 		// Check data
-		if d.PAT != nil && len(pgms) == 0 {
+		if d.PAT != nil {
 			// Build programs list
 			for _, p := range d.PAT.Programs {
 				// Program number 0 is reserved to NIT
 				if p.ProgramNumber > 0 {
-					pgmsToProcess[p.ProgramNumber] = true
-					pgms[p.ProgramNumber] = newProgram(p.ProgramNumber, p.ProgramMapID)
+					// Program has not already been added
+					if _, ok := pgms[p.ProgramNumber]; !ok {
+						pgmsToProcess[p.ProgramNumber] = true
+						pgms[p.ProgramNumber] = newProgram(p.ProgramNumber, p.ProgramMapID)
+					}
 				}
 			}
 		} else if d.PMT != nil {
