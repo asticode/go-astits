@@ -56,7 +56,7 @@ var packetHeader = &PacketHeader{
 
 func packetHeaderBytes(h PacketHeader) []byte {
 	w := astibinary.New()
-	w.Write("1")                                      // Transport error indicator
+	w.Write(h.TransportErrorIndicator)                // Transport error indicator
 	w.Write(h.PayloadUnitStartIndicator)              // Payload unit start indicator
 	w.Write("1")                                      // Transport priority
 	w.Write(fmt.Sprintf("%.13b", h.PID))              // PID

@@ -3,6 +3,8 @@ package astits
 import (
 	"sort"
 	"sync"
+
+	"github.com/asticode/go-astilog"
 )
 
 // packetPool represents a pool of packets
@@ -21,15 +23,37 @@ func newPacketPool() *packetPool {
 
 // add adds a new packet to the pool
 func (b *packetPool) add(p *Packet) (ps []*Packet) {
+	// Throw away packet if error indicator
+	if p.Header.TransportErrorIndicator {
+		return
+	}
+
+	// Throw away packets that don't have a payload until we figure out what we're going to do with them
+	// TODO figure out what we're going to do with them :D
+	if !p.Header.HasPayload {
+		astilog.Debug("Removing packet without payload, needs fixing")
+		return
+	}
+
 	// Lock
 	b.m.Lock()
 	defer b.m.Unlock()
 
-	// Init buffer or empty buffer if discontinuity
+	// Init buffer
 	var mps []*Packet
 	var ok bool
-	if mps, ok = b.b[p.Header.PID]; !ok || hasDiscontinuity(mps, p) {
+	if mps, ok = b.b[p.Header.PID]; !ok {
 		mps = []*Packet{}
+	}
+
+	// Empty buffer if we detect a discontinuity
+	if hasDiscontinuity(mps, p) {
+		mps = []*Packet{}
+	}
+
+	// Throw away packet if it's the same as the previous one
+	if isSameAsPrevious(mps, p) {
+		return
 	}
 
 	// Add packet
@@ -70,5 +94,11 @@ func (b *packetPool) dump() (ps []*Packet) {
 // hasDiscontinuity checks whether a packet is discontinuous with a set of packets
 func hasDiscontinuity(ps []*Packet, p *Packet) bool {
 	return (p.Header.HasAdaptationField && p.AdaptationField.DiscontinuityIndicator) ||
-		(len(ps) > 0 && p.Header.ContinuityCounter != (ps[len(ps)-1].Header.ContinuityCounter+1)%16)
+		(len(ps) > 0 && p.Header.HasPayload && p.Header.ContinuityCounter != (ps[len(ps)-1].Header.ContinuityCounter+1)%16) ||
+		(len(ps) > 0 && !p.Header.HasPayload && p.Header.ContinuityCounter != ps[len(ps)-1].Header.ContinuityCounter)
+}
+
+// isSameAsPrevious checks whether a packet is the same as the last packet of a set of packets
+func isSameAsPrevious(ps []*Packet, p *Packet) bool {
+	return len(ps) > 0 && p.Header.HasPayload && p.Header.ContinuityCounter == ps[len(ps)-1].Header.ContinuityCounter
 }
