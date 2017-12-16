@@ -17,6 +17,7 @@ import (
 	"github.com/asticode/go-astilog"
 	"github.com/asticode/go-astitools/flag"
 	"github.com/asticode/go-astits"
+	"github.com/asticode/go-astiudp"
 	"github.com/pkg/errors"
 	"github.com/pkg/profile"
 )
@@ -51,7 +52,7 @@ func main() {
 	// Build the reader
 	var r io.Reader
 	var err error
-	if r, err = buildReader(); err != nil {
+	if r, err = buildReader(ctx); err != nil {
 		astilog.Error(errors.Wrap(err, "astits: parsing input failed"))
 		return
 	}
@@ -113,7 +114,7 @@ func handleSignals() {
 	}()
 }
 
-func buildReader() (r io.Reader, err error) {
+func buildReader(ctx context.Context) (r io.Reader, err error) {
 	// Validate input
 	if len(*inputPath) <= 0 {
 		err = errors.New("Use -i to indicate an input path")
@@ -143,8 +144,15 @@ func buildReader() (r io.Reader, err error) {
 			err = errors.Wrapf(err, "astits: listening on multicast udp addr %s failed", u.Host)
 			return
 		}
-		c.SetReadBuffer(1000)
-		r = c
+		c.SetReadBuffer(4096)
+
+		// Initialize UDP reader
+		// It will read 4096 bytes at each iteration, and will store up to 2MB in its buffer
+		var mr = astiudp.NewReader(ctx, c, 4096, 2048*1024)
+
+		// Pipe reader
+		go mr.Pipe()
+		r = mr
 	default:
 		// Open file
 		var f *os.File
