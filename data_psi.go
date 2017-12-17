@@ -243,7 +243,7 @@ func psiTableType(tableID int) string {
 		return PSITableTypeTOT
 	}
 	// TODO Remove this log
-	astilog.Debugf("unlisted PSI table ID %d", tableID)
+	astilog.Debugf("astits: unlisted PSI table ID %d", tableID)
 	return PSITableTypeUnknown
 }
 

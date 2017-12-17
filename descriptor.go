@@ -29,6 +29,7 @@ const (
 	DescriptorTagMaximumBitrate             = 0xe
 	DescriptorTagNetworkName                = 0x40
 	DescriptorTagParentalRating             = 0x55
+	DescriptorTagPrivateDataSpecifier       = 0x5f
 	DescriptorTagService                    = 0x48
 	DescriptorTagShortEvent                 = 0x4d
 	DescriptorTagStreamIdentifier           = 0x52
@@ -88,6 +89,7 @@ type Descriptor struct {
 	MaximumBitrate             *DescriptorMaximumBitrate
 	NetworkName                *DescriptorNetworkName
 	ParentalRating             *DescriptorParentalRating
+	PrivateDataSpecifier       *DescriptorPrivateDataSpecifier
 	Service                    *DescriptorService
 	ShortEvent                 *DescriptorShortEvent
 	StreamIdentifier           *DescriptorStreamIdentifier
@@ -427,7 +429,7 @@ func newDescriptorExtension(i []byte) (d *DescriptorExtension) {
 		d.SupplementaryAudio = newDescriptorExtensionSupplementaryAudio(b)
 	default:
 		// TODO Remove this log
-		astilog.Debugf("unlisted extension tag 0x%x", d.Tag)
+		astilog.Debugf("astits: unlisted extension tag 0x%x", d.Tag)
 	}
 	return
 }
@@ -588,6 +590,15 @@ func newDescriptorParentalRating(i []byte) (d *DescriptorParentalRating) {
 		offset += 4
 	}
 	return
+}
+
+// DescriptorPrivateDataSpecifier represents a private data specifier descriptor
+type DescriptorPrivateDataSpecifier struct {
+	Specifier uint32
+}
+
+func newDescriptorPrivateDataSpecifier(i []byte) *DescriptorPrivateDataSpecifier {
+	return &DescriptorPrivateDataSpecifier{Specifier: uint32(i[0])<<24 | uint32(i[1])<<16 | uint32(i[2])<<8 | uint32(i[3])}
 }
 
 // DescriptorService represents a service descriptor
@@ -811,6 +822,8 @@ func parseDescriptors(i []byte, offset *int) (o []*Descriptor) {
 					d.NetworkName = newDescriptorNetworkName(b)
 				case DescriptorTagParentalRating:
 					d.ParentalRating = newDescriptorParentalRating(b)
+				case DescriptorTagPrivateDataSpecifier:
+					d.PrivateDataSpecifier = newDescriptorPrivateDataSpecifier(b)
 				case DescriptorTagService:
 					d.Service = newDescriptorService(b)
 				case DescriptorTagShortEvent:
@@ -827,7 +840,7 @@ func parseDescriptors(i []byte, offset *int) (o []*Descriptor) {
 					d.VBITeletext = newDescriptorTeletext(b)
 				default:
 					// TODO Remove this log
-					astilog.Debugf("unlisted descriptor tag 0x%x", d.Tag)
+					astilog.Debugf("astits: unlisted descriptor tag 0x%x", d.Tag)
 				}
 				*offset += int(d.Length)
 			}

@@ -23,7 +23,7 @@ func descriptorsBytes(w *astibinary.Writer) {
 func TestParseDescriptor(t *testing.T) {
 	// Init
 	w := astibinary.New()
-	w.Write(uint16(211)) // Descriptors length
+	w.Write(uint16(217)) // Descriptors length
 	// AC3
 	w.Write(uint8(DescriptorTagAC3)) // Tag
 	w.Write(uint8(9))                // Length
@@ -191,6 +191,10 @@ func TestParseDescriptor(t *testing.T) {
 	w.Write("1")                          // AVC still present
 	w.Write("1")                          // AVC 24 hour picture flag
 	w.Write("000000")                     // Reserved
+	// Private data specifier
+	w.Write(uint8(DescriptorTagPrivateDataSpecifier)) // Tag
+	w.Write(uint8(4))                                 // Length
+	w.Write(uint32(128))                              // Private data specifier
 
 	// Assert
 	var offset int
@@ -333,5 +337,8 @@ func TestParseDescriptor(t *testing.T) {
 		ConstraintSet2Flag:   true,
 		LevelIDC:             2,
 		ProfileIDC:           1,
+	})
+	assert.Equal(t, *ds[19].PrivateDataSpecifier, DescriptorPrivateDataSpecifier{
+		Specifier: 128,
 	})
 }

@@ -421,6 +421,8 @@ func descriptorToString(d *astits.Descriptor) string {
 			os = append(os, fmt.Sprintf("country: %s | rating: %d | minimum age: %d", i.CountryCode, i.Rating, i.MinimumAge()))
 		}
 		return "[Parental rating] " + strings.Join(os, " - ")
+	case astits.DescriptorTagPrivateDataSpecifier:
+		return fmt.Sprintf("[Private data specifier] specifier: %d", d.PrivateDataSpecifier.Specifier)
 	case astits.DescriptorTagService:
 		return fmt.Sprintf("[Service] service %s | provider: %s", d.Service.Name, d.Service.Provider)
 	case astits.DescriptorTagShortEvent:
