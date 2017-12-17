@@ -209,6 +209,7 @@ func data(dmx *astits.Demuxer) (err error) {
 		// Log data
 		if d.EIT != nil && (logAll || logEIT) {
 			astilog.Infof("EIT: %d", d.PID)
+			astilog.Info(eventsToString(d.EIT.Events))
 		} else if d.NIT != nil && (logAll || logNIT) {
 			astilog.Infof("NIT: %d", d.PID)
 		} else if d.PAT != nil && (logAll || logPAT) {
@@ -361,34 +362,83 @@ func (s Stream) String() (o string) {
 	return
 }
 
+func eventsToString(es []*astits.EITDataEvent) string {
+	var os []string
+	for idx, e := range es {
+		os = append(os, eventToString(idx, e))
+	}
+	return strings.Join(os, "\n")
+}
+
+func eventToString(idx int, e *astits.EITDataEvent) (s string) {
+	s += fmt.Sprintf("- #%d | id: %d | start: %s | duration: %s | status: %s\n", idx+1, e.EventID, e.StartTime.Format("15:04:05"), e.Duration, runningStatusToString(e.RunningStatus))
+	var os []string
+	for _, d := range e.Descriptors {
+		os = append(os, "  - "+descriptorToString(d))
+	}
+	return s + strings.Join(os, "\n")
+}
+
+func runningStatusToString(s uint8) string {
+	switch s {
+	case astits.RunningStatusNotRunning:
+		return "not running"
+	case astits.RunningStatusPausing:
+		return "pausing"
+	case astits.RunningStatusRunning:
+		return "running"
+	}
+	return "unknown"
+}
+
 func descriptorToString(d *astits.Descriptor) string {
 	switch d.Tag {
 	case astits.DescriptorTagAC3:
-		return fmt.Sprintf("AC3 asvc: %d | bsid: %d | component type: %d | mainid: %d | info: %s", d.AC3.ASVC, d.AC3.BSID, d.AC3.ComponentType, d.AC3.MainID, d.AC3.AdditionalInfo)
+		return fmt.Sprintf("[AC3] ac3 asvc: %d | bsid: %d | component type: %d | mainid: %d | info: %s", d.AC3.ASVC, d.AC3.BSID, d.AC3.ComponentType, d.AC3.MainID, d.AC3.AdditionalInfo)
+	case astits.DescriptorTagComponent:
+		return fmt.Sprintf("[Component] language: %s | text: %s | component tag: %d | component type: %d | stream content: %d | stream content ext: %d", d.Component.ISO639LanguageCode, d.Component.Text, d.Component.ComponentTag, d.Component.ComponentType, d.Component.StreamContent, d.Component.StreamContentExt)
+	case astits.DescriptorTagContent:
+		var os []string
+		for _, i := range d.Content.Items {
+			os = append(os, fmt.Sprintf("content nibble 1: %d | content nibble 2: %d | user byte: %d", i.ContentNibbleLevel1, i.ContentNibbleLevel2, i.UserByte))
+		}
+		return "[Content] " + strings.Join(os, " - ")
+	case astits.DescriptorTagExtendedEvent:
+		s := fmt.Sprintf("[Extended event] language: %s | text: %s", d.ExtendedEvent.ISO639LanguageCode, d.ExtendedEvent.Text)
+		for _, i := range d.ExtendedEvent.Items {
+			s += fmt.Sprintf(" | %s: %s", i.Description, i.Content)
+		}
+		return s
 	case astits.DescriptorTagISO639LanguageAndAudioType:
-		return fmt.Sprintf("Language %s and audio type %d", d.ISO639LanguageAndAudioType.Language, d.ISO639LanguageAndAudioType.Type)
+		return fmt.Sprintf("[ISO639 language and audio type] language: %s | audio type: %d", d.ISO639LanguageAndAudioType.Language, d.ISO639LanguageAndAudioType.Type)
 	case astits.DescriptorTagMaximumBitrate:
-		return fmt.Sprintf("Maximum bitrate: %d", d.MaximumBitrate.Bitrate)
+		return fmt.Sprintf("[Maximum bitrate] maximum bitrate: %d", d.MaximumBitrate.Bitrate)
 	case astits.DescriptorTagNetworkName:
-		return fmt.Sprintf("Network name: %s", d.NetworkName.Name)
+		return fmt.Sprintf("[Network name] network name: %s", d.NetworkName.Name)
+	case astits.DescriptorTagParentalRating:
+		var os []string
+		for _, i := range d.ParentalRating.Items {
+			os = append(os, fmt.Sprintf("country: %s | rating: %d | minimum age: %d", i.CountryCode, i.Rating, i.MinimumAge()))
+		}
+		return "[Parental rating] " + strings.Join(os, " - ")
 	case astits.DescriptorTagService:
-		return fmt.Sprintf("Service %s from provider %s", d.Service.Name, d.Service.Provider)
+		return fmt.Sprintf("[Service] service %s | provider: %s", d.Service.Name, d.Service.Provider)
 	case astits.DescriptorTagShortEvent:
-		return fmt.Sprintf("Short event %s for language %s with text %s", d.ShortEvent.EventName, d.ShortEvent.Language, d.ShortEvent.Text)
+		return fmt.Sprintf("[Short event] language: %s | name: %s | text: %s", d.ShortEvent.Language, d.ShortEvent.EventName, d.ShortEvent.Text)
 	case astits.DescriptorTagStreamIdentifier:
-		return fmt.Sprintf("Stream identifier component tag: %d", d.StreamIdentifier.ComponentTag)
+		return fmt.Sprintf("[Stream identifier] stream identifier component tag: %d", d.StreamIdentifier.ComponentTag)
 	case astits.DescriptorTagSubtitling:
 		var os []string
 		for _, i := range d.Subtitling.Items {
-			os = append(os, fmt.Sprintf("Subtitling composition page %d and ancillary page %d: %s", i.CompositionPageID, i.AncillaryPageID, i.Language))
+			os = append(os, fmt.Sprintf("subtitling composition page: %d | ancillary page %d: %s", i.CompositionPageID, i.AncillaryPageID, i.Language))
 		}
-		return strings.Join(os, " - ")
+		return "[Subtitling] " + strings.Join(os, " - ")
 	case astits.DescriptorTagTeletext:
 		var os []string
 		for _, t := range d.Teletext.Items {
 			os = append(os, fmt.Sprintf("Teletext page %01d%02d: %s", t.Magazine, t.Page, t.Language))
 		}
-		return strings.Join(os, " - ")
+		return "[Teletext] " + strings.Join(os, " - ")
 	}
 	return fmt.Sprintf("unlisted descriptor tag 0x%x", d.Tag)
 }

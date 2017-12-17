@@ -73,6 +73,7 @@ const (
 )
 
 // Descriptor represents a descriptor
+// TODO Handle UTF8
 type Descriptor struct {
 	AC3                        *DescriptorAC3
 	AVCVideo                   *DescriptorAVCVideo
