@@ -16,8 +16,8 @@ import (
 
 	"github.com/asticode/go-astilog"
 	"github.com/asticode/go-astitools/flag"
+	"github.com/asticode/go-astitools/io"
 	"github.com/asticode/go-astits"
-	"github.com/asticode/go-astiudp"
 	"github.com/pkg/errors"
 	"github.com/pkg/profile"
 )
@@ -146,13 +146,13 @@ func buildReader(ctx context.Context) (r io.Reader, err error) {
 		}
 		c.SetReadBuffer(4096)
 
-		// Initialize UDP reader
+		// Initialize linearizer
 		// It will read 4096 bytes at each iteration, and will store up to 2MB in its buffer
-		var mr = astiudp.NewReader(ctx, c, 4096, 2048*1024)
+		var l = astiio.NewLinearizer(ctx, c, 4096, 2048*1024)
 
-		// Pipe reader
-		go mr.Pipe()
-		r = mr
+		// Start linearizer
+		go l.Start()
+		r = l
 	default:
 		// Open file
 		var f *os.File
