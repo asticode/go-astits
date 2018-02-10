@@ -14,6 +14,16 @@ const (
 	AudioTypeVisualImpairedCommentary = 0x3
 )
 
+// Data stream alignments
+// Page: 85 | Chapter:2.6.11 | Link: http://ecee.colorado.edu/~ecen5653/ecen5653/papers/iso13818-1.pdf
+const (
+	DataStreamAligmentAudioSyncWord          = 0x1
+	DataStreamAligmentVideoSliceOrAccessUnit = 0x1
+	DataStreamAligmentVideoAccessUnit        = 0x2
+	DataStreamAligmentVideoGOPOrSEQ          = 0x3
+	DataStreamAligmentVideoSEQ               = 0x4
+)
+
 // Descriptor tags
 // Page: 42 | Chapter: 6.1 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
 const (
@@ -21,6 +31,7 @@ const (
 	DescriptorTagAVCVideo                   = 0x28
 	DescriptorTagComponent                  = 0x50
 	DescriptorTagContent                    = 0x54
+	DescriptorTagDataStreamAlignment        = 0x6
 	DescriptorTagEnhancedAC3                = 0x7a
 	DescriptorTagExtendedEvent              = 0x4e
 	DescriptorTagExtension                  = 0x7f
@@ -80,6 +91,7 @@ type Descriptor struct {
 	AVCVideo                   *DescriptorAVCVideo
 	Component                  *DescriptorComponent
 	Content                    *DescriptorContent
+	DataStreamAlignment        *DescriptorDataStreamAlignment
 	EnhancedAC3                *DescriptorEnhancedAC3
 	ExtendedEvent              *DescriptorExtendedEvent
 	Extension                  *DescriptorExtension
@@ -259,6 +271,15 @@ func newDescriptorContent(i []byte) (d *DescriptorContent) {
 		offset += 2
 	}
 	return
+}
+
+// DescriptorDataStreamAlignment represents a data stream alignment descriptor
+type DescriptorDataStreamAlignment struct {
+	Type uint8
+}
+
+func newDescriptorDataStreamAlignment(i []byte) *DescriptorDataStreamAlignment {
+	return &DescriptorDataStreamAlignment{Type: uint8(i[0])}
 }
 
 // DescriptorEnhancedAC3 represents an enhanced AC3 descriptor
@@ -806,6 +827,8 @@ func parseDescriptors(i []byte, offset *int) (o []*Descriptor) {
 					d.Component = newDescriptorComponent(b)
 				case DescriptorTagContent:
 					d.Content = newDescriptorContent(b)
+				case DescriptorTagDataStreamAlignment:
+					d.DataStreamAlignment = newDescriptorDataStreamAlignment(b)
 				case DescriptorTagEnhancedAC3:
 					d.EnhancedAC3 = newDescriptorEnhancedAC3(b)
 				case DescriptorTagExtendedEvent:
