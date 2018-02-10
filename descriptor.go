@@ -40,6 +40,7 @@ const (
 	DescriptorTagMaximumBitrate             = 0xe
 	DescriptorTagNetworkName                = 0x40
 	DescriptorTagParentalRating             = 0x55
+	DescriptorTagPrivateDataIndicator       = 0xf
 	DescriptorTagPrivateDataSpecifier       = 0x5f
 	DescriptorTagService                    = 0x48
 	DescriptorTagShortEvent                 = 0x4d
@@ -101,6 +102,7 @@ type Descriptor struct {
 	MaximumBitrate             *DescriptorMaximumBitrate
 	NetworkName                *DescriptorNetworkName
 	ParentalRating             *DescriptorParentalRating
+	PrivateDataIndicator       *DescriptorPrivateDataIndicator
 	PrivateDataSpecifier       *DescriptorPrivateDataSpecifier
 	Service                    *DescriptorService
 	ShortEvent                 *DescriptorShortEvent
@@ -613,6 +615,15 @@ func newDescriptorParentalRating(i []byte) (d *DescriptorParentalRating) {
 	return
 }
 
+// DescriptorPrivateDataIndicator represents a private data Indicator descriptor
+type DescriptorPrivateDataIndicator struct {
+	Indicator uint32
+}
+
+func newDescriptorPrivateDataIndicator(i []byte) *DescriptorPrivateDataIndicator {
+	return &DescriptorPrivateDataIndicator{Indicator: uint32(i[0])<<24 | uint32(i[1])<<16 | uint32(i[2])<<8 | uint32(i[3])}
+}
+
 // DescriptorPrivateDataSpecifier represents a private data specifier descriptor
 type DescriptorPrivateDataSpecifier struct {
 	Specifier uint32
@@ -845,6 +856,8 @@ func parseDescriptors(i []byte, offset *int) (o []*Descriptor) {
 					d.NetworkName = newDescriptorNetworkName(b)
 				case DescriptorTagParentalRating:
 					d.ParentalRating = newDescriptorParentalRating(b)
+				case DescriptorTagPrivateDataIndicator:
+					d.PrivateDataIndicator = newDescriptorPrivateDataIndicator(b)
 				case DescriptorTagPrivateDataSpecifier:
 					d.PrivateDataSpecifier = newDescriptorPrivateDataSpecifier(b)
 				case DescriptorTagService:
