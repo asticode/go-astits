@@ -110,6 +110,7 @@ type Descriptor struct {
 	Subtitling                 *DescriptorSubtitling
 	Tag                        uint8 // the tag defines the structure of the contained data following the descriptor length.
 	Teletext                   *DescriptorTeletext
+	UserDefined                []byte
 	VBIData                    *DescriptorVBIData
 	VBITeletext                *DescriptorTeletext
 }
@@ -827,56 +828,64 @@ func parseDescriptors(i []byte, offset *int) (o []*Descriptor) {
 
 			// Parse data
 			if d.Length > 0 {
-				// Switch on tag
+				// Get descriptor content
 				var b = i[*offset : *offset+int(d.Length)]
-				switch d.Tag {
-				case DescriptorTagAC3:
-					d.AC3 = newDescriptorAC3(b)
-				case DescriptorTagAVCVideo:
-					d.AVCVideo = newDescriptorAVCVideo(b)
-				case DescriptorTagComponent:
-					d.Component = newDescriptorComponent(b)
-				case DescriptorTagContent:
-					d.Content = newDescriptorContent(b)
-				case DescriptorTagDataStreamAlignment:
-					d.DataStreamAlignment = newDescriptorDataStreamAlignment(b)
-				case DescriptorTagEnhancedAC3:
-					d.EnhancedAC3 = newDescriptorEnhancedAC3(b)
-				case DescriptorTagExtendedEvent:
-					d.ExtendedEvent = newDescriptorExtendedEvent(b)
-				case DescriptorTagExtension:
-					d.Extension = newDescriptorExtension(b)
-				case DescriptorTagISO639LanguageAndAudioType:
-					d.ISO639LanguageAndAudioType = newDescriptorISO639LanguageAndAudioType(b)
-				case DescriptorTagLocalTimeOffset:
-					d.LocalTimeOffset = newDescriptorLocalTimeOffset(b)
-				case DescriptorTagMaximumBitrate:
-					d.MaximumBitrate = newDescriptorMaximumBitrate(b)
-				case DescriptorTagNetworkName:
-					d.NetworkName = newDescriptorNetworkName(b)
-				case DescriptorTagParentalRating:
-					d.ParentalRating = newDescriptorParentalRating(b)
-				case DescriptorTagPrivateDataIndicator:
-					d.PrivateDataIndicator = newDescriptorPrivateDataIndicator(b)
-				case DescriptorTagPrivateDataSpecifier:
-					d.PrivateDataSpecifier = newDescriptorPrivateDataSpecifier(b)
-				case DescriptorTagService:
-					d.Service = newDescriptorService(b)
-				case DescriptorTagShortEvent:
-					d.ShortEvent = newDescriptorShortEvent(b)
-				case DescriptorTagStreamIdentifier:
-					d.StreamIdentifier = newDescriptorStreamIdentifier(b)
-				case DescriptorTagSubtitling:
-					d.Subtitling = newDescriptorSubtitling(b)
-				case DescriptorTagTeletext:
-					d.Teletext = newDescriptorTeletext(b)
-				case DescriptorTagVBIData:
-					d.VBIData = newDescriptorVBIData(b)
-				case DescriptorTagVBITeletext:
-					d.VBITeletext = newDescriptorTeletext(b)
-				default:
-					// TODO Remove this log
-					astilog.Debugf("astits: unlisted descriptor tag 0x%x", d.Tag)
+
+				// User defined
+				if d.Tag >= 0x80 && d.Tag <= 0xfe {
+					d.UserDefined = make([]byte, len(b))
+					copy(d.UserDefined, b)
+				} else {
+					// Switch on tag
+					switch d.Tag {
+					case DescriptorTagAC3:
+						d.AC3 = newDescriptorAC3(b)
+					case DescriptorTagAVCVideo:
+						d.AVCVideo = newDescriptorAVCVideo(b)
+					case DescriptorTagComponent:
+						d.Component = newDescriptorComponent(b)
+					case DescriptorTagContent:
+						d.Content = newDescriptorContent(b)
+					case DescriptorTagDataStreamAlignment:
+						d.DataStreamAlignment = newDescriptorDataStreamAlignment(b)
+					case DescriptorTagEnhancedAC3:
+						d.EnhancedAC3 = newDescriptorEnhancedAC3(b)
+					case DescriptorTagExtendedEvent:
+						d.ExtendedEvent = newDescriptorExtendedEvent(b)
+					case DescriptorTagExtension:
+						d.Extension = newDescriptorExtension(b)
+					case DescriptorTagISO639LanguageAndAudioType:
+						d.ISO639LanguageAndAudioType = newDescriptorISO639LanguageAndAudioType(b)
+					case DescriptorTagLocalTimeOffset:
+						d.LocalTimeOffset = newDescriptorLocalTimeOffset(b)
+					case DescriptorTagMaximumBitrate:
+						d.MaximumBitrate = newDescriptorMaximumBitrate(b)
+					case DescriptorTagNetworkName:
+						d.NetworkName = newDescriptorNetworkName(b)
+					case DescriptorTagParentalRating:
+						d.ParentalRating = newDescriptorParentalRating(b)
+					case DescriptorTagPrivateDataIndicator:
+						d.PrivateDataIndicator = newDescriptorPrivateDataIndicator(b)
+					case DescriptorTagPrivateDataSpecifier:
+						d.PrivateDataSpecifier = newDescriptorPrivateDataSpecifier(b)
+					case DescriptorTagService:
+						d.Service = newDescriptorService(b)
+					case DescriptorTagShortEvent:
+						d.ShortEvent = newDescriptorShortEvent(b)
+					case DescriptorTagStreamIdentifier:
+						d.StreamIdentifier = newDescriptorStreamIdentifier(b)
+					case DescriptorTagSubtitling:
+						d.Subtitling = newDescriptorSubtitling(b)
+					case DescriptorTagTeletext:
+						d.Teletext = newDescriptorTeletext(b)
+					case DescriptorTagVBIData:
+						d.VBIData = newDescriptorVBIData(b)
+					case DescriptorTagVBITeletext:
+						d.VBITeletext = newDescriptorTeletext(b)
+					default:
+						// TODO Remove this log
+						astilog.Debugf("astits: unlisted descriptor tag 0x%x", d.Tag)
+					}
 				}
 				*offset += int(d.Length)
 			}
