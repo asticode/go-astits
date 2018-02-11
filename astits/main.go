@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 
@@ -237,14 +236,10 @@ func programs(dmx *astits.Demuxer) (o []*Program, err error) {
 		// Get next data
 		if d, err = dmx.NextData(); err != nil {
 			if err == astits.ErrNoMorePackets {
-				var pgmsNotProcessed []string
-				for n := range pgms {
-					pgmsNotProcessed = append(pgmsNotProcessed, strconv.Itoa(int(n)))
-				}
-				err = fmt.Errorf("astits: no PMT found for program(s) %s", strings.Join(pgmsNotProcessed, ", "))
-			} else {
-				err = errors.Wrap(err, "astits: getting next data failed")
+				err = nil
+				break
 			}
+			err = errors.Wrap(err, "astits: getting next data failed")
 			return
 		}
 
