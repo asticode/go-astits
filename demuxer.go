@@ -109,19 +109,17 @@ func (dmx *Demuxer) NextData() (d *Data, err error) {
 	for {
 		// Get next packet
 		if p, err = dmx.NextPacket(); err != nil {
-			// If no more packets, we still need to dump the pool
-			if ps = dmx.packetPool.dump(); err != ErrNoMorePackets || len(ps) == 0 {
-				if err == ErrNoMorePackets {
-					return
-				}
-				err = errors.Wrap(err, "astits: fetching next packet failed")
+			// We don't dump the packet pool since we don't want incomplete data
+			if err == ErrNoMorePackets {
 				return
 			}
-		} else {
-			// Add packet to the pool
-			if ps = dmx.packetPool.add(p); len(ps) == 0 {
-				continue
-			}
+			err = errors.Wrap(err, "astits: fetching next packet failed")
+			return
+		}
+
+		// Add packet to the pool
+		if ps = dmx.packetPool.add(p); len(ps) == 0 {
+			continue
 		}
 
 		// Parse data
