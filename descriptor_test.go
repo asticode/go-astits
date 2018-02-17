@@ -23,7 +23,7 @@ func descriptorsBytes(w *astibinary.Writer) {
 func TestParseDescriptor(t *testing.T) {
 	// Init
 	w := astibinary.New()
-	w.Write(uint16(232)) // Descriptors length
+	w.Write(uint16(242)) // Descriptors length
 	// AC3
 	w.Write(uint8(DescriptorTagAC3)) // Tag
 	w.Write(uint8(9))                // Length
@@ -207,6 +207,11 @@ func TestParseDescriptor(t *testing.T) {
 	w.Write(uint8(0x80))    // Tag
 	w.Write(uint8(4))       // Length
 	w.Write([]byte("test")) // User defined
+	// Registration
+	w.Write(uint8(0x5))     // Tag
+	w.Write(uint8(8))       // Length
+	w.Write(uint32(1))      // Format identifier
+	w.Write([]byte("test")) // Additional identification info
 
 	// Assert
 	var offset int
@@ -360,4 +365,8 @@ func TestParseDescriptor(t *testing.T) {
 		Indicator: 127,
 	})
 	assert.Equal(t, ds[22].UserDefined, []byte("test"))
+	assert.Equal(t, *ds[23].Registration, DescriptorRegistration{
+		AdditionalIdentificationInfo: []byte("test"),
+		FormatIdentifier:             uint32(1),
+	})
 }

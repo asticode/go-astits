@@ -42,6 +42,7 @@ const (
 	DescriptorTagParentalRating             = 0x55
 	DescriptorTagPrivateDataIndicator       = 0xf
 	DescriptorTagPrivateDataSpecifier       = 0x5f
+	DescriptorTagRegistration               = 0x5
 	DescriptorTagService                    = 0x48
 	DescriptorTagShortEvent                 = 0x4d
 	DescriptorTagStreamIdentifier           = 0x52
@@ -104,6 +105,7 @@ type Descriptor struct {
 	ParentalRating             *DescriptorParentalRating
 	PrivateDataIndicator       *DescriptorPrivateDataIndicator
 	PrivateDataSpecifier       *DescriptorPrivateDataSpecifier
+	Registration               *DescriptorRegistration
 	Service                    *DescriptorService
 	ShortEvent                 *DescriptorShortEvent
 	StreamIdentifier           *DescriptorStreamIdentifier
@@ -634,6 +636,24 @@ func newDescriptorPrivateDataSpecifier(i []byte) *DescriptorPrivateDataSpecifier
 	return &DescriptorPrivateDataSpecifier{Specifier: uint32(i[0])<<24 | uint32(i[1])<<16 | uint32(i[2])<<8 | uint32(i[3])}
 }
 
+// DescriptorRegistration represents a registration descriptor
+// Page: 84 | http://ecee.colorado.edu/~ecen5653/ecen5653/papers/iso13818-1.pdf
+type DescriptorRegistration struct {
+	AdditionalIdentificationInfo []byte
+	FormatIdentifier             uint32
+}
+
+func newDescriptorRegistration(i []byte) (d *DescriptorRegistration) {
+	d = &DescriptorRegistration{}
+	d.FormatIdentifier = uint32(i[0])<<24 | uint32(i[1])<<16 | uint32(i[2])<<8 | uint32(i[3])
+	var offset = 4
+	for offset < len(i) {
+		d.AdditionalIdentificationInfo = append(d.AdditionalIdentificationInfo, i[offset])
+		offset += 1
+	}
+	return
+}
+
 // DescriptorService represents a service descriptor
 // Page: 96 | Chapter: 6.2.33 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
 type DescriptorService struct {
@@ -868,6 +888,8 @@ func parseDescriptors(i []byte, offset *int) (o []*Descriptor) {
 						d.PrivateDataIndicator = newDescriptorPrivateDataIndicator(b)
 					case DescriptorTagPrivateDataSpecifier:
 						d.PrivateDataSpecifier = newDescriptorPrivateDataSpecifier(b)
+					case DescriptorTagRegistration:
+						d.Registration = newDescriptorRegistration(b)
 					case DescriptorTagService:
 						d.Service = newDescriptorService(b)
 					case DescriptorTagShortEvent:
