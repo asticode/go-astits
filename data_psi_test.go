@@ -260,12 +260,13 @@ func TestParsePSISectionSyntaxHeader(t *testing.T) {
 }
 
 func TestPSIToData(t *testing.T) {
+	p := &Packet{}
 	assert.Equal(t, []*Data{
-		{EIT: eit, PID: 2},
-		{NIT: nit, PID: 2},
-		{PAT: pat, PID: 2},
-		{PMT: pmt, PID: 2},
-		{SDT: sdt, PID: 2},
-		{TOT: tot, PID: 2},
-	}, psi.toData(uint16(2)))
+		{EIT: eit, FirstPacket: p, PID: 2},
+		{FirstPacket: p, NIT: nit, PID: 2},
+		{FirstPacket: p, PAT: pat, PID: 2},
+		{FirstPacket: p, PMT: pmt, PID: 2},
+		{FirstPacket: p, SDT: sdt, PID: 2},
+		{FirstPacket: p, TOT: tot, PID: 2},
+	}, psi.toData(p, uint16(2)))
 }

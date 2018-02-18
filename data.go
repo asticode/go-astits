@@ -14,14 +14,15 @@ const (
 
 // Data represents a data
 type Data struct {
-	EIT *EITData
-	NIT *NITData
-	PAT *PATData
-	PES *PESData
-	PID uint16
-	PMT *PMTData
-	SDT *SDTData
-	TOT *TOTData
+	EIT         *EITData
+	FirstPacket *Packet
+	NIT         *NITData
+	PAT         *PATData
+	PES         *PESData
+	PID         uint16
+	PMT         *PMTData
+	SDT         *SDTData
+	TOT         *TOTData
 }
 
 // parseData parses a payload spanning over multiple packets and returns a set of data
@@ -61,11 +62,15 @@ func parseData(ps []*Packet, prs PacketsParser, pm programMap) (ds []*Data, err 
 			err = errors.Wrap(err, "astits: parsing PSI data failed")
 			return
 		}
-		ds = psiData.toData(pid)
+		ds = psiData.toData(ps[0], pid)
 	} else if isPESPayload(payload) {
 		d, err := parsePESData(payload)
 		if err == nil {
-			ds = append(ds, &Data{PES: d, PID: pid})
+			ds = append(ds, &Data{
+				FirstPacket: ps[0],
+				PES:         d,
+				PID:         pid,
+			})
 		}
 	}
 	return

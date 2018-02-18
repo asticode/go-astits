@@ -62,6 +62,10 @@ func TestDemuxerNextData(t *testing.T) {
 	b3, _ := packet(PacketHeader{ContinuityCounter: uint8(2), PayloadUnitStartIndicator: true, PID: PIDPAT}, PacketAdaptationField{}, []byte{})
 	w.Write(b3)
 	dmx := New(context.Background(), bytes.NewReader(w.Bytes()))
+	p, err := dmx.NextPacket()
+	assert.NoError(t, err)
+	_, err = dmx.Rewind()
+	assert.NoError(t, err)
 
 	// Next data
 	var ds []*Data
@@ -72,11 +76,11 @@ func TestDemuxerNextData(t *testing.T) {
 			ds = append(ds, d)
 		}
 	}
-	assert.Equal(t, psi.toData(PIDPAT), ds)
+	assert.Equal(t, psi.toData(p, PIDPAT), ds)
 	assert.Equal(t, map[uint16]uint16{0x3: 0x2, 0x5: 0x4}, dmx.programMap.p)
 
 	// No more packets
-	_, err := dmx.NextData()
+	_, err = dmx.NextData()
 	assert.EqualError(t, err, ErrNoMorePackets.Error())
 }
 
