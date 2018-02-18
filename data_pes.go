@@ -1,6 +1,10 @@
 package astits
 
-import "github.com/asticode/go-astilog"
+import (
+	"fmt"
+
+	"github.com/pkg/errors"
+)
 
 // P-STD buffer scales
 const (
@@ -99,13 +103,16 @@ type DSMTrickMode struct {
 }
 
 // parsePESData parses a PES data
-func parsePESData(i []byte) (d *PESData) {
+func parsePESData(i []byte) (d *PESData, err error) {
 	// Init
 	d = &PESData{}
 
 	// Parse header
 	var offset, dataStart, dataEnd = 3, 0, 0
-	d.Header, dataStart, dataEnd = parsePESHeader(i, &offset)
+	if d.Header, dataStart, dataEnd, err = parsePESHeader(i, &offset); err != nil {
+		err = errors.Wrap(err, "astits: parsing PES header failed")
+		return
+	}
 
 	// Parse data
 	d.Data = i[dataStart:dataEnd]
@@ -118,7 +125,7 @@ func hasPESOptionalHeader(streamID uint8) bool {
 }
 
 // parsePESData parses a PES header
-func parsePESHeader(i []byte, offset *int) (h *PESHeader, dataStart, dataEnd int) {
+func parsePESHeader(i []byte, offset *int) (h *PESHeader, dataStart, dataEnd int, err error) {
 	// Init
 	h = &PESHeader{}
 
@@ -138,10 +145,9 @@ func parsePESHeader(i []byte, offset *int) (h *PESHeader, dataStart, dataEnd int
 	}
 
 	// Check for incomplete data
-	// TODO Throw away the data?
 	if dataEnd > len(i) {
-		astilog.Debug("PES dataEnd > len(i), needs fixing")
-		dataEnd = len(i)
+		err = fmt.Errorf("astits: pes dataEnd (%d) > len(i) (%d)", dataEnd, len(i))
+		return
 	}
 
 	// Optional header

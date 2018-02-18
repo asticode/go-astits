@@ -1,6 +1,8 @@
 package astits
 
-import "github.com/pkg/errors"
+import (
+	"github.com/pkg/errors"
+)
 
 // PIDs
 const (
@@ -61,7 +63,10 @@ func parseData(ps []*Packet, prs PacketsParser, pm programMap) (ds []*Data, err 
 		}
 		ds = psiData.toData(pid)
 	} else if isPESPayload(payload) {
-		ds = append(ds, &Data{PES: parsePESData(payload), PID: pid})
+		d, err := parsePESData(payload)
+		if err == nil {
+			ds = append(ds, &Data{PES: d, PID: pid})
+		}
 	}
 	return
 }
