@@ -5,6 +5,9 @@
 
 This is a Golang library to natively parse and demux MPEG Transport Streams (ts) in GO.
 
+WARNING: this library is not yet production ready. For instance, while parsing a slice of bytes, it doesn't check whether
+the length of the slice is sufficient and rather panic on purpose. Use at your own risks!
+
 # Installation
 
 To install the library use the following:
@@ -39,7 +42,7 @@ Several payloads can be appended and parsed as a data.
     
 # Using the library in your code
 
-WARNING: the code below doesn't handle errors for readibility purposes. However you SHOULD!
+WARNING: the code below doesn't handle errors for readability purposes. However you SHOULD!
 
 ```go
 // Create a cancellable context in case you want to stop reading packets/data any time you want
