@@ -506,10 +506,11 @@ type DescriptorISO639LanguageAndAudioType struct {
 	Type     uint8
 }
 
+// In some actual cases, the length is 3 and the language is described in only 2 bytes
 func newDescriptorISO639LanguageAndAudioType(i []byte) *DescriptorISO639LanguageAndAudioType {
 	return &DescriptorISO639LanguageAndAudioType{
-		Language: i[0:3],
-		Type:     uint8(i[3]),
+		Language: i[0 : len(i)-1],
+		Type:     uint8(i[len(i)-1]),
 	}
 }
 
