@@ -25,7 +25,7 @@ const (
 )
 
 // Descriptor tags
-// Page: 42 | Chapter: 6.1 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+// Chapter: 6.1 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 const (
 	DescriptorTagAC3                        = 0x6a
 	DescriptorTagAVCVideo                   = 0x28
@@ -53,20 +53,19 @@ const (
 )
 
 // Descriptor extension tags
-// Page: 111 | Chapter: 6.1 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+// Chapter: 6.3 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 const (
 	DescriptorTagExtensionSupplementaryAudio = 0x6
 )
 
 // Service types
-// Page: 97 | Chapter: 6.2.33 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
-// https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf / page 97
+// Chapter: 6.2.33 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 const (
 	ServiceTypeDigitalTelevisionService = 0x1
 )
 
 // Teletext types
-// Page: 106 | Chapter: 6.2.43 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+// Chapter: 6.2.43 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 const (
 	TeletextTypeAdditionalInformationPage                    = 0x3
 	TeletextTypeInitialTeletextPage                          = 0x1
@@ -76,7 +75,7 @@ const (
 )
 
 // VBI data service id
-// Page: 109 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+// Chapter: 6.2.47 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 const (
 	VBIDataServiceIDClosedCaptioning     = 0x6
 	VBIDataServiceIDEBUTeletext          = 0x1
@@ -118,7 +117,7 @@ type Descriptor struct {
 }
 
 // DescriptorAC3 represents an AC3 descriptor
-// Page: 165 | https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+// Chapter: Annex D | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorAC3 struct {
 	AdditionalInfo   []byte
 	ASVC             uint8
@@ -204,7 +203,7 @@ func newDescriptorAVCVideo(i []byte) (d *DescriptorAVCVideo) {
 }
 
 // DescriptorComponent represents a component descriptor
-// Page: 51 | https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+// Chapter: 6.2.8 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorComponent struct {
 	ComponentTag       uint8
 	ComponentType      uint8
@@ -247,14 +246,13 @@ func newDescriptorComponent(i []byte) (d *DescriptorComponent) {
 }
 
 // DescriptorContent represents a content descriptor
-// Page: 58 | https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+// Chapter: 6.2.9 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorContent struct {
 	Items []*DescriptorContentItem
 }
 
 // DescriptorContentItem represents a content item descriptor
-// Check page 59 of https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf for content nibble
-// levels associations
+// Chapter: 6.2.9 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorContentItem struct {
 	ContentNibbleLevel1 uint8
 	ContentNibbleLevel2 uint8
@@ -288,7 +286,7 @@ func newDescriptorDataStreamAlignment(i []byte) *DescriptorDataStreamAlignment {
 }
 
 // DescriptorEnhancedAC3 represents an enhanced AC3 descriptor
-// Page: 166 | https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+// Chapter: Annex D | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorEnhancedAC3 struct {
 	AdditionalInfo   []byte
 	ASVC             uint8
@@ -356,6 +354,7 @@ func newDescriptorEnhancedAC3(i []byte) (d *DescriptorEnhancedAC3) {
 }
 
 // DescriptorExtendedEvent represents an extended event descriptor
+// Chapter: 6.2.15 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorExtendedEvent struct {
 	ISO639LanguageCode   []byte
 	Items                []*DescriptorExtendedEventItem
@@ -365,6 +364,7 @@ type DescriptorExtendedEvent struct {
 }
 
 // DescriptorExtendedEventItem represents an extended event item descriptor
+// Chapter: 6.2.15 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorExtendedEventItem struct {
 	Content     []byte
 	Description []byte
@@ -438,7 +438,7 @@ func newDescriptorExtendedEventItem(i []byte, offset *int) (d *DescriptorExtende
 }
 
 // DescriptorExtension represents an extension descriptor
-// Page: 72 | https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+// Chapter: 6.2.16 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorExtension struct {
 	SupplementaryAudio *DescriptorExtensionSupplementaryAudio
 	Tag                uint8
@@ -461,7 +461,7 @@ func newDescriptorExtension(i []byte) (d *DescriptorExtension) {
 }
 
 // DescriptorExtensionSupplementaryAudio represents a supplementary audio extension descriptor
-// Page: 130 | https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+// Chapter: 6.4.10 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorExtensionSupplementaryAudio struct {
 	EditorialClassification uint8
 	HasLanguageCode         bool
@@ -500,6 +500,7 @@ func newDescriptorExtensionSupplementaryAudio(i []byte) (d *DescriptorExtensionS
 }
 
 // DescriptorISO639LanguageAndAudioType represents an ISO639 language descriptor
+// https://github.com/gfto/bitstream/blob/master/mpeg/psi/desc_0a.h
 type DescriptorISO639LanguageAndAudioType struct {
 	Language []byte
 	Type     uint8
@@ -513,12 +514,13 @@ func newDescriptorISO639LanguageAndAudioType(i []byte) *DescriptorISO639Language
 }
 
 // DescriptorLocalTimeOffset represents a local time offset descriptor
-// Page: 84 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+// Chapter: 6.2.20 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorLocalTimeOffset struct {
 	Items []*DescriptorLocalTimeOffsetItem
 }
 
 // DescriptorLocalTimeOffsetItem represents a local time offset item descriptor
+// Chapter: 6.2.20 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorLocalTimeOffsetItem struct {
 	CountryCode             []byte
 	CountryRegionID         uint8
@@ -572,7 +574,7 @@ func newDescriptorMaximumBitrate(i []byte) *DescriptorMaximumBitrate {
 }
 
 // DescriptorNetworkName represents a network name descriptor
-// Page: 93 | Chapter: 6.2.27 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+// Chapter: 6.2.27 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorNetworkName struct {
 	Name []byte
 }
@@ -582,12 +584,13 @@ func newDescriptorNetworkName(i []byte) *DescriptorNetworkName {
 }
 
 // DescriptorParentalRating represents a parental rating descriptor
-// Page: 93 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+// Chapter: 6.2.28 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorParentalRating struct {
 	Items []*DescriptorParentalRatingItem
 }
 
 // DescriptorParentalRatingItem represents a parental rating item descriptor
+// Chapter: 6.2.28 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorParentalRatingItem struct {
 	CountryCode []byte
 	Rating      uint8
@@ -655,7 +658,7 @@ func newDescriptorRegistration(i []byte) (d *DescriptorRegistration) {
 }
 
 // DescriptorService represents a service descriptor
-// Page: 96 | Chapter: 6.2.33 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+// Chapter: 6.2.33 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorService struct {
 	Name     []byte
 	Provider []byte
@@ -677,7 +680,7 @@ func newDescriptorService(i []byte) (d *DescriptorService) {
 }
 
 // DescriptorShortEvent represents a short event descriptor
-// Page: 99 | Chapter: 6.2.37 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+// Chapter: 6.2.37 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorShortEvent struct {
 	EventName []byte
 	Language  []byte
@@ -700,7 +703,7 @@ func newDescriptorShortEvent(i []byte) (d *DescriptorShortEvent) {
 }
 
 // DescriptorStreamIdentifier represents a stream identifier descriptor
-// Page: 102 | Chapter: 6.2.39 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+// Chapter: 6.2.39 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorStreamIdentifier struct{ ComponentTag uint8 }
 
 func newDescriptorStreamIdentifier(i []byte) *DescriptorStreamIdentifier {
@@ -708,12 +711,13 @@ func newDescriptorStreamIdentifier(i []byte) *DescriptorStreamIdentifier {
 }
 
 // DescriptorSubtitling represents a subtitling descriptor
-// Page: 103 | Chapter: 6.2.41 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+// Chapter: 6.2.41 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorSubtitling struct {
 	Items []*DescriptorSubtitlingItem
 }
 
 // DescriptorSubtitlingItem represents subtitling descriptor item
+// Chapter: 6.2.41 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorSubtitlingItem struct {
 	AncillaryPageID   uint16
 	CompositionPageID uint16
@@ -740,12 +744,13 @@ func newDescriptorSubtitling(i []byte) (d *DescriptorSubtitling) {
 }
 
 // DescriptorTeletext represents a teletext descriptor
-// Page: 105 | Chapter: 6.2.43 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+// Chapter: 6.2.43 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorTeletext struct {
 	Items []*DescriptorTeletextItem
 }
 
 // DescriptorTeletextItem represents a teletext descriptor item
+// Chapter: 6.2.43 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorTeletextItem struct {
 	Language []byte
 	Magazine uint8
@@ -771,18 +776,20 @@ func newDescriptorTeletext(i []byte) (d *DescriptorTeletext) {
 }
 
 // DescriptorVBIData represents a VBI data descriptor
-// Page: 108 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+// Chapter: 6.2.47 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorVBIData struct {
 	Services []*DescriptorVBIDataService
 }
 
 // DescriptorVBIDataService represents a vbi data service descriptor
+// Chapter: 6.2.47 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorVBIDataService struct {
 	DataServiceID uint8
 	Descriptors   []*DescriptorVBIDataDescriptor
 }
 
 // DescriptorVBIDataItem represents a vbi data descriptor item
+// Chapter: 6.2.47 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorVBIDataDescriptor struct {
 	FieldParity bool
 	LineOffset  uint8
