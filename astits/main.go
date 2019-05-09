@@ -205,7 +205,7 @@ func data(dmx *astits.Demuxer) (err error) {
 			if err == astits.ErrNoMorePackets {
 				break
 			}
-			err = errors.Wrap(err, "astits: getting nex data failed")
+			err = errors.Wrap(err, "astits: getting next data failed")
 			return
 		}
 
@@ -217,10 +217,28 @@ func data(dmx *astits.Demuxer) (err error) {
 			astilog.Infof("NIT: %d", d.PID)
 		} else if d.PAT != nil && (logAll || logPAT) {
 			astilog.Infof("PAT: %d", d.PID)
+			astilog.Infof("  Transport Stream ID: %v", d.PAT.TransportStreamID)
+			astilog.Infof("  Programs:")
+			for _, p := range d.PAT.Programs {
+				astilog.Infof("    %+v", p)
+			}
 		} else if d.PES != nil && (logAll || logPES) {
 			astilog.Infof("PES: %d", d.PID)
+			astilog.Infof("  Stream ID: %v", d.PES.Header.StreamID)
+			astilog.Infof("  Packet Length: %v", d.PES.Header.PacketLength)
+			astilog.Infof("  Optional Header: %+v", d.PES.Header.OptionalHeader)
 		} else if d.PMT != nil && (logAll || logPMT) {
 			astilog.Infof("PMT: %d", d.PID)
+			astilog.Infof("  ProgramNumber: %v", d.PMT.ProgramNumber)
+			astilog.Infof("  PCR PID: %v", d.PMT.PCRPID)
+			astilog.Infof("  Elementary Streams:")
+			for _, s := range d.PMT.ElementaryStreams {
+				astilog.Infof("    %+v", s)
+			}
+			astilog.Infof("  Program Descriptors:")
+			for _, d := range d.PMT.ProgramDescriptors {
+				astilog.Infof("    %+v", d)
+			}
 		} else if d.SDT != nil && (logAll || logSDT) {
 			astilog.Infof("SDT: %d", d.PID)
 		} else if d.TOT != nil && (logAll || logTOT) {
