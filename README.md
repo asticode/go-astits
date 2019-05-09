@@ -100,7 +100,11 @@ This library provides a CLI that will automatically get installed in `GOPATH/bin
 ## List streams
 
     $ astits -i <path to your file> -f <format: text|json (default: text)>
-    
+
+## List packets
+
+    $ astits packets -i <path to your file>
+
 ## List data
 
     $ astits data -i <path to your file> -d <data type: eit|nit|... (repeatable argument | if empty, all data types are shown)>

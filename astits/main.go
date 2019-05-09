@@ -33,7 +33,11 @@ var (
 
 func main() {
 	// Init
-	flag.Var(dataTypes, "d", "the datatypes whitelist")
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s <data|packets|default>:\n", os.Args[0])
+		flag.PrintDefaults()
+	}
+	flag.Var(dataTypes, "d", "the datatypes whitelist (all, pat, pmt, pes, eit, nit, sdt, tot)")
 	var s = astiflag.Subcommand()
 	flag.Parse()
 	astilog.FlagInit()
@@ -70,6 +74,12 @@ func main() {
 		// Fetch data
 		if err = data(dmx); err != nil {
 			astilog.Error(errors.Wrap(err, "astits: fetching data failed"))
+			return
+		}
+	case "packets":
+		// Fetch packets
+		if err = packets(dmx); err != nil {
+			astilog.Error(errors.Wrap(err, "astits: fetching packets failed"))
 			return
 		}
 	default:
@@ -164,6 +174,36 @@ func buildReader(ctx context.Context) (r io.Reader, err error) {
 	return
 }
 
+func packets(dmx *astits.Demuxer) (err error) {
+	// Loop through packets
+	var p *astits.Packet
+	astilog.Debug("Fetching packets...")
+	for {
+		// Get next packet
+		if p, err = dmx.NextPacket(); err != nil {
+			if err == astits.ErrNoMorePackets {
+				break
+			}
+			err = errors.Wrap(err, "astits: getting next packet failed")
+			return
+		}
+
+		// Log packet
+		astilog.Infof("PKT: %d", p.Header.PID)
+		astilog.Infof("  Continuity Counter: %v", p.Header.ContinuityCounter)
+		astilog.Infof("  Payload Unit Start Indicator: %v", p.Header.PayloadUnitStartIndicator)
+		astilog.Infof("  Has Payload: %v", p.Header.HasPayload)
+		astilog.Infof("  Has Adaptation Field: %v", p.Header.HasAdaptationField)
+		astilog.Infof("  Transport Error Indicator: %v", p.Header.TransportErrorIndicator)
+		astilog.Infof("  Transport Priority: %v", p.Header.TransportPriority)
+		astilog.Infof("  Transport Scrambling Control: %v", p.Header.TransportScramblingControl)
+		if p.Header.HasAdaptationField {
+			astilog.Infof("  Adaptation Field: %+v", p.AdaptationField)
+		}
+	}
+	return nil
+}
+
 func data(dmx *astits.Demuxer) (err error) {
 	// Determine which data to log
 	var logAll, logEIT, logNIT, logPAT, logPES, logPMT, logSDT, logTOT bool
@@ -201,7 +241,7 @@ func data(dmx *astits.Demuxer) (err error) {
 			if err == astits.ErrNoMorePackets {
 				break
 			}
-			err = errors.Wrap(err, "astits: getting nex data failed")
+			err = errors.Wrap(err, "astits: getting next data failed")
 			return
 		}
 
@@ -213,10 +253,28 @@ func data(dmx *astits.Demuxer) (err error) {
 			astilog.Infof("NIT: %d", d.PID)
 		} else if d.PAT != nil && (logAll || logPAT) {
 			astilog.Infof("PAT: %d", d.PID)
+			astilog.Infof("  Transport Stream ID: %v", d.PAT.TransportStreamID)
+			astilog.Infof("  Programs:")
+			for _, p := range d.PAT.Programs {
+				astilog.Infof("    %+v", p)
+			}
 		} else if d.PES != nil && (logAll || logPES) {
 			astilog.Infof("PES: %d", d.PID)
+			astilog.Infof("  Stream ID: %v", d.PES.Header.StreamID)
+			astilog.Infof("  Packet Length: %v", d.PES.Header.PacketLength)
+			astilog.Infof("  Optional Header: %+v", d.PES.Header.OptionalHeader)
 		} else if d.PMT != nil && (logAll || logPMT) {
 			astilog.Infof("PMT: %d", d.PID)
+			astilog.Infof("  ProgramNumber: %v", d.PMT.ProgramNumber)
+			astilog.Infof("  PCR PID: %v", d.PMT.PCRPID)
+			astilog.Infof("  Elementary Streams:")
+			for _, s := range d.PMT.ElementaryStreams {
+				astilog.Infof("    %+v", s)
+			}
+			astilog.Infof("  Program Descriptors:")
+			for _, d := range d.PMT.ProgramDescriptors {
+				astilog.Infof("    %+v", d)
+			}
 		} else if d.SDT != nil && (logAll || logSDT) {
 			astilog.Infof("SDT: %d", d.PID)
 		} else if d.TOT != nil && (logAll || logTOT) {
