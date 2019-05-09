@@ -33,7 +33,7 @@ var (
 
 func main() {
 	// Init
-	flag.Var(dataTypes, "d", "the datatypes whitelist")
+	flag.Var(dataTypes, "d", "the datatypes whitelist (all, pat, pmt, pes, eit, nit, sdt, tot)")
 	var s = astiflag.Subcommand()
 	flag.Parse()
 	astilog.FlagInit()
