@@ -34,7 +34,7 @@ var (
 func main() {
 	// Init
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s <data|default>:\n", os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s <data|packets|default>:\n", os.Args[0])
 		flag.PrintDefaults()
 	}
 	flag.Var(dataTypes, "d", "the datatypes whitelist (all, pat, pmt, pes, eit, nit, sdt, tot)")
@@ -74,6 +74,12 @@ func main() {
 		// Fetch data
 		if err = data(dmx); err != nil {
 			astilog.Error(errors.Wrap(err, "astits: fetching data failed"))
+			return
+		}
+	case "packets":
+		// Fetch packets
+		if err = packets(dmx); err != nil {
+			astilog.Error(errors.Wrap(err, "astits: fetching packets failed"))
 			return
 		}
 	default:
@@ -166,6 +172,36 @@ func buildReader(ctx context.Context) (r io.Reader, err error) {
 		r = f
 	}
 	return
+}
+
+func packets(dmx *astits.Demuxer) (err error) {
+	// Loop through packets
+	var p *astits.Packet
+	astilog.Debug("Fetching packets...")
+	for {
+		// Get next packet
+		if p, err = dmx.NextPacket(); err != nil {
+			if err == astits.ErrNoMorePackets {
+				break
+			}
+			err = errors.Wrap(err, "astits: getting next packet failed")
+			return
+		}
+
+		// Log packet
+		astilog.Infof("PKT: %d", p.Header.PID)
+		astilog.Infof("  Continuity Counter: %v", p.Header.ContinuityCounter)
+		astilog.Infof("  Payload Unit Start Indicator: %v", p.Header.PayloadUnitStartIndicator)
+		astilog.Infof("  Has Payload: %v", p.Header.HasPayload)
+		astilog.Infof("  Has Adaptation Field: %v", p.Header.HasAdaptationField)
+		astilog.Infof("  Transport Error Indicator: %v", p.Header.TransportErrorIndicator)
+		astilog.Infof("  Transport Priority: %v", p.Header.TransportPriority)
+		astilog.Infof("  Transport Scrambling Control: %v", p.Header.TransportScramblingControl)
+		if p.Header.HasAdaptationField {
+			astilog.Infof("  Adaptation Field: %+v", p.AdaptationField)
+		}
+	}
+	return nil
 }
 
 func data(dmx *astits.Demuxer) (err error) {
