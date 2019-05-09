@@ -33,6 +33,10 @@ var (
 
 func main() {
 	// Init
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s <data|default>:\n", os.Args[0])
+		flag.PrintDefaults()
+	}
 	flag.Var(dataTypes, "d", "the datatypes whitelist (all, pat, pmt, pes, eit, nit, sdt, tot)")
 	var s = astiflag.Subcommand()
 	flag.Parse()
