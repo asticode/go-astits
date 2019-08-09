@@ -3,7 +3,8 @@ package astits
 import (
 	"testing"
 
-	"github.com/asticode/go-astitools/binary"
+	astibinary "github.com/asticode/go-astitools/binary"
+	astibyte "github.com/asticode/go-astitools/byte"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -35,8 +36,8 @@ func sdtBytes() []byte {
 }
 
 func TestParseSDTSection(t *testing.T) {
-	var offset int
 	var b = sdtBytes()
-	d := parseSDTSection(b, &offset, len(b), uint16(1))
+	d, err := parseSDTSection(astibyte.NewIterator(b), len(b), uint16(1))
 	assert.Equal(t, d, sdt)
+	assert.NoError(t, err)
 }

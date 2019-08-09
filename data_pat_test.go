@@ -5,6 +5,7 @@ import (
 
 	"github.com/asticode/go-astitools/binary"
 	"github.com/stretchr/testify/assert"
+	"github.com/asticode/go-astitools/byte"
 )
 
 var pat = &PATData{
@@ -27,8 +28,8 @@ func patBytes() []byte {
 }
 
 func TestParsePATSection(t *testing.T) {
-	var offset int
 	var b = patBytes()
-	d := parsePATSection(b, &offset, len(b), uint16(1))
+	d, err := parsePATSection(astibyte.NewIterator(b), len(b), uint16(1))
 	assert.Equal(t, d, pat)
+	assert.NoError(t, err)
 }

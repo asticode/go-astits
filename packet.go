@@ -1,5 +1,10 @@
 package astits
 
+import (
+	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/pkg/errors"
+)
+
 // Scrambling Controls
 const (
 	ScramblingControlNotScrambled         = 0
@@ -12,7 +17,6 @@ const (
 // https://en.wikipedia.org/wiki/MPEG_transport_stream
 type Packet struct {
 	AdaptationField *PacketAdaptationField
-	Bytes           []byte // This is the whole packet content
 	Header          *PacketHeader
 	Payload         []byte // This is only the payload content
 }
@@ -62,37 +66,52 @@ type PacketAdaptationExtensionField struct {
 }
 
 // parsePacket parses a packet
-func parsePacket(i []byte) (p *Packet, err error) {
+func parsePacket(i *astibyte.Iterator) (p *Packet, err error) {
+	// Get next byte
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: getting next byte failed")
+		return
+	}
+
 	// Packet must start with a sync byte
-	if i[0] != syncByte {
+	if b != syncByte {
 		err = ErrPacketMustStartWithASyncByte
 		return
 	}
 
-	// Init
-	p = &Packet{Bytes: i}
+	// Create packet
+	p = &Packet{}
 
 	// In case packet size is bigger than 188 bytes, we don't care for the first bytes
-	i = i[len(i)-188+1:]
+	i.Seek(i.Len() - 188 + 1)
+	offsetStart := i.Offset()
 
 	// Parse header
-	p.Header = parsePacketHeader(i)
+	if p.Header, err = parsePacketHeader(i); err != nil {
+		err = errors.Wrap(err, "astits: parsing packet header failed")
+		return
+	}
 
 	// Parse adaptation field
 	if p.Header.HasAdaptationField {
-		p.AdaptationField = parsePacketAdaptationField(i[3:])
+		if p.AdaptationField, err = parsePacketAdaptationField(i); err != nil {
+			err = errors.Wrap(err, "astits: parsing packet adaptation field failed")
+			return
+		}
 	}
 
 	// Build payload
 	if p.Header.HasPayload {
-		p.Payload = i[payloadOffset(p.Header, p.AdaptationField):]
+		i.Seek(payloadOffset(offsetStart, p.Header, p.AdaptationField))
+		p.Payload = i.Dump()
 	}
 	return
 }
 
 // payloadOffset returns the payload offset
-func payloadOffset(h *PacketHeader, a *PacketAdaptationField) (offset int) {
-	offset = 3
+func payloadOffset(offsetStart int, h *PacketHeader, a *PacketAdaptationField) (offset int) {
+	offset = offsetStart + 3
 	if h.HasAdaptationField {
 		offset += 1 + a.Length
 	}
@@ -100,98 +119,169 @@ func payloadOffset(h *PacketHeader, a *PacketAdaptationField) (offset int) {
 }
 
 // parsePacketHeader parses the packet header
-func parsePacketHeader(i []byte) *PacketHeader {
-	return &PacketHeader{
-		ContinuityCounter:         uint8(i[2] & 0xf),
-		HasAdaptationField:        i[2]&0x20 > 0,
-		HasPayload:                i[2]&0x10 > 0,
-		PayloadUnitStartIndicator: i[0]&0x40 > 0,
-		PID: uint16(i[0]&0x1f)<<8 | uint16(i[1]),
-		TransportErrorIndicator:    i[0]&0x80 > 0,
-		TransportPriority:          i[0]&0x20 > 0,
-		TransportScramblingControl: uint8(i[2]) >> 6 & 0x3,
+func parsePacketHeader(i *astibyte.Iterator) (h *PacketHeader, err error) {
+	// Get next bytes
+	var bs []byte
+	if bs, err = i.NextBytes(3); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
 	}
+
+	// Create header
+	h = &PacketHeader{
+		ContinuityCounter:          uint8(bs[2] & 0xf),
+		HasAdaptationField:         bs[2]&0x20 > 0,
+		HasPayload:                 bs[2]&0x10 > 0,
+		PayloadUnitStartIndicator:  bs[0]&0x40 > 0,
+		PID:                        uint16(bs[0]&0x1f)<<8 | uint16(bs[1]),
+		TransportErrorIndicator:    bs[0]&0x80 > 0,
+		TransportPriority:          bs[0]&0x20 > 0,
+		TransportScramblingControl: uint8(bs[2]) >> 6 & 0x3,
+	}
+	return
 }
 
 // parsePacketAdaptationField parses the packet adaptation field
-func parsePacketAdaptationField(i []byte) (a *PacketAdaptationField) {
-	// Init
+func parsePacketAdaptationField(i *astibyte.Iterator) (a *PacketAdaptationField, err error) {
+	// Create adaptation field
 	a = &PacketAdaptationField{}
-	var offset int
+
+	// Get next byte
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
 
 	// Length
-	a.Length = int(i[offset])
-	offset += 1
+	a.Length = int(b)
 
 	// Valid length
 	if a.Length > 0 {
+		// Get next byte
+		if b, err = i.NextByte(); err != nil {
+			err = errors.Wrap(err, "astits: fetching next byte failed")
+			return
+		}
+
 		// Flags
-		a.DiscontinuityIndicator = i[offset]&0x80 > 0
-		a.RandomAccessIndicator = i[offset]&0x40 > 0
-		a.ElementaryStreamPriorityIndicator = i[offset]&0x20 > 0
-		a.HasPCR = i[offset]&0x10 > 0
-		a.HasOPCR = i[offset]&0x08 > 0
-		a.HasSplicingCountdown = i[offset]&0x04 > 0
-		a.HasTransportPrivateData = i[offset]&0x02 > 0
-		a.HasAdaptationExtensionField = i[offset]&0x01 > 0
-		offset += 1
+		a.DiscontinuityIndicator = b&0x80 > 0
+		a.RandomAccessIndicator = b&0x40 > 0
+		a.ElementaryStreamPriorityIndicator = b&0x20 > 0
+		a.HasPCR = b&0x10 > 0
+		a.HasOPCR = b&0x08 > 0
+		a.HasSplicingCountdown = b&0x04 > 0
+		a.HasTransportPrivateData = b&0x02 > 0
+		a.HasAdaptationExtensionField = b&0x01 > 0
 
 		// PCR
 		if a.HasPCR {
-			a.PCR = parsePCR(i[offset:])
-			offset += 6
+			if a.PCR, err = parsePCR(i); err != nil {
+				err = errors.Wrap(err, "astits: parsing PCR failed")
+				return
+			}
 		}
 
 		// OPCR
 		if a.HasOPCR {
-			a.OPCR = parsePCR(i[offset:])
-			offset += 6
+			if a.OPCR, err = parsePCR(i); err != nil {
+				err = errors.Wrap(err, "astits: parsing PCR failed")
+				return
+			}
 		}
 
 		// Splicing countdown
 		if a.HasSplicingCountdown {
-			a.SpliceCountdown = int(i[offset])
-			offset += 1
+			if b, err = i.NextByte(); err != nil {
+				err = errors.Wrap(err, "astits: fetching next byte failed")
+				return
+			}
+			a.SpliceCountdown = int(b)
 		}
 
 		// Transport private data
 		if a.HasTransportPrivateData {
-			a.TransportPrivateDataLength = int(i[offset])
-			offset += 1
+			// Length
+			if b, err = i.NextByte(); err != nil {
+				err = errors.Wrap(err, "astits: fetching next byte failed")
+				return
+			}
+			a.TransportPrivateDataLength = int(b)
+
+			// Data
 			if a.TransportPrivateDataLength > 0 {
-				a.TransportPrivateData = i[offset : offset+a.TransportPrivateDataLength]
-				offset += a.TransportPrivateDataLength
+				if a.TransportPrivateData, err = i.NextBytes(a.TransportPrivateDataLength); err != nil {
+					err = errors.Wrap(err, "astits: fetching next bytes failed")
+					return
+				}
 			}
 		}
 
 		// Adaptation extension
 		if a.HasAdaptationExtensionField {
-			a.AdaptationExtensionField = &PacketAdaptationExtensionField{Length: int(i[offset])}
-			offset += 1
+			// Create extension field
+			a.AdaptationExtensionField = &PacketAdaptationExtensionField{}
+
+			// Get next byte
+			if b, err = i.NextByte(); err != nil {
+				err = errors.Wrap(err, "astits: fetching next byte failed")
+				return
+			}
+
+			// Length
+			a.AdaptationExtensionField.Length = int(b)
 			if a.AdaptationExtensionField.Length > 0 {
+				// Get next byte
+				if b, err = i.NextByte(); err != nil {
+					err = errors.Wrap(err, "astits: fetching next byte failed")
+					return
+				}
+
 				// Basic
-				a.AdaptationExtensionField.HasLegalTimeWindow = i[offset]&0x80 > 0
-				a.AdaptationExtensionField.HasPiecewiseRate = i[offset]&0x40 > 0
-				a.AdaptationExtensionField.HasSeamlessSplice = i[offset]&0x20 > 0
-				offset += 1
+				a.AdaptationExtensionField.HasLegalTimeWindow = b&0x80 > 0
+				a.AdaptationExtensionField.HasPiecewiseRate = b&0x40 > 0
+				a.AdaptationExtensionField.HasSeamlessSplice = b&0x20 > 0
 
 				// Legal time window
 				if a.AdaptationExtensionField.HasLegalTimeWindow {
-					a.AdaptationExtensionField.LegalTimeWindowIsValid = i[offset]&0x80 > 0
-					a.AdaptationExtensionField.LegalTimeWindowOffset = uint16(i[offset]&0x7f)<<8 | uint16(i[offset+1])
-					offset += 2
+					var bs []byte
+					if bs, err = i.NextBytes(2); err != nil {
+						err = errors.Wrap(err, "astits: fetching next bytes failed")
+						return
+					}
+					a.AdaptationExtensionField.LegalTimeWindowIsValid = bs[0]&0x80 > 0
+					a.AdaptationExtensionField.LegalTimeWindowOffset = uint16(bs[0]&0x7f)<<8 | uint16(bs[1])
 				}
 
 				// Piecewise rate
 				if a.AdaptationExtensionField.HasPiecewiseRate {
-					a.AdaptationExtensionField.PiecewiseRate = uint32(i[offset]&0x3f)<<16 | uint32(i[offset+1])<<8 | uint32(i[offset+2])
-					offset += 3
+					var bs []byte
+					if bs, err = i.NextBytes(3); err != nil {
+						err = errors.Wrap(err, "astits: fetching next bytes failed")
+						return
+					}
+					a.AdaptationExtensionField.PiecewiseRate = uint32(bs[0]&0x3f)<<16 | uint32(bs[1])<<8 | uint32(bs[2])
 				}
 
 				// Seamless splice
 				if a.AdaptationExtensionField.HasSeamlessSplice {
-					a.AdaptationExtensionField.SpliceType = uint8(i[offset]&0xf0) >> 4
-					a.AdaptationExtensionField.DTSNextAccessUnit = parsePTSOrDTS(i[offset:])
+					// Get next byte
+					if b, err = i.NextByte(); err != nil {
+						err = errors.Wrap(err, "astits: fetching next byte failed")
+						return
+					}
+
+					// Splice type
+					a.AdaptationExtensionField.SpliceType = uint8(b&0xf0) >> 4
+
+					// We need to rewind since the current byte is used by the DTS next access unit as well
+					i.FastForward(-1)
+
+					// DTS Next access unit
+					if a.AdaptationExtensionField.DTSNextAccessUnit, err = parsePTSOrDTS(i); err != nil {
+						err = errors.Wrap(err, "astits: parsing DTS failed")
+						return
+					}
 				}
 			}
 		}
@@ -201,7 +291,13 @@ func parsePacketAdaptationField(i []byte) (a *PacketAdaptationField) {
 
 // parsePCR parses a Program Clock Reference
 // Program clock reference, stored as 33 bits base, 6 bits reserved, 9 bits extension.
-func parsePCR(i []byte) *ClockReference {
-	var pcr = uint64(i[0])<<40 | uint64(i[1])<<32 | uint64(i[2])<<24 | uint64(i[3])<<16 | uint64(i[4])<<8 | uint64(i[5])
-	return newClockReference(int(pcr>>15), int(pcr&0x1ff))
+func parsePCR(i *astibyte.Iterator) (cr *ClockReference, err error) {
+	var bs []byte
+	if bs, err = i.NextBytes(6); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
+	pcr := uint64(bs[0])<<40 | uint64(bs[1])<<32 | uint64(bs[2])<<24 | uint64(bs[3])<<16 | uint64(bs[4])<<8 | uint64(bs[5])
+	cr = newClockReference(int(pcr>>15), int(pcr&0x1ff))
+	return
 }

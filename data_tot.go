@@ -1,6 +1,11 @@
 package astits
 
-import "time"
+import (
+	"time"
+
+	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/pkg/errors"
+)
 
 // TOTData represents a TOT data
 // Page: 39 | Chapter: 5.2.6 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
@@ -10,14 +15,20 @@ type TOTData struct {
 }
 
 // parseTOTSection parses a TOT section
-func parseTOTSection(i []byte, offset *int) (d *TOTData) {
-	// Init
+func parseTOTSection(i *astibyte.Iterator) (d *TOTData, err error) {
+	// Create data
 	d = &TOTData{}
 
 	// UTC time
-	d.UTCTime = parseDVBTime(i, offset)
+	if d.UTCTime, err = parseDVBTime(i); err != nil {
+		err = errors.Wrap(err, "astits: parsing DVB time failed")
+		return
+	}
 
 	// Descriptors
-	d.Descriptors = parseDescriptors(i, offset)
+	if d.Descriptors, err = parseDescriptors(i); err != nil {
+		err = errors.Wrap(err, "astits: parsing descriptors failed")
+		return
+	}
 	return
 }

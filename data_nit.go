@@ -1,5 +1,10 @@
 package astits
 
+import (
+	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/pkg/errors"
+)
+
 // NITData represents a NIT data
 // Page: 29 | Chapter: 5.2.1 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
 type NITData struct {
@@ -16,31 +21,55 @@ type NITDataTransportStream struct {
 }
 
 // parseNITSection parses a NIT section
-func parseNITSection(i []byte, offset *int, tableIDExtension uint16) (d *NITData) {
-	// Init
+func parseNITSection(i *astibyte.Iterator, tableIDExtension uint16) (d *NITData, err error) {
+	// Create data
 	d = &NITData{NetworkID: tableIDExtension}
 
 	// Network descriptors
-	d.NetworkDescriptors = parseDescriptors(i, offset)
+	if d.NetworkDescriptors, err = parseDescriptors(i); err != nil {
+		err = errors.Wrap(err, "astits: parsing descriptors failed")
+		return
+	}
+
+	// Get next bytes
+	var bs []byte
+	if bs, err = i.NextBytes(2); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
 
 	// Transport stream loop length
-	var transportStreamLoopLength = int(uint16(i[*offset]&0xf)<<8 | uint16(i[*offset+1]))
-	*offset += 2
+	transportStreamLoopLength := int(uint16(bs[0]&0xf)<<8 | uint16(bs[1]))
 
 	// Transport stream loop
-	transportStreamLoopLength += *offset
-	for *offset < transportStreamLoopLength {
+	offsetEnd := i.Offset() + transportStreamLoopLength
+	for i.Offset() < offsetEnd {
+		// Create transport stream
+		ts := &NITDataTransportStream{}
+
+		// Get next bytes
+		if bs, err = i.NextBytes(2); err != nil {
+			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			return
+		}
+
 		// Transport stream ID
-		var ts = &NITDataTransportStream{}
-		ts.TransportStreamID = uint16(i[*offset])<<8 | uint16(i[*offset+1])
-		*offset += 2
+		ts.TransportStreamID = uint16(bs[0])<<8 | uint16(bs[1])
+
+		// Get next bytes
+		if bs, err = i.NextBytes(2); err != nil {
+			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			return
+		}
 
 		// Original network ID
-		ts.OriginalNetworkID = uint16(i[*offset])<<8 | uint16(i[*offset+1])
-		*offset += 2
+		ts.OriginalNetworkID = uint16(bs[0])<<8 | uint16(bs[1])
 
 		// Transport descriptors
-		ts.TransportDescriptors = parseDescriptors(i, offset)
+		if ts.TransportDescriptors, err = parseDescriptors(i); err != nil {
+			err = errors.Wrap(err, "astits: parsing descriptors failed")
+			return
+		}
 
 		// Append transport stream
 		d.TransportStreams = append(d.TransportStreams, ts)

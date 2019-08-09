@@ -1,5 +1,10 @@
 package astits
 
+import (
+	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/pkg/errors"
+)
+
 // PATData represents a PAT data
 // https://en.wikipedia.org/wiki/Program-specific_information
 type PATData struct {
@@ -14,17 +19,24 @@ type PATProgram struct {
 }
 
 // parsePATSection parses a PAT section
-func parsePATSection(i []byte, offset *int, offsetSectionsEnd int, tableIDExtension uint16) (d *PATData) {
-	// Init
+func parsePATSection(i *astibyte.Iterator, offsetSectionsEnd int, tableIDExtension uint16) (d *PATData, err error) {
+	// Create data
 	d = &PATData{TransportStreamID: tableIDExtension}
 
 	// Loop until end of section data is reached
-	for *offset < offsetSectionsEnd {
+	for i.Offset() < offsetSectionsEnd {
+		// Get next bytes
+		var bs []byte
+		if bs, err = i.NextBytes(4); err != nil {
+			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			return
+		}
+
+		// Append program
 		d.Programs = append(d.Programs, &PATProgram{
-			ProgramMapID:  uint16(i[*offset+2]&0x1f)<<8 | uint16(i[*offset+3]),
-			ProgramNumber: uint16(i[*offset])<<8 | uint16(i[*offset+1]),
+			ProgramMapID:  uint16(bs[2]&0x1f)<<8 | uint16(bs[3]),
+			ProgramNumber: uint16(bs[0])<<8 | uint16(bs[1]),
 		})
-		*offset += 4
 	}
 	return
 }

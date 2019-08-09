@@ -5,6 +5,7 @@ import (
 
 	"github.com/asticode/go-astitools/binary"
 	"github.com/stretchr/testify/assert"
+	"github.com/asticode/go-astitools/byte"
 )
 
 func TestHasPESOptionalHeader(t *testing.T) {
@@ -86,7 +87,9 @@ func dtsBytes() []byte {
 }
 
 func TestParsePTSOrDTS(t *testing.T) {
-	assert.Equal(t, parsePTSOrDTS(ptsBytes()), ptsClockReference)
+	v, err := parsePTSOrDTS(astibyte.NewIterator(ptsBytes()))
+	assert.Equal(t, v, ptsClockReference)
+	assert.NoError(t, err)
 }
 
 func escrBytes() []byte {
@@ -104,7 +107,9 @@ func escrBytes() []byte {
 }
 
 func TestParseESCR(t *testing.T) {
-	assert.Equal(t, parseESCR(escrBytes()), clockReference)
+	v, err := parseESCR(astibyte.NewIterator(escrBytes()))
+	assert.Equal(t, v, clockReference)
+	assert.NoError(t, err)
 }
 
 var pesWithoutHeader = &PESData{
@@ -215,12 +220,12 @@ func pesWithHeaderBytes() []byte {
 
 func TestParsePESSection(t *testing.T) {
 	// No optional header and specific packet length
-	d, err := parsePESData(pesWithoutHeaderBytes())
+	d, err := parsePESData(astibyte.NewIterator(pesWithoutHeaderBytes()))
 	assert.NoError(t, err)
 	assert.Equal(t, d, pesWithoutHeader)
 
 	// Optional header and no specific header length
-	d, err = parsePESData(pesWithHeaderBytes())
+	d, err = parsePESData(astibyte.NewIterator(pesWithHeaderBytes()))
 	assert.NoError(t, err)
 	assert.Equal(t, d, pesWithHeader)
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/asticode/go-astitools/binary"
 	"github.com/stretchr/testify/assert"
+	"github.com/asticode/go-astitools/byte"
 )
 
 var pmt = &PMTData{
@@ -33,8 +34,8 @@ func pmtBytes() []byte {
 }
 
 func TestParsePMTSection(t *testing.T) {
-	var offset int
 	var b = pmtBytes()
-	d := parsePMTSection(b, &offset, len(b), uint16(1))
+	d, err := parsePMTSection(astibyte.NewIterator(b), len(b), uint16(1))
 	assert.Equal(t, d, pmt)
+	assert.NoError(t, err)
 }

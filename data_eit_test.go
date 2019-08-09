@@ -5,6 +5,7 @@ import (
 
 	"github.com/asticode/go-astitools/binary"
 	"github.com/stretchr/testify/assert"
+	"github.com/asticode/go-astitools/byte"
 )
 
 var eit = &EITData{
@@ -39,8 +40,8 @@ func eitBytes() []byte {
 }
 
 func TestParseEITSection(t *testing.T) {
-	var offset int
 	var b = eitBytes()
-	d := parseEITSection(b, &offset, len(b), uint16(1))
+	d, err := parseEITSection(astibyte.NewIterator(b), len(b), uint16(1))
 	assert.Equal(t, d, eit)
+	assert.NoError(t, err)
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 
+	astibyte "github.com/asticode/go-astitools/byte"
 	"github.com/pkg/errors"
 )
 
@@ -103,7 +104,7 @@ func (pb *packetBuffer) next() (p *Packet, err error) {
 	}
 
 	// Parse packet
-	if p, err = parsePacket(b); err != nil {
+	if p, err = parsePacket(astibyte.NewIterator(b)); err != nil {
 		err = errors.Wrap(err, "astits: building packet failed")
 		return
 	}

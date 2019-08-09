@@ -3,7 +3,8 @@ package astits
 import (
 	"testing"
 
-	"github.com/asticode/go-astitools/binary"
+	astibinary "github.com/asticode/go-astitools/binary"
+	astibyte "github.com/asticode/go-astitools/byte"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -164,11 +165,11 @@ func TestParsePSIData(t *testing.T) {
 	w.Write("000000001110") // TOT section length
 	w.Write(totBytes())     // TOT data
 	w.Write(uint32(32))     // TOT CRC32
-	_, err := parsePSIData(w.Bytes())
+	_, err := parsePSIData(astibyte.NewIterator(w.Bytes()))
 	assert.EqualError(t, err, "astits: parsing PSI table failed: astits: Table CRC32 20 != computed CRC32 6969b13")
 
 	// Valid
-	d, err := parsePSIData(psiBytes())
+	d, err := parsePSIData(astibyte.NewIterator(psiBytes()))
 	assert.NoError(t, err)
 	assert.Equal(t, d, psi)
 }
@@ -197,21 +198,21 @@ func TestParsePSISectionHeader(t *testing.T) {
 	w.Write(uint8(254)) // Table ID
 	w.Write("1")        // Syntax section indicator
 	w.Write("0000000")  // Finish the byte
-	var offset int
-	d, _, _, _, _ := parsePSISectionHeader(w.Bytes(), &offset)
+	d, _, _, _, _, err := parsePSISectionHeader(astibyte.NewIterator(w.Bytes()))
 	assert.Equal(t, d, &PSISectionHeader{
 		TableID:   254,
 		TableType: PSITableTypeUnknown,
 	})
+	assert.NoError(t, err)
 
 	// Valid table type
-	offset = 0
-	d, offsetStart, offsetSectionsStart, offsetSectionsEnd, offsetEnd := parsePSISectionHeader(psiSectionHeaderBytes(), &offset)
+	d, offsetStart, offsetSectionsStart, offsetSectionsEnd, offsetEnd, err := parsePSISectionHeader(astibyte.NewIterator(psiSectionHeaderBytes()))
 	assert.Equal(t, d, psiSectionHeader)
 	assert.Equal(t, 0, offsetStart)
 	assert.Equal(t, 3, offsetSectionsStart)
 	assert.Equal(t, 2729, offsetSectionsEnd)
 	assert.Equal(t, 2733, offsetEnd)
+	assert.NoError(t, err)
 }
 
 func TestPSITableType(t *testing.T) {
@@ -255,8 +256,9 @@ func psiSectionSyntaxHeaderBytes() []byte {
 }
 
 func TestParsePSISectionSyntaxHeader(t *testing.T) {
-	var offset int
-	assert.Equal(t, psiSectionSyntaxHeader, parsePSISectionSyntaxHeader(psiSectionSyntaxHeaderBytes(), &offset))
+	h, err := parsePSISectionSyntaxHeader(astibyte.NewIterator(psiSectionSyntaxHeaderBytes()))
+	assert.Equal(t, psiSectionSyntaxHeader, h)
+	assert.NoError(t, err)
 }
 
 func TestPSIToData(t *testing.T) {

@@ -1,5 +1,10 @@
 package astits
 
+import (
+	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/pkg/errors"
+)
+
 // Running statuses
 const (
 	RunningStatusNotRunning          = 1
@@ -29,39 +34,70 @@ type SDTDataService struct {
 }
 
 // parseSDTSection parses an SDT section
-func parseSDTSection(i []byte, offset *int, offsetSectionsEnd int, tableIDExtension uint16) (d *SDTData) {
-	// Init
+func parseSDTSection(i *astibyte.Iterator, offsetSectionsEnd int, tableIDExtension uint16) (d *SDTData, err error) {
+	// Create data
 	d = &SDTData{TransportStreamID: tableIDExtension}
 
+	// Get next bytes
+	var bs []byte
+	if bs, err = i.NextBytes(2); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
+
 	// Original network ID
-	d.OriginalNetworkID = uint16(i[*offset])<<8 | uint16(i[*offset+1])
-	*offset += 2
+	d.OriginalNetworkID = uint16(bs[0])<<8 | uint16(bs[1])
 
 	// Reserved for future use
-	*offset += 1
+	i.FastForward(1)
 
 	// Loop until end of section data is reached
-	for *offset < offsetSectionsEnd {
+	for i.Offset() < offsetSectionsEnd {
+		// Create service
+		s := &SDTDataService{}
+
+		// Get next bytes
+		if bs, err = i.NextBytes(2); err != nil {
+			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			return
+		}
+
 		// Service ID
-		var s = &SDTDataService{}
-		s.ServiceID = uint16(i[*offset])<<8 | uint16(i[*offset+1])
-		*offset += 2
+		s.ServiceID = uint16(bs[0])<<8 | uint16(bs[1])
+
+		// Get next byte
+		var b byte
+		if b, err = i.NextByte(); err != nil {
+			err = errors.Wrap(err, "astits: fetching next byte failed")
+			return
+		}
 
 		// EIT schedule flag
-		s.HasEITSchedule = uint8(i[*offset]&0x2) > 0
+		s.HasEITSchedule = uint8(b&0x2) > 0
 
 		// EIT present/following flag
-		s.HasEITPresentFollowing = uint8(i[*offset]&0x1) > 0
-		*offset += 1
+		s.HasEITPresentFollowing = uint8(b&0x1) > 0
+
+		// Get next byte
+		if b, err = i.NextByte(); err != nil {
+			err = errors.Wrap(err, "astits: fetching next byte failed")
+			return
+		}
 
 		// Running status
-		s.RunningStatus = uint8(i[*offset]) >> 5
+		s.RunningStatus = uint8(b) >> 5
 
 		// Free CA mode
-		s.HasFreeCSAMode = uint8(i[*offset]&0x10) > 0
+		s.HasFreeCSAMode = uint8(b&0x10) > 0
+
+		// We need to rewind since the current byte is used by the descriptor as well
+		i.FastForward(-1)
 
 		// Descriptors
-		s.Descriptors = parseDescriptors(i, offset)
+		if s.Descriptors, err = parseDescriptors(i); err != nil {
+			err = errors.Wrap(err, "astits: parsing descriptors failed")
+			return
+		}
 
 		// Append service
 		d.Services = append(d.Services, s)

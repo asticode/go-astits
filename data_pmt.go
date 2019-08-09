@@ -1,5 +1,10 @@
 package astits
 
+import (
+	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/pkg/errors"
+)
+
 // Stream types
 const (
 	StreamTypeLowerBitrateVideo          = 27 // ITU-T Rec. H.264 and ISO/IEC 14496-10
@@ -25,30 +30,55 @@ type PMTElementaryStream struct {
 }
 
 // parsePMTSection parses a PMT section
-func parsePMTSection(i []byte, offset *int, offsetSectionsEnd int, tableIDExtension uint16) (d *PMTData) {
-	// Init
+func parsePMTSection(i *astibyte.Iterator, offsetSectionsEnd int, tableIDExtension uint16) (d *PMTData, err error) {
+	// Create data
 	d = &PMTData{ProgramNumber: tableIDExtension}
 
+	// Get next bytes
+	var bs []byte
+	if bs, err = i.NextBytes(2); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
+
 	// PCR PID
-	d.PCRPID = uint16(i[*offset]&0x1f)<<8 | uint16(i[*offset+1])
-	*offset += 2
+	d.PCRPID = uint16(bs[0]&0x1f)<<8 | uint16(bs[1])
 
 	// Program descriptors
-	d.ProgramDescriptors = parseDescriptors(i, offset)
+	if d.ProgramDescriptors, err = parseDescriptors(i); err != nil {
+		err = errors.Wrap(err, "astits: parsing descriptors failed")
+		return
+	}
 
 	// Loop until end of section data is reached
-	for *offset < offsetSectionsEnd {
+	for i.Offset() < offsetSectionsEnd {
+		// Create stream
+		e := &PMTElementaryStream{}
+
+		// Get next byte
+		var b byte
+		if b, err = i.NextByte(); err != nil {
+			err = errors.Wrap(err, "astits: fetching next byte failed")
+			return
+		}
+
 		// Stream type
-		var e = &PMTElementaryStream{}
-		e.StreamType = uint8(i[*offset])
-		*offset += 1
+		e.StreamType = uint8(b)
+
+		// Get next bytes
+		if bs, err = i.NextBytes(2); err != nil {
+			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			return
+		}
 
 		// Elementary PID
-		e.ElementaryPID = uint16(i[*offset]&0x1f)<<8 | uint16(i[*offset+1])
-		*offset += 2
+		e.ElementaryPID = uint16(bs[0]&0x1f)<<8 | uint16(bs[1])
 
 		// Elementary descriptors
-		e.ElementaryStreamDescriptors = parseDescriptors(i, offset)
+		if e.ElementaryStreamDescriptors, err = parseDescriptors(i); err != nil {
+			err = errors.Wrap(err, "astits: parsing descriptors failed")
+			return
+		}
 
 		// Add elementary stream
 		d.ElementaryStreams = append(d.ElementaryStreams, e)

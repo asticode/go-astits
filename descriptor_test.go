@@ -3,7 +3,8 @@ package astits
 import (
 	"testing"
 
-	"github.com/asticode/go-astitools/binary"
+	astibinary "github.com/asticode/go-astitools/binary"
+	astibyte "github.com/asticode/go-astitools/byte"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -214,8 +215,8 @@ func TestParseDescriptor(t *testing.T) {
 	w.Write([]byte("test")) // Additional identification info
 
 	// Assert
-	var offset int
-	ds := parseDescriptors(w.Bytes(), &offset)
+	ds, err := parseDescriptors(astibyte.NewIterator(w.Bytes()))
+	assert.NoError(t, err)
 	assert.Equal(t, *ds[0].AC3, DescriptorAC3{
 		AdditionalInfo:   []byte("info"),
 		ASVC:             uint8(4),

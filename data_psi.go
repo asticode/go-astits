@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/asticode/go-astilog"
+	astibyte "github.com/asticode/go-astitools/byte"
 	"github.com/pkg/errors"
 )
 
@@ -74,23 +75,28 @@ type PSISectionSyntaxData struct {
 }
 
 // parsePSIData parses a PSI data
-func parsePSIData(i []byte) (d *PSIData, err error) {
+func parsePSIData(i *astibyte.Iterator) (d *PSIData, err error) {
 	// Init data
 	d = &PSIData{}
-	var offset int
+
+	// Get next byte
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
 
 	// Pointer field
-	d.PointerField = int(i[offset])
-	offset += 1
+	d.PointerField = int(b)
 
 	// Pointer filler bytes
-	offset += d.PointerField
+	i.FastForward(d.PointerField)
 
 	// Parse sections
 	var s *PSISection
 	var stop bool
-	for offset < len(i) && !stop {
-		if s, stop, err = parsePSISection(i, &offset); err != nil {
+	for i.HasBytesLeft() && !stop {
+		if s, stop, err = parsePSISection(i); err != nil {
 			err = errors.Wrap(err, "astits: parsing PSI table failed")
 			return
 		}
@@ -100,13 +106,16 @@ func parsePSIData(i []byte) (d *PSIData, err error) {
 }
 
 // parsePSISection parses a PSI section
-func parsePSISection(i []byte, offset *int) (s *PSISection, stop bool, err error) {
+func parsePSISection(i *astibyte.Iterator) (s *PSISection, stop bool, err error) {
 	// Init section
 	s = &PSISection{}
 
 	// Parse header
 	var offsetStart, offsetSectionsEnd, offsetEnd int
-	s.Header, offsetStart, _, offsetSectionsEnd, offsetEnd = parsePSISectionHeader(i, offset)
+	if s.Header, offsetStart, _, offsetSectionsEnd, offsetEnd, err = parsePSISectionHeader(i); err != nil {
+		err = errors.Wrap(err, "astits: parsing PSI section header failed")
+		return
+	}
 
 	// Check whether we need to stop the parsing
 	if shouldStopPSIParsing(s.Header.TableType) {
@@ -117,35 +126,66 @@ func parsePSISection(i []byte, offset *int) (s *PSISection, stop bool, err error
 	// Check whether there's a syntax section
 	if s.Header.SectionLength > 0 {
 		// Parse syntax
-		s.Syntax = parsePSISectionSyntax(i, offset, s.Header, offsetSectionsEnd)
+		if s.Syntax, err = parsePSISectionSyntax(i, s.Header, offsetSectionsEnd); err != nil {
+			err = errors.Wrap(err, "astits: parsing PSI section syntax failed")
+			return
+		}
 
 		// Process CRC32
 		if hasCRC32(s.Header.TableType) {
+			// Seek to the end of the sections
+			i.Seek(offsetSectionsEnd)
+
 			// Parse CRC32
-			s.CRC32 = parseCRC32(i[offsetSectionsEnd:offsetEnd])
-			*offset += 4
+			if s.CRC32, err = parseCRC32(i); err != nil {
+				err = errors.Wrap(err, "astits: parsing CRC32 failed")
+				return
+			}
+
+			// Get CRC32 data
+			i.Seek(offsetStart)
+			var crc32Data []byte
+			if crc32Data, err = i.NextBytes(offsetSectionsEnd - offsetStart); err != nil {
+				err = errors.Wrap(err, "astits: fetching next bytes failed")
+				return
+			}
+
+			// Compute CRC32
+			var crc32 uint32
+			if crc32, err = computeCRC32(crc32Data); err != nil {
+				err = errors.Wrap(err, "astits: computing CRC32 failed")
+				return
+			}
 
 			// Check CRC32
-			var c = computeCRC32(i[offsetStart:offsetSectionsEnd])
-			if c != s.CRC32 {
-				err = fmt.Errorf("astits: Table CRC32 %x != computed CRC32 %x", s.CRC32, c)
+			if crc32 != s.CRC32 {
+				err = fmt.Errorf("astits: Table CRC32 %x != computed CRC32 %x", s.CRC32, crc32)
 				return
 			}
 		}
 	}
+
+	// Seek to the end of the section
+	i.Seek(offsetEnd)
 	return
 }
 
 // parseCRC32 parses a CRC32
-func parseCRC32(i []byte) uint32 {
-	return uint32(i[len(i)-4])<<24 | uint32(i[len(i)-3])<<16 | uint32(i[len(i)-2])<<8 | uint32(i[len(i)-1])
+func parseCRC32(i *astibyte.Iterator) (c uint32, err error) {
+	var bs []byte
+	if bs, err = i.NextBytes(4); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
+	c = uint32(bs[0])<<24 | uint32(bs[1])<<16 | uint32(bs[2])<<8 | uint32(bs[3])
+	return
 }
 
 // computeCRC32 computes a CRC32
 // https://stackoverflow.com/questions/35034042/how-to-calculate-crc32-in-psi-si-packet
-func computeCRC32(i []byte) (o uint32) {
+func computeCRC32(bs []byte) (o uint32, err error) {
 	o = uint32(0xffffffff)
-	for _, b := range i {
+	for _, b := range bs {
 		for i := 0; i < 8; i++ {
 			if (o >= uint32(0x80000000)) != (b >= uint8(0x80)) {
 				o = (o << 1) ^ 0x04C11DB7
@@ -164,14 +204,20 @@ func shouldStopPSIParsing(tableType string) bool {
 }
 
 // parsePSISectionHeader parses a PSI section header
-func parsePSISectionHeader(i []byte, offset *int) (h *PSISectionHeader, offsetStart, offsetSectionsStart, offsetSectionsEnd, offsetEnd int) {
+func parsePSISectionHeader(i *astibyte.Iterator) (h *PSISectionHeader, offsetStart, offsetSectionsStart, offsetSectionsEnd, offsetEnd int, err error) {
 	// Init
 	h = &PSISectionHeader{}
-	offsetStart = *offset
+	offsetStart = i.Offset()
+
+	// Get next byte
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
 
 	// Table ID
-	h.TableID = int(i[*offset])
-	*offset += 1
+	h.TableID = int(b)
 
 	// Table type
 	h.TableType = psiTableType(h.TableID)
@@ -181,18 +227,24 @@ func parsePSISectionHeader(i []byte, offset *int) (h *PSISectionHeader, offsetSt
 		return
 	}
 
+	// Get next bytes
+	var bs []byte
+	if bs, err = i.NextBytes(2); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
+
 	// Section syntax indicator
-	h.SectionSyntaxIndicator = i[*offset]&0x80 > 0
+	h.SectionSyntaxIndicator = bs[0]&0x80 > 0
 
 	// Private bit
-	h.PrivateBit = i[*offset]&0x40 > 0
+	h.PrivateBit = bs[0]&0x40 > 0
 
 	// Section length
-	h.SectionLength = uint16(i[*offset]&0xf)<<8 | uint16(i[*offset+1])
-	*offset += 2
+	h.SectionLength = uint16(bs[0]&0xf)<<8 | uint16(bs[1])
 
 	// Offsets
-	offsetSectionsStart = *offset
+	offsetSectionsStart = i.Offset()
 	offsetEnd = offsetSectionsStart + int(h.SectionLength)
 	offsetSectionsEnd = offsetEnd
 	if hasCRC32(h.TableType) {
@@ -248,17 +300,23 @@ func psiTableType(tableID int) string {
 }
 
 // parsePSISectionSyntax parses a PSI section syntax
-func parsePSISectionSyntax(i []byte, offset *int, h *PSISectionHeader, offsetSectionsEnd int) (s *PSISectionSyntax) {
+func parsePSISectionSyntax(i *astibyte.Iterator, h *PSISectionHeader, offsetSectionsEnd int) (s *PSISectionSyntax, err error) {
 	// Init
 	s = &PSISectionSyntax{}
 
 	// Header
 	if hasPSISyntaxHeader(h.TableType) {
-		s.Header = parsePSISectionSyntaxHeader(i, offset)
+		if s.Header, err = parsePSISectionSyntaxHeader(i); err != nil {
+			err = errors.Wrap(err, "astits: parsing PSI section syntax header failed")
+			return
+		}
 	}
 
 	// Parse data
-	s.Data = parsePSISectionSyntaxData(i, offset, h, s.Header, offsetSectionsEnd)
+	if s.Data, err = parsePSISectionSyntaxData(i, h, s.Header, offsetSectionsEnd); err != nil {
+		err = errors.Wrap(err, "astits: parsing PSI section syntax data failed")
+		return
+	}
 	return
 }
 
@@ -272,33 +330,55 @@ func hasPSISyntaxHeader(tableType string) bool {
 }
 
 // parsePSISectionSyntaxHeader parses a PSI section syntax header
-func parsePSISectionSyntaxHeader(i []byte, offset *int) (h *PSISectionSyntaxHeader) {
+func parsePSISectionSyntaxHeader(i *astibyte.Iterator) (h *PSISectionSyntaxHeader, err error) {
 	// Init
 	h = &PSISectionSyntaxHeader{}
 
+	// Get next 2 bytes
+	var bs []byte
+	if bs, err = i.NextBytes(2); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
+
 	// Table ID extension
-	h.TableIDExtension = uint16(i[*offset])<<8 | uint16(i[*offset+1])
-	*offset += 2
+	h.TableIDExtension = uint16(bs[0])<<8 | uint16(bs[1])
+
+	// Get next byte
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
 
 	// Version number
-	h.VersionNumber = uint8(i[*offset]&0x3f) >> 1
+	h.VersionNumber = uint8(b&0x3f) >> 1
 
 	// Current/Next indicator
-	h.CurrentNextIndicator = i[*offset]&0x1 > 0
-	*offset += 1
+	h.CurrentNextIndicator = b&0x1 > 0
+
+	// Get next byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
 
 	// Section number
-	h.SectionNumber = uint8(i[*offset])
-	*offset += 1
+	h.SectionNumber = uint8(b)
+
+	// Get next byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
 
 	// Last section number
-	h.LastSectionNumber = uint8(i[*offset])
-	*offset += 1
+	h.LastSectionNumber = uint8(b)
 	return
 }
 
 // parsePSISectionSyntaxData parses a PSI section data
-func parsePSISectionSyntaxData(i []byte, offset *int, h *PSISectionHeader, sh *PSISectionSyntaxHeader, offsetSectionsEnd int) (d *PSISectionSyntaxData) {
+func parsePSISectionSyntaxData(i *astibyte.Iterator, h *PSISectionHeader, sh *PSISectionSyntaxHeader, offsetSectionsEnd int) (d *PSISectionSyntaxData, err error) {
 	// Init
 	d = &PSISectionSyntaxData{}
 
@@ -309,23 +389,41 @@ func parsePSISectionSyntaxData(i []byte, offset *int, h *PSISectionHeader, sh *P
 	case PSITableTypeDIT:
 		// TODO Parse DIT
 	case PSITableTypeEIT:
-		d.EIT = parseEITSection(i, offset, offsetSectionsEnd, sh.TableIDExtension)
+		if d.EIT, err = parseEITSection(i, offsetSectionsEnd, sh.TableIDExtension); err != nil {
+			err = errors.Wrap(err, "astits: parsing EIT section failed")
+			return
+		}
 	case PSITableTypeNIT:
-		d.NIT = parseNITSection(i, offset, sh.TableIDExtension)
+		if d.NIT, err = parseNITSection(i, sh.TableIDExtension); err != nil {
+			err = errors.Wrap(err, "astits: parsing NIT section failed")
+			return
+		}
 	case PSITableTypePAT:
-		d.PAT = parsePATSection(i, offset, offsetSectionsEnd, sh.TableIDExtension)
+		if d.PAT, err = parsePATSection(i, offsetSectionsEnd, sh.TableIDExtension); err != nil {
+			err = errors.Wrap(err, "astits: parsing PAT section failed")
+			return
+		}
 	case PSITableTypePMT:
-		d.PMT = parsePMTSection(i, offset, offsetSectionsEnd, sh.TableIDExtension)
+		if d.PMT, err = parsePMTSection(i, offsetSectionsEnd, sh.TableIDExtension); err != nil {
+			err = errors.Wrap(err, "astits: parsing PMT section failed")
+			return
+		}
 	case PSITableTypeRST:
 		// TODO Parse RST
 	case PSITableTypeSDT:
-		d.SDT = parseSDTSection(i, offset, offsetSectionsEnd, sh.TableIDExtension)
+		if d.SDT, err = parseSDTSection(i, offsetSectionsEnd, sh.TableIDExtension); err != nil {
+			err = errors.Wrap(err, "astits: parsing PMT section failed")
+			return
+		}
 	case PSITableTypeSIT:
 		// TODO Parse SIT
 	case PSITableTypeST:
 		// TODO Parse ST
 	case PSITableTypeTOT:
-		d.TOT = parseTOTSection(i, offset)
+		if d.TOT, err = parseTOTSection(i); err != nil {
+			err = errors.Wrap(err, "astits: parsing TOT section failed")
+			return
+		}
 	case PSITableTypeTDT:
 		// TODO Parse TDT
 	}

@@ -3,6 +3,9 @@ package astits
 import (
 	"fmt"
 	"time"
+
+	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/pkg/errors"
 )
 
 // parseDVBTime parses a DVB time
@@ -11,9 +14,16 @@ import (
 // field are set to "1".
 // I apologize for the computation which is really messy but details are given in the documentation
 // Page: 160 | Annex C | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
-func parseDVBTime(i []byte, offset *int) (t time.Time) {
+func parseDVBTime(i *astibyte.Iterator) (t time.Time, err error) {
+	// Get next 2 bytes
+	var bs []byte
+	if bs, err = i.NextBytes(2); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
+
 	// Date
-	var mjd = uint16(i[*offset])<<8 | uint16(i[*offset+1])
+	var mjd = uint16(bs[0])<<8 | uint16(bs[1])
 	var yt = int((float64(mjd) - 15078.2) / 365.25)
 	var mt = int((float64(mjd) - 14956.1 - float64(int(float64(yt)*365.25))) / 30.6001)
 	var d = int(float64(mjd) - 14956 - float64(int(float64(yt)*365.25)) - float64(int(float64(mt)*30.6001)))
@@ -24,26 +34,38 @@ func parseDVBTime(i []byte, offset *int) (t time.Time) {
 	var y = yt + k
 	var m = mt - 1 - k*12
 	t, _ = time.Parse("06-01-02", fmt.Sprintf("%d-%d-%d", y, m, d))
-	*offset += 2
 
 	// Time
-	t = t.Add(parseDVBDurationSeconds(i, offset))
+	var s time.Duration
+	if s, err = parseDVBDurationSeconds(i); err != nil {
+		err = errors.Wrap(err, "astits: parsing DVB duration seconds failed")
+		return
+	}
+	t = t.Add(s)
 	return
 }
 
 // parseDVBDurationMinutes parses a minutes duration
 // 16 bit field containing the duration of the event in hours, minutes. format: 4 digits, 4 - bit BCD = 18 bit
-func parseDVBDurationMinutes(i []byte, offset *int) (d time.Duration) {
-	d = parseDVBDurationByte(i[*offset])*time.Hour + parseDVBDurationByte(i[*offset+1])*time.Minute
-	*offset += 2
+func parseDVBDurationMinutes(i *astibyte.Iterator) (d time.Duration, err error) {
+	var bs []byte
+	if bs, err = i.NextBytes(2); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
+	d = parseDVBDurationByte(bs[0])*time.Hour + parseDVBDurationByte(bs[1])*time.Minute
 	return
 }
 
 // parseDVBDurationSeconds parses a seconds duration
 // 24 bit field containing the duration of the event in hours, minutes, seconds. format: 6 digits, 4 - bit BCD = 24 bit
-func parseDVBDurationSeconds(i []byte, offset *int) (d time.Duration) {
-	d = parseDVBDurationByte(i[*offset])*time.Hour + parseDVBDurationByte(i[*offset+1])*time.Minute + parseDVBDurationByte(i[*offset+2])*time.Second
-	*offset += 3
+func parseDVBDurationSeconds(i *astibyte.Iterator) (d time.Duration, err error) {
+	var bs []byte
+	if bs, err = i.NextBytes(3); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
+	d = parseDVBDurationByte(bs[0])*time.Hour + parseDVBDurationByte(bs[1])*time.Minute + parseDVBDurationByte(bs[2])*time.Second
 	return
 }
 

@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/asticode/go-astitools/binary"
+	astibinary "github.com/asticode/go-astitools/binary"
+	astibyte "github.com/asticode/go-astitools/byte"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,7 +19,6 @@ func packet(h PacketHeader, a PacketAdaptationField, i []byte) ([]byte, *Packet)
 	w.Write(payload)
 	return w.Bytes(), &Packet{
 		AdaptationField: packetAdaptationField,
-		Bytes:           w.Bytes(),
 		Header:          packetHeader,
 		Payload:         payload,
 	}
@@ -28,27 +28,27 @@ func TestParsePacket(t *testing.T) {
 	// Packet not starting with a sync
 	w := astibinary.New()
 	w.Write(uint16(1)) // Invalid sync byte
-	_, err := parsePacket(w.Bytes())
+	_, err := parsePacket(astibyte.NewIterator(w.Bytes()))
 	assert.EqualError(t, err, ErrPacketMustStartWithASyncByte.Error())
 
 	// Valid
 	b, ep := packet(*packetHeader, *packetAdaptationField, []byte("payload"))
-	p, err := parsePacket(b)
+	p, err := parsePacket(astibyte.NewIterator(b))
 	assert.NoError(t, err)
 	assert.Equal(t, p, ep)
 }
 
 func TestPayloadOffset(t *testing.T) {
-	assert.Equal(t, 3, payloadOffset(&PacketHeader{}, nil))
-	assert.Equal(t, 6, payloadOffset(&PacketHeader{HasAdaptationField: true}, &PacketAdaptationField{Length: 2}))
+	assert.Equal(t, 3, payloadOffset(0, &PacketHeader{}, nil))
+	assert.Equal(t, 7, payloadOffset(1, &PacketHeader{HasAdaptationField: true}, &PacketAdaptationField{Length: 2}))
 }
 
 var packetHeader = &PacketHeader{
-	ContinuityCounter:         10,
-	HasAdaptationField:        true,
-	HasPayload:                true,
-	PayloadUnitStartIndicator: true,
-	PID: 5461,
+	ContinuityCounter:          10,
+	HasAdaptationField:         true,
+	HasPayload:                 true,
+	PayloadUnitStartIndicator:  true,
+	PID:                        5461,
 	TransportErrorIndicator:    true,
 	TransportPriority:          true,
 	TransportScramblingControl: ScramblingControlScrambledWithEvenKey,
@@ -67,7 +67,9 @@ func packetHeaderBytes(h PacketHeader) []byte {
 }
 
 func TestParsePacketHeader(t *testing.T) {
-	assert.Equal(t, packetHeader, parsePacketHeader(packetHeaderBytes(*packetHeader)))
+	v, err := parsePacketHeader(astibyte.NewIterator(packetHeaderBytes(*packetHeader)))
+	assert.Equal(t, packetHeader, v)
+	assert.NoError(t, err)
 }
 
 var packetAdaptationField = &PacketAdaptationField{
@@ -92,10 +94,10 @@ var packetAdaptationField = &PacketAdaptationField{
 	Length:                            36,
 	OPCR:                              pcr,
 	PCR:                               pcr,
-	RandomAccessIndicator:      true,
-	SpliceCountdown:            2,
-	TransportPrivateDataLength: 4,
-	TransportPrivateData:       []byte("test"),
+	RandomAccessIndicator:             true,
+	SpliceCountdown:                   2,
+	TransportPrivateDataLength:        4,
+	TransportPrivateData:              []byte("test"),
 }
 
 func packetAdaptationFieldBytes(a PacketAdaptationField) []byte {
@@ -129,7 +131,9 @@ func packetAdaptationFieldBytes(a PacketAdaptationField) []byte {
 }
 
 func TestParsePacketAdaptationField(t *testing.T) {
-	assert.Equal(t, packetAdaptationField, parsePacketAdaptationField(packetAdaptationFieldBytes(*packetAdaptationField)))
+	v, err := parsePacketAdaptationField(astibyte.NewIterator(packetAdaptationFieldBytes(*packetAdaptationField)))
+	assert.Equal(t, packetAdaptationField, v)
+	assert.NoError(t, err)
 }
 
 var pcr = &ClockReference{
@@ -146,5 +150,7 @@ func pcrBytes() []byte {
 }
 
 func TestParsePCR(t *testing.T) {
-	assert.Equal(t, pcr, parsePCR(pcrBytes()))
+	v, err := parsePCR(astibyte.NewIterator(pcrBytes()))
+	assert.Equal(t, pcr, v)
+	assert.NoError(t, err)
 }

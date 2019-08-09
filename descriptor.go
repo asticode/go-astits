@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/asticode/go-astilog"
+	"github.com/asticode/go-astitools/byte"
+	"github.com/pkg/errors"
 )
 
 // Audio types
@@ -130,33 +132,64 @@ type DescriptorAC3 struct {
 	MainID           uint8
 }
 
-func newDescriptorAC3(i []byte) (d *DescriptorAC3) {
-	var offset int
-	d = &DescriptorAC3{}
-	d.HasComponentType = uint8(i[offset]&0x80) > 0
-	d.HasBSID = uint8(i[offset]&0x40) > 0
-	d.HasMainID = uint8(i[offset]&0x20) > 0
-	d.HasASVC = uint8(i[offset]&0x10) > 0
-	offset += 1
+func newDescriptorAC3(i *astibyte.Iterator, offsetEnd int) (d *DescriptorAC3, err error) {
+	// Get next byte
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
+
+	// Create descriptor
+	d = &DescriptorAC3{
+		HasASVC:          uint8(b&0x10) > 0,
+		HasBSID:          uint8(b&0x40) > 0,
+		HasComponentType: uint8(b&0x80) > 0,
+		HasMainID:        uint8(b&0x20) > 0,
+	}
+
+	// Component type
 	if d.HasComponentType {
-		d.ComponentType = uint8(i[offset])
-		offset += 1
+		if b, err = i.NextByte(); err != nil {
+			err = errors.Wrap(err, "astits: fetching next byte failed")
+			return
+		}
+		d.ComponentType = uint8(b)
 	}
+
+	// BSID
 	if d.HasBSID {
-		d.BSID = uint8(i[offset])
-		offset += 1
+		if b, err = i.NextByte(); err != nil {
+			err = errors.Wrap(err, "astits: fetching next byte failed")
+			return
+		}
+		d.BSID = uint8(b)
 	}
+
+	// Main ID
 	if d.HasMainID {
-		d.MainID = uint8(i[offset])
-		offset += 1
+		if b, err = i.NextByte(); err != nil {
+			err = errors.Wrap(err, "astits: fetching next byte failed")
+			return
+		}
+		d.MainID = uint8(b)
 	}
+
+	// ASVC
 	if d.HasASVC {
-		d.ASVC = uint8(i[offset])
-		offset += 1
+		if b, err = i.NextByte(); err != nil {
+			err = errors.Wrap(err, "astits: fetching next byte failed")
+			return
+		}
+		d.ASVC = uint8(b)
 	}
-	for offset < len(i) {
-		d.AdditionalInfo = append(d.AdditionalInfo, i[offset])
-		offset += 1
+
+	// Additional info
+	if i.Offset() < offsetEnd {
+		if d.AdditionalInfo, err = i.NextBytes(offsetEnd - i.Offset()); err != nil {
+			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			return
+		}
 	}
 	return
 }
@@ -174,31 +207,52 @@ type DescriptorAVCVideo struct {
 	ProfileIDC           uint8
 }
 
-func newDescriptorAVCVideo(i []byte) (d *DescriptorAVCVideo) {
+func newDescriptorAVCVideo(i *astibyte.Iterator) (d *DescriptorAVCVideo, err error) {
 	// Init
 	d = &DescriptorAVCVideo{}
-	var offset int
+
+	// Get next byte
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
 
 	// Profile idc
-	d.ProfileIDC = uint8(i[offset])
-	offset += 1
+	d.ProfileIDC = uint8(b)
+
+	// Get next byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
 
 	// Flags
-	d.ConstraintSet0Flag = i[offset]&0x80 > 0
-	d.ConstraintSet1Flag = i[offset]&0x40 > 0
-	d.ConstraintSet2Flag = i[offset]&0x20 > 0
-	d.CompatibleFlags = i[offset] & 0x1f
-	offset += 1
+	d.ConstraintSet0Flag = b&0x80 > 0
+	d.ConstraintSet1Flag = b&0x40 > 0
+	d.ConstraintSet2Flag = b&0x20 > 0
+	d.CompatibleFlags = b & 0x1f
+
+	// Get next byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
 
 	// Level idc
-	d.LevelIDC = uint8(i[offset])
-	offset += 1
+	d.LevelIDC = uint8(b)
+
+	// Get next byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
 
 	// AVC still present
-	d.AVCStillPresent = i[offset]&0x80 > 0
+	d.AVCStillPresent = b&0x80 > 0
 
 	// AVC 24 hour picture flag
-	d.AVC24HourPictureFlag = i[offset]&0x40 > 0
+	d.AVC24HourPictureFlag = b&0x40 > 0
 	return
 }
 
@@ -213,34 +267,53 @@ type DescriptorComponent struct {
 	Text               []byte
 }
 
-func newDescriptorComponent(i []byte) (d *DescriptorComponent) {
+func newDescriptorComponent(i *astibyte.Iterator, offsetEnd int) (d *DescriptorComponent, err error) {
 	// Init
 	d = &DescriptorComponent{}
-	var offset int
+
+	// Get next byte
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
 
 	// Stream content ext
-	d.StreamContentExt = uint8(i[offset] >> 4)
+	d.StreamContentExt = uint8(b >> 4)
 
 	// Stream content
-	d.StreamContent = uint8(i[offset] & 0xf)
-	offset += 1
+	d.StreamContent = uint8(b & 0xf)
+
+	// Get next byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
 
 	// Component type
-	d.ComponentType = uint8(i[offset])
-	offset += 1
+	d.ComponentType = uint8(b)
+
+	// Get next byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
 
 	// Component tag
-	d.ComponentTag = uint8(i[offset])
-	offset += 1
+	d.ComponentTag = uint8(b)
 
 	// ISO639 language code
-	d.ISO639LanguageCode = i[offset : offset+3]
-	offset += 3
+	if d.ISO639LanguageCode, err = i.NextBytes(3); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
 
 	// Text
-	for offset < len(i) {
-		d.Text = append(d.Text, i[offset])
-		offset += 1
+	if i.Offset() < offsetEnd {
+		if d.Text, err = i.NextBytes(offsetEnd - i.Offset()); err != nil {
+			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			return
+		}
 	}
 	return
 }
@@ -259,19 +332,25 @@ type DescriptorContentItem struct {
 	UserByte            uint8
 }
 
-func newDescriptorContent(i []byte) (d *DescriptorContent) {
+func newDescriptorContent(i *astibyte.Iterator, offsetEnd int) (d *DescriptorContent, err error) {
 	// Init
 	d = &DescriptorContent{}
-	var offset int
 
 	// Add items
-	for offset < len(i) {
+	for i.Offset() < offsetEnd {
+		// Get next bytes
+		var bs []byte
+		if bs, err = i.NextBytes(2); err != nil {
+			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			return
+		}
+
+		// Append item
 		d.Items = append(d.Items, &DescriptorContentItem{
-			ContentNibbleLevel1: uint8(i[offset] >> 4),
-			ContentNibbleLevel2: uint8(i[offset] & 0xf),
-			UserByte:            uint8(i[offset+1]),
+			ContentNibbleLevel1: uint8(bs[0] >> 4),
+			ContentNibbleLevel2: uint8(bs[0] & 0xf),
+			UserByte:            uint8(bs[1]),
 		})
-		offset += 2
 	}
 	return
 }
@@ -281,8 +360,14 @@ type DescriptorDataStreamAlignment struct {
 	Type uint8
 }
 
-func newDescriptorDataStreamAlignment(i []byte) *DescriptorDataStreamAlignment {
-	return &DescriptorDataStreamAlignment{Type: uint8(i[0])}
+func newDescriptorDataStreamAlignment(i *astibyte.Iterator) (d *DescriptorDataStreamAlignment, err error) {
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
+	d = &DescriptorDataStreamAlignment{Type: uint8(b)}
+	return
 }
 
 // DescriptorEnhancedAC3 represents an enhanced AC3 descriptor
@@ -306,49 +391,102 @@ type DescriptorEnhancedAC3 struct {
 	SubStream3       uint8
 }
 
-func newDescriptorEnhancedAC3(i []byte) (d *DescriptorEnhancedAC3) {
-	var offset int
-	d = &DescriptorEnhancedAC3{}
-	d.HasComponentType = uint8(i[offset]&0x80) > 0
-	d.HasBSID = uint8(i[offset]&0x40) > 0
-	d.HasMainID = uint8(i[offset]&0x20) > 0
-	d.HasASVC = uint8(i[offset]&0x10) > 0
-	d.MixInfoExists = uint8(i[offset]&0x8) > 0
-	d.HasSubStream1 = uint8(i[offset]&0x4) > 0
-	d.HasSubStream2 = uint8(i[offset]&0x2) > 0
-	d.HasSubStream3 = uint8(i[offset]&0x1) > 0
-	offset += 1
+func newDescriptorEnhancedAC3(i *astibyte.Iterator, offsetEnd int) (d *DescriptorEnhancedAC3, err error) {
+	// Get next byte
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
+
+	// Create descriptor
+	d = &DescriptorEnhancedAC3{
+		HasASVC:          uint8(b&0x10) > 0,
+		HasBSID:          uint8(b&0x40) > 0,
+		HasComponentType: uint8(b&0x80) > 0,
+		HasMainID:        uint8(b&0x20) > 0,
+		HasSubStream1:    uint8(b&0x4) > 0,
+		HasSubStream2:    uint8(b&0x2) > 0,
+		HasSubStream3:    uint8(b&0x1) > 0,
+		MixInfoExists:    uint8(b&0x8) > 0,
+	}
+
+	// Component type
 	if d.HasComponentType {
-		d.ComponentType = uint8(i[offset])
-		offset += 1
+		// Get next byte
+		if b, err = i.NextByte(); err != nil {
+			err = errors.Wrap(err, "astits: fetching next byte failed")
+			return
+		}
+		d.ComponentType = uint8(b)
 	}
+
+	// BSID
 	if d.HasBSID {
-		d.BSID = uint8(i[offset])
-		offset += 1
+		// Get next byte
+		if b, err = i.NextByte(); err != nil {
+			err = errors.Wrap(err, "astits: fetching next byte failed")
+			return
+		}
+		d.BSID = uint8(b)
 	}
+
+	// Main ID
 	if d.HasMainID {
-		d.MainID = uint8(i[offset])
-		offset += 1
+		// Get next byte
+		if b, err = i.NextByte(); err != nil {
+			err = errors.Wrap(err, "astits: fetching next byte failed")
+			return
+		}
+		d.MainID = uint8(b)
 	}
+
+	// ASVC
 	if d.HasASVC {
-		d.ASVC = uint8(i[offset])
-		offset += 1
+		// Get next byte
+		if b, err = i.NextByte(); err != nil {
+			err = errors.Wrap(err, "astits: fetching next byte failed")
+			return
+		}
+		d.ASVC = uint8(b)
 	}
+
+	// Substream 1
 	if d.HasSubStream1 {
-		d.SubStream1 = uint8(i[offset])
-		offset += 1
+		// Get next byte
+		if b, err = i.NextByte(); err != nil {
+			err = errors.Wrap(err, "astits: fetching next byte failed")
+			return
+		}
+		d.SubStream1 = uint8(b)
 	}
+
+	// Substream 2
 	if d.HasSubStream2 {
-		d.SubStream2 = uint8(i[offset])
-		offset += 1
+		// Get next byte
+		if b, err = i.NextByte(); err != nil {
+			err = errors.Wrap(err, "astits: fetching next byte failed")
+			return
+		}
+		d.SubStream2 = uint8(b)
 	}
+
+	// Substream 3
 	if d.HasSubStream3 {
-		d.SubStream3 = uint8(i[offset])
-		offset += 1
+		// Get next byte
+		if b, err = i.NextByte(); err != nil {
+			err = errors.Wrap(err, "astits: fetching next byte failed")
+			return
+		}
+		d.SubStream3 = uint8(b)
 	}
-	for offset < len(i) {
-		d.AdditionalInfo = append(d.AdditionalInfo, i[offset])
-		offset += 1
+
+	// Additional info
+	if i.Offset() < offsetEnd {
+		if d.AdditionalInfo, err = i.NextBytes(offsetEnd - i.Offset()); err != nil {
+			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			return
+		}
 	}
 	return
 }
@@ -370,69 +508,102 @@ type DescriptorExtendedEventItem struct {
 	Description []byte
 }
 
-func newDescriptorExtendedEvent(i []byte) (d *DescriptorExtendedEvent) {
+func newDescriptorExtendedEvent(i *astibyte.Iterator) (d *DescriptorExtendedEvent, err error) {
 	// Init
 	d = &DescriptorExtendedEvent{}
-	var offset int
+
+	// Get next byte
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
 
 	// Number
-	d.Number = uint8(i[offset] >> 4)
+	d.Number = uint8(b >> 4)
 
 	// Last descriptor number
-	d.LastDescriptorNumber = uint8(i[offset] & 0xf)
-	offset += 1
+	d.LastDescriptorNumber = uint8(b & 0xf)
 
-	// ISO 639 language code
-	d.ISO639LanguageCode = i[offset : offset+3]
-	offset += 3
+	// ISO639 language code
+	if d.ISO639LanguageCode, err = i.NextBytes(3); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
+
+	// Get next byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
 
 	// Items length
-	var itemsLength = int(i[offset])
-	offset += 1
+	itemsLength := int(b)
 
 	// Items
-	var offsetEnd = offset + itemsLength
-	for offset < offsetEnd {
-		d.Items = append(d.Items, newDescriptorExtendedEventItem(i, &offset))
+	offsetEnd := i.Offset() + itemsLength
+	for i.Offset() < offsetEnd {
+		// Create item
+		var item *DescriptorExtendedEventItem
+		if item, err = newDescriptorExtendedEventItem(i); err != nil {
+			err = errors.Wrap(err, "astits: creating extended event item failed")
+			return
+		}
+
+		// Append item
+		d.Items = append(d.Items, item)
+	}
+
+	// Get next byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
 	}
 
 	// Text length
-	var textLength = int(i[offset])
-	offset += 1
+	textLength := int(b)
 
 	// Text
-	offsetEnd = offset + textLength
-	for offset < offsetEnd {
-		d.Text = append(d.Text, i[offset])
-		offset += 1
+	if d.Text, err = i.NextBytes(textLength); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
 	}
 	return
 }
 
-func newDescriptorExtendedEventItem(i []byte, offset *int) (d *DescriptorExtendedEventItem) {
+func newDescriptorExtendedEventItem(i *astibyte.Iterator) (d *DescriptorExtendedEventItem, err error) {
 	// Init
 	d = &DescriptorExtendedEventItem{}
 
+	// Get next byte
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
+
 	// Description length
-	var descriptionLength = int(i[*offset])
-	*offset += 1
+	descriptionLength := int(b)
 
 	// Description
-	var offsetEnd = *offset + descriptionLength
-	for *offset < offsetEnd {
-		d.Description = append(d.Description, i[*offset])
-		*offset += 1
+	if d.Description, err = i.NextBytes(descriptionLength); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
+
+	// Get next byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
 	}
 
 	// Content length
-	var contentLength = int(i[*offset])
-	*offset += 1
+	contentLength := int(b)
 
 	// Content
-	offsetEnd = *offset + contentLength
-	for *offset < offsetEnd {
-		d.Content = append(d.Content, i[*offset])
-		*offset += 1
+	if d.Content, err = i.NextBytes(contentLength); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
 	}
 	return
 }
@@ -444,15 +615,24 @@ type DescriptorExtension struct {
 	Tag                uint8
 }
 
-func newDescriptorExtension(i []byte) (d *DescriptorExtension) {
-	// Init
-	d = &DescriptorExtension{Tag: uint8(i[0])}
+func newDescriptorExtension(i *astibyte.Iterator, offsetEnd int) (d *DescriptorExtension, err error) {
+	// Get next byte
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
+
+	// Create descriptor
+	d = &DescriptorExtension{Tag: uint8(b)}
 
 	// Switch on tag
-	var b = i[1:]
 	switch d.Tag {
 	case DescriptorTagExtensionSupplementaryAudio:
-		d.SupplementaryAudio = newDescriptorExtensionSupplementaryAudio(b)
+		if d.SupplementaryAudio, err = newDescriptorExtensionSupplementaryAudio(i, offsetEnd); err != nil {
+			err = errors.Wrap(err, "astits: parsing extension supplementary audio descriptor failed")
+			return
+		}
 	default:
 		// TODO Remove this log
 		astilog.Debugf("astits: unlisted extension tag 0x%x", d.Tag)
@@ -470,31 +650,35 @@ type DescriptorExtensionSupplementaryAudio struct {
 	PrivateData             []byte
 }
 
-func newDescriptorExtensionSupplementaryAudio(i []byte) (d *DescriptorExtensionSupplementaryAudio) {
+func newDescriptorExtensionSupplementaryAudio(i *astibyte.Iterator, offsetEnd int) (d *DescriptorExtensionSupplementaryAudio, err error) {
+	// Get next byte
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
+
 	// Init
-	d = &DescriptorExtensionSupplementaryAudio{}
-	var offset int
-
-	// Mix type
-	d.MixType = i[offset]&0x80 > 0
-
-	// Editorial classification
-	d.EditorialClassification = uint8(i[offset] >> 2 & 0x1f)
-
-	// Language code flag
-	d.HasLanguageCode = i[offset]&0x1 > 0
-	offset += 1
+	d = &DescriptorExtensionSupplementaryAudio{
+		EditorialClassification: uint8(b >> 2 & 0x1f),
+		HasLanguageCode:         b&0x1 > 0,
+		MixType:                 b&0x80 > 0,
+	}
 
 	// Language code
 	if d.HasLanguageCode {
-		d.LanguageCode = i[offset : offset+3]
-		offset += 3
+		if d.LanguageCode, err = i.NextBytes(3); err != nil {
+			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			return
+		}
 	}
 
 	// Private data
-	for offset < len(i) {
-		d.PrivateData = append(d.PrivateData, i[offset])
-		offset += 1
+	if i.Offset() < offsetEnd {
+		if d.PrivateData, err = i.NextBytes(offsetEnd - i.Offset()); err != nil {
+			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			return
+		}
 	}
 	return
 }
@@ -507,11 +691,20 @@ type DescriptorISO639LanguageAndAudioType struct {
 }
 
 // In some actual cases, the length is 3 and the language is described in only 2 bytes
-func newDescriptorISO639LanguageAndAudioType(i []byte) *DescriptorISO639LanguageAndAudioType {
-	return &DescriptorISO639LanguageAndAudioType{
-		Language: i[0 : len(i)-1],
-		Type:     uint8(i[len(i)-1]),
+func newDescriptorISO639LanguageAndAudioType(i *astibyte.Iterator, offsetEnd int) (d *DescriptorISO639LanguageAndAudioType, err error) {
+	// Get next bytes
+	var bs []byte
+	if bs, err = i.NextBytes(offsetEnd - i.Offset()); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
 	}
+
+	// Create descriptor
+	d = &DescriptorISO639LanguageAndAudioType{
+		Language: bs[0 : len(bs)-1],
+		Type:     uint8(bs[len(bs)-1]),
+	}
+	return
 }
 
 // DescriptorLocalTimeOffset represents a local time offset descriptor
@@ -531,36 +724,54 @@ type DescriptorLocalTimeOffsetItem struct {
 	TimeOfChange            time.Time
 }
 
-func newDescriptorLocalTimeOffset(i []byte) (d *DescriptorLocalTimeOffset) {
+func newDescriptorLocalTimeOffset(i *astibyte.Iterator, offsetEnd int) (d *DescriptorLocalTimeOffset, err error) {
 	// Init
 	d = &DescriptorLocalTimeOffset{}
-	var offset int
 
 	// Add items
-	for offset < len(i) {
-		// Init
-		var itm = &DescriptorLocalTimeOffsetItem{}
-		d.Items = append(d.Items, itm)
+	for i.Offset() < offsetEnd {
+		// Create item
+		itm := &DescriptorLocalTimeOffsetItem{}
 
 		// Country code
-		itm.CountryCode = i[offset : offset+3]
-		offset += 3
+		if itm.CountryCode, err = i.NextBytes(3); err != nil {
+			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			return
+		}
+
+		// Get next byte
+		var b byte
+		if b, err = i.NextByte(); err != nil {
+			err = errors.Wrap(err, "astits: fetching next byte failed")
+			return
+		}
 
 		// Country region ID
-		itm.CountryRegionID = uint8(i[offset] >> 2)
+		itm.CountryRegionID = uint8(b >> 2)
 
 		// Local time offset polarity
-		itm.LocalTimeOffsetPolarity = i[offset]&0x1 > 0
-		offset += 1
+		itm.LocalTimeOffsetPolarity = b&0x1 > 0
 
 		// Local time offset
-		itm.LocalTimeOffset = parseDVBDurationMinutes(i, &offset)
+		if itm.LocalTimeOffset, err = parseDVBDurationMinutes(i); err != nil {
+			err = errors.Wrap(err, "astits: parsing DVB durationminutes failed")
+			return
+		}
 
 		// Time of change
-		itm.TimeOfChange = parseDVBTime(i, &offset)
+		if itm.TimeOfChange, err = parseDVBTime(i); err != nil {
+			err = errors.Wrap(err, "astits: parsing DVB time failed")
+			return
+		}
 
 		// Next time offset
-		itm.NextTimeOffset = parseDVBDurationMinutes(i, &offset)
+		if itm.NextTimeOffset, err = parseDVBDurationMinutes(i); err != nil {
+			err = errors.Wrap(err, "astits: parsing DVB duration minutes failed")
+			return
+		}
+
+		// Append item
+		d.Items = append(d.Items, itm)
 	}
 	return
 }
@@ -570,8 +781,17 @@ type DescriptorMaximumBitrate struct {
 	Bitrate uint32 // In bytes/second
 }
 
-func newDescriptorMaximumBitrate(i []byte) *DescriptorMaximumBitrate {
-	return &DescriptorMaximumBitrate{Bitrate: (uint32(i[0]&0x3f)<<16 | uint32(i[1])<<8 | uint32(i[2])) * 50}
+func newDescriptorMaximumBitrate(i *astibyte.Iterator) (d *DescriptorMaximumBitrate, err error) {
+	// Get next bytes
+	var bs []byte
+	if bs, err = i.NextBytes(3); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
+
+	// Create descriptor
+	d = &DescriptorMaximumBitrate{Bitrate: (uint32(bs[0]&0x3f)<<16 | uint32(bs[1])<<8 | uint32(bs[2])) * 50}
+	return
 }
 
 // DescriptorNetworkName represents a network name descriptor
@@ -580,8 +800,16 @@ type DescriptorNetworkName struct {
 	Name []byte
 }
 
-func newDescriptorNetworkName(i []byte) *DescriptorNetworkName {
-	return &DescriptorNetworkName{Name: i}
+func newDescriptorNetworkName(i *astibyte.Iterator, offsetEnd int) (d *DescriptorNetworkName, err error) {
+	// Create descriptor
+	d = &DescriptorNetworkName{}
+
+	// Name
+	if d.Name, err = i.NextBytes(offsetEnd - i.Offset()); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
+	return
 }
 
 // DescriptorParentalRating represents a parental rating descriptor
@@ -606,18 +834,24 @@ func (d DescriptorParentalRatingItem) MinimumAge() int {
 	return int(d.Rating) + 3
 }
 
-func newDescriptorParentalRating(i []byte) (d *DescriptorParentalRating) {
-	// Init
+func newDescriptorParentalRating(i *astibyte.Iterator, offsetEnd int) (d *DescriptorParentalRating, err error) {
+	// Create descriptor
 	d = &DescriptorParentalRating{}
-	var offset int
 
 	// Add items
-	for offset < len(i) {
+	for i.Offset() < offsetEnd {
+		// Get next bytes
+		var bs []byte
+		if bs, err = i.NextBytes(4); err != nil {
+			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			return
+		}
+
+		// Append item
 		d.Items = append(d.Items, &DescriptorParentalRatingItem{
-			CountryCode: i[offset : offset+3],
-			Rating:      uint8(i[offset+3]),
+			CountryCode: bs[:3],
+			Rating:      uint8(bs[3]),
 		})
-		offset += 4
 	}
 	return
 }
@@ -627,8 +861,17 @@ type DescriptorPrivateDataIndicator struct {
 	Indicator uint32
 }
 
-func newDescriptorPrivateDataIndicator(i []byte) *DescriptorPrivateDataIndicator {
-	return &DescriptorPrivateDataIndicator{Indicator: uint32(i[0])<<24 | uint32(i[1])<<16 | uint32(i[2])<<8 | uint32(i[3])}
+func newDescriptorPrivateDataIndicator(i *astibyte.Iterator) (d *DescriptorPrivateDataIndicator, err error) {
+	// Get next bytes
+	var bs []byte
+	if bs, err = i.NextBytes(4); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
+
+	// Create descriptor
+	d = &DescriptorPrivateDataIndicator{Indicator: uint32(bs[0])<<24 | uint32(bs[1])<<16 | uint32(bs[2])<<8 | uint32(bs[3])}
+	return
 }
 
 // DescriptorPrivateDataSpecifier represents a private data specifier descriptor
@@ -636,8 +879,17 @@ type DescriptorPrivateDataSpecifier struct {
 	Specifier uint32
 }
 
-func newDescriptorPrivateDataSpecifier(i []byte) *DescriptorPrivateDataSpecifier {
-	return &DescriptorPrivateDataSpecifier{Specifier: uint32(i[0])<<24 | uint32(i[1])<<16 | uint32(i[2])<<8 | uint32(i[3])}
+func newDescriptorPrivateDataSpecifier(i *astibyte.Iterator) (d *DescriptorPrivateDataSpecifier, err error) {
+	// Get next bytes
+	var bs []byte
+	if bs, err = i.NextBytes(4); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
+
+	// Create descriptor
+	d = &DescriptorPrivateDataSpecifier{Specifier: uint32(bs[0])<<24 | uint32(bs[1])<<16 | uint32(bs[2])<<8 | uint32(bs[3])}
+	return
 }
 
 // DescriptorRegistration represents a registration descriptor
@@ -647,13 +899,23 @@ type DescriptorRegistration struct {
 	FormatIdentifier             uint32
 }
 
-func newDescriptorRegistration(i []byte) (d *DescriptorRegistration) {
-	d = &DescriptorRegistration{}
-	d.FormatIdentifier = uint32(i[0])<<24 | uint32(i[1])<<16 | uint32(i[2])<<8 | uint32(i[3])
-	var offset = 4
-	for offset < len(i) {
-		d.AdditionalIdentificationInfo = append(d.AdditionalIdentificationInfo, i[offset])
-		offset += 1
+func newDescriptorRegistration(i *astibyte.Iterator, offsetEnd int) (d *DescriptorRegistration, err error) {
+	// Get next bytes
+	var bs []byte
+	if bs, err = i.NextBytes(4); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
+
+	// Create descriptor
+	d = &DescriptorRegistration{FormatIdentifier: uint32(bs[0])<<24 | uint32(bs[1])<<16 | uint32(bs[2])<<8 | uint32(bs[3])}
+
+	// Additional identification info
+	if i.Offset() < offsetEnd {
+		if d.AdditionalIdentificationInfo, err = i.NextBytes(offsetEnd - i.Offset()); err != nil {
+			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			return
+		}
 	}
 	return
 }
@@ -666,17 +928,46 @@ type DescriptorService struct {
 	Type     uint8
 }
 
-func newDescriptorService(i []byte) (d *DescriptorService) {
-	var offset int
-	d = &DescriptorService{Type: uint8(i[offset])}
-	offset += 1
-	var providerLength = int(i[offset])
-	offset += 1
-	d.Provider = i[offset : offset+providerLength]
-	offset += providerLength
-	var nameLength = int(i[offset])
-	offset += 1
-	d.Name = i[offset : offset+nameLength]
+func newDescriptorService(i *astibyte.Iterator) (d *DescriptorService, err error) {
+	// Get next byte
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
+
+	// Create descriptor
+	d = &DescriptorService{Type: uint8(b)}
+
+	// Get next byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
+
+	// Provider length
+	providerLength := int(b)
+
+	// Provider
+	if d.Provider, err = i.NextBytes(providerLength); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
+
+	// Get next byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
+
+	// Name length
+	nameLength := int(b)
+
+	// Name
+	if d.Name, err = i.NextBytes(nameLength); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
 	return
 }
 
@@ -688,18 +979,46 @@ type DescriptorShortEvent struct {
 	Text      []byte
 }
 
-func newDescriptorShortEvent(i []byte) (d *DescriptorShortEvent) {
-	var offset int
+func newDescriptorShortEvent(i *astibyte.Iterator) (d *DescriptorShortEvent, err error) {
+	// Create descriptor
 	d = &DescriptorShortEvent{}
-	d.Language = i[:3]
-	offset += 3
-	var length = int(i[offset])
-	offset += 1
-	d.EventName = i[offset : offset+length]
-	offset += length
-	length = int(i[offset])
-	offset += 1
-	d.Text = i[offset : offset+length]
+
+	// Language
+	if d.Language, err = i.NextBytes(3); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
+
+	// Get next byte
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
+
+	// Event length
+	eventLength := int(b)
+
+	// Event name
+	if d.EventName, err = i.NextBytes(eventLength); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
+
+	// Get next byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
+
+	// Text length
+	textLength := int(b)
+
+	// Text
+	if d.Text, err = i.NextBytes(textLength); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
 	return
 }
 
@@ -707,8 +1026,14 @@ func newDescriptorShortEvent(i []byte) (d *DescriptorShortEvent) {
 // Chapter: 6.2.39 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorStreamIdentifier struct{ ComponentTag uint8 }
 
-func newDescriptorStreamIdentifier(i []byte) *DescriptorStreamIdentifier {
-	return &DescriptorStreamIdentifier{ComponentTag: uint8(i[0])}
+func newDescriptorStreamIdentifier(i *astibyte.Iterator) (d *DescriptorStreamIdentifier, err error) {
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = errors.Wrap(err, "astits: fetching next byte failed")
+		return
+	}
+	d = &DescriptorStreamIdentifier{ComponentTag: uint8(b)}
+	return
 }
 
 // DescriptorSubtitling represents a subtitling descriptor
@@ -726,19 +1051,51 @@ type DescriptorSubtitlingItem struct {
 	Type              uint8
 }
 
-func newDescriptorSubtitling(i []byte) (d *DescriptorSubtitling) {
+func newDescriptorSubtitling(i *astibyte.Iterator, offsetEnd int) (d *DescriptorSubtitling, err error) {
+	// Create descriptor
 	d = &DescriptorSubtitling{}
-	var offset int
-	for offset < len(i) {
+
+	// Loop
+	for i.Offset() < offsetEnd {
+		// Create item
 		itm := &DescriptorSubtitlingItem{}
-		itm.Language = i[offset : offset+3]
-		offset += 3
-		itm.Type = uint8(i[offset])
-		offset += 1
-		itm.CompositionPageID = uint16(i[offset])<<8 | uint16(i[offset+1])
-		offset += 2
-		itm.AncillaryPageID = uint16(i[offset])<<8 | uint16(i[offset+1])
-		offset += 2
+
+		// Language
+		if itm.Language, err = i.NextBytes(3); err != nil {
+			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			return
+		}
+
+		// Get next byte
+		var b byte
+		if b, err = i.NextByte(); err != nil {
+			err = errors.Wrap(err, "astits: fetching next byte failed")
+			return
+		}
+
+		// Type
+		itm.Type = uint8(b)
+
+		// Get next bytes
+		var bs []byte
+		if bs, err = i.NextBytes(2); err != nil {
+			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			return
+		}
+
+		// Composition page ID
+		itm.CompositionPageID = uint16(bs[0])<<8 | uint16(bs[1])
+
+		// Get next bytes
+		if bs, err = i.NextBytes(2); err != nil {
+			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			return
+		}
+
+		// Ancillary page ID
+		itm.AncillaryPageID = uint16(bs[0])<<8 | uint16(bs[1])
+
+		// Append item
 		d.Items = append(d.Items, itm)
 	}
 	return
@@ -759,18 +1116,44 @@ type DescriptorTeletextItem struct {
 	Type     uint8
 }
 
-func newDescriptorTeletext(i []byte) (d *DescriptorTeletext) {
-	var offset int
+func newDescriptorTeletext(i *astibyte.Iterator, offsetEnd int) (d *DescriptorTeletext, err error) {
+	// Create descriptor
 	d = &DescriptorTeletext{}
-	for offset < len(i) {
+
+	// Loop
+	for i.Offset() < offsetEnd {
+		// Create item
 		itm := &DescriptorTeletextItem{}
-		itm.Language = i[offset : offset+3]
-		offset += 3
-		itm.Type = uint8(i[offset]) >> 3
-		itm.Magazine = uint8(i[offset] & 0x7)
-		offset += 1
-		itm.Page = uint8(i[offset])>>4*10 + uint8(i[offset]&0xf)
-		offset += 1
+
+		// Language
+		if itm.Language, err = i.NextBytes(3); err != nil {
+			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			return
+		}
+
+		// Get next byte
+		var b byte
+		if b, err = i.NextByte(); err != nil {
+			err = errors.Wrap(err, "astits: fetching next byte failed")
+			return
+		}
+
+		// Type
+		itm.Type = uint8(b) >> 3
+
+		// Magazine
+		itm.Magazine = uint8(b & 0x7)
+
+		// Get next byte
+		if b, err = i.NextByte(); err != nil {
+			err = errors.Wrap(err, "astits: fetching next byte failed")
+			return
+		}
+
+		// Page
+		itm.Page = uint8(b)>>4*10 + uint8(b&0xf)
+
+		// Append item
 		d.Items = append(d.Items, itm)
 	}
 	return
@@ -796,38 +1179,54 @@ type DescriptorVBIDataDescriptor struct {
 	LineOffset  uint8
 }
 
-func newDescriptorVBIData(i []byte) (d *DescriptorVBIData) {
-	// Init
+func newDescriptorVBIData(i *astibyte.Iterator, offsetEnd int) (d *DescriptorVBIData, err error) {
+	// Create descriptor
 	d = &DescriptorVBIData{}
-	var offset int
 
-	// Items
-	for offset < len(i) {
-		// Init
-		var srv = &DescriptorVBIDataService{}
+	// Loop
+	for i.Offset() < offsetEnd {
+		// Create service
+		srv := &DescriptorVBIDataService{}
+
+		// Get next byte
+		var b byte
+		if b, err = i.NextByte(); err != nil {
+			err = errors.Wrap(err, "astits: fetching next byte failed")
+			return
+		}
 
 		// Data service ID
-		srv.DataServiceID = uint8(i[offset])
-		offset += 1
+		srv.DataServiceID = uint8(b)
+
+		// Get next byte
+		if b, err = i.NextByte(); err != nil {
+			err = errors.Wrap(err, "astits: fetching next byte failed")
+			return
+		}
 
 		// Data service descriptor length
-		var dataServiceDescriptorLength = int(i[offset])
-		offset += 1
+		dataServiceDescriptorLength := int(b)
 
 		// Data service descriptor
-		var offsetEnd = offset + dataServiceDescriptorLength
-		for offset < offsetEnd {
+		offsetDataEnd := i.Offset() + dataServiceDescriptorLength
+		for i.Offset() < offsetDataEnd {
 			if srv.DataServiceID == VBIDataServiceIDClosedCaptioning ||
 				srv.DataServiceID == VBIDataServiceIDEBUTeletext ||
 				srv.DataServiceID == VBIDataServiceIDInvertedTeletext ||
 				srv.DataServiceID == VBIDataServiceIDMonochrome442Samples ||
 				srv.DataServiceID == VBIDataServiceIDVPS ||
 				srv.DataServiceID == VBIDataServiceIDWSS {
+				// Get next byte
+				if b, err = i.NextByte(); err != nil {
+					err = errors.Wrap(err, "astits: fetching next byte failed")
+					return
+				}
+
+				// Append data
 				srv.Descriptors = append(srv.Descriptors, &DescriptorVBIDataDescriptor{
-					FieldParity: i[offset]&0x20 > 0,
-					LineOffset:  uint8(i[offset] & 0x1f),
+					FieldParity: b&0x20 > 0,
+					LineOffset:  uint8(b & 0x1f),
 				})
-				offset += 1
 			}
 		}
 
@@ -838,86 +1237,173 @@ func newDescriptorVBIData(i []byte) (d *DescriptorVBIData) {
 }
 
 // parseDescriptors parses descriptors
-func parseDescriptors(i []byte, offset *int) (o []*Descriptor) {
+func parseDescriptors(i *astibyte.Iterator) (o []*Descriptor, err error) {
+	// Get next 2 bytes
+	var bs []byte
+	if bs, err = i.NextBytes(2); err != nil {
+		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		return
+	}
+
 	// Get length
-	var length = int(uint16(i[*offset]&0xf)<<8 | uint16(i[*offset+1]))
-	*offset += 2
+	length := int(uint16(bs[0]&0xf)<<8 | uint16(bs[1]))
 
 	// Loop
 	if length > 0 {
-		length += *offset
-		for *offset < length {
-			// Init
-			var d = &Descriptor{
-				Length: uint8(i[*offset+1]),
-				Tag:    uint8(i[*offset]),
+		offsetEnd := i.Offset() + length
+		for i.Offset() < offsetEnd {
+			// Get next 2 bytes
+			if bs, err = i.NextBytes(2); err != nil {
+				err = errors.Wrap(err, "astits: fetching next bytes failed")
+				return
 			}
-			*offset += 2
+
+			// Create descriptor
+			d := &Descriptor{
+				Length: uint8(bs[1]),
+				Tag:    uint8(bs[0]),
+			}
 
 			// Parse data
 			if d.Length > 0 {
-				// Get descriptor content
-				var b = i[*offset : *offset+int(d.Length)]
+				// Unfortunately there's no way to be sure the real descriptor length is the same as the one indicated
+				// previously therefore we must fetch bytes in descriptor functions and seek at the end
+				offsetDescriptorEnd := i.Offset() + int(d.Length)
 
 				// User defined
 				if d.Tag >= 0x80 && d.Tag <= 0xfe {
-					d.UserDefined = make([]byte, len(b))
-					copy(d.UserDefined, b)
+					// Get next bytes
+					if d.UserDefined, err = i.NextBytes(int(d.Length)); err != nil {
+						err = errors.Wrap(err, "astits: fetching next bytes failed")
+						return
+					}
 				} else {
 					// Switch on tag
 					switch d.Tag {
 					case DescriptorTagAC3:
-						d.AC3 = newDescriptorAC3(b)
+						if d.AC3, err = newDescriptorAC3(i, offsetDescriptorEnd); err != nil {
+							err = errors.Wrap(err, "astits: parsing AC3 descriptor failed")
+							return
+						}
 					case DescriptorTagAVCVideo:
-						d.AVCVideo = newDescriptorAVCVideo(b)
+						if d.AVCVideo, err = newDescriptorAVCVideo(i); err != nil {
+							err = errors.Wrap(err, "astits: parsing AVC Video descriptor failed")
+							return
+						}
 					case DescriptorTagComponent:
-						d.Component = newDescriptorComponent(b)
+						if d.Component, err = newDescriptorComponent(i, offsetDescriptorEnd); err != nil {
+							err = errors.Wrap(err, "astits: parsing Component descriptor failed")
+							return
+						}
 					case DescriptorTagContent:
-						d.Content = newDescriptorContent(b)
+						if d.Content, err = newDescriptorContent(i, offsetDescriptorEnd); err != nil {
+							err = errors.Wrap(err, "astits: parsing Content descriptor failed")
+							return
+						}
 					case DescriptorTagDataStreamAlignment:
-						d.DataStreamAlignment = newDescriptorDataStreamAlignment(b)
+						if d.DataStreamAlignment, err = newDescriptorDataStreamAlignment(i); err != nil {
+							err = errors.Wrap(err, "astits: parsing Data Stream Alignment descriptor failed")
+							return
+						}
 					case DescriptorTagEnhancedAC3:
-						d.EnhancedAC3 = newDescriptorEnhancedAC3(b)
+						if d.EnhancedAC3, err = newDescriptorEnhancedAC3(i, offsetDescriptorEnd); err != nil {
+							err = errors.Wrap(err, "astits: parsing Enhanced AC3 descriptor failed")
+							return
+						}
 					case DescriptorTagExtendedEvent:
-						d.ExtendedEvent = newDescriptorExtendedEvent(b)
+						if d.ExtendedEvent, err = newDescriptorExtendedEvent(i); err != nil {
+							err = errors.Wrap(err, "astits: parsing Extended event descriptor failed")
+							return
+						}
 					case DescriptorTagExtension:
-						d.Extension = newDescriptorExtension(b)
+						if d.Extension, err = newDescriptorExtension(i, offsetDescriptorEnd); err != nil {
+							err = errors.Wrap(err, "astits: parsing Extension descriptor failed")
+							return
+						}
 					case DescriptorTagISO639LanguageAndAudioType:
-						d.ISO639LanguageAndAudioType = newDescriptorISO639LanguageAndAudioType(b)
+						if d.ISO639LanguageAndAudioType, err = newDescriptorISO639LanguageAndAudioType(i, offsetDescriptorEnd); err != nil {
+							err = errors.Wrap(err, "astits: parsing ISO639 Language and Audio Type descriptor failed")
+							return
+						}
 					case DescriptorTagLocalTimeOffset:
-						d.LocalTimeOffset = newDescriptorLocalTimeOffset(b)
+						if d.LocalTimeOffset, err = newDescriptorLocalTimeOffset(i, offsetDescriptorEnd); err != nil {
+							err = errors.Wrap(err, "astits: parsing Local Time Offset descriptor failed")
+							return
+						}
 					case DescriptorTagMaximumBitrate:
-						d.MaximumBitrate = newDescriptorMaximumBitrate(b)
+						if d.MaximumBitrate, err = newDescriptorMaximumBitrate(i); err != nil {
+							err = errors.Wrap(err, "astits: parsing Maximum Bitrate descriptor failed")
+							return
+						}
 					case DescriptorTagNetworkName:
-						d.NetworkName = newDescriptorNetworkName(b)
+						if d.NetworkName, err = newDescriptorNetworkName(i, offsetDescriptorEnd); err != nil {
+							err = errors.Wrap(err, "astits: parsing Network Name descriptor failed")
+							return
+						}
 					case DescriptorTagParentalRating:
-						d.ParentalRating = newDescriptorParentalRating(b)
+						if d.ParentalRating, err = newDescriptorParentalRating(i, offsetDescriptorEnd); err != nil {
+							err = errors.Wrap(err, "astits: parsing Parental Rating descriptor failed")
+							return
+						}
 					case DescriptorTagPrivateDataIndicator:
-						d.PrivateDataIndicator = newDescriptorPrivateDataIndicator(b)
+						if d.PrivateDataIndicator, err = newDescriptorPrivateDataIndicator(i); err != nil {
+							err = errors.Wrap(err, "astits: parsing Private Data Indicator descriptor failed")
+							return
+						}
 					case DescriptorTagPrivateDataSpecifier:
-						d.PrivateDataSpecifier = newDescriptorPrivateDataSpecifier(b)
+						if d.PrivateDataSpecifier, err = newDescriptorPrivateDataSpecifier(i); err != nil {
+							err = errors.Wrap(err, "astits: parsing Private Data Specifier descriptor failed")
+							return
+						}
 					case DescriptorTagRegistration:
-						d.Registration = newDescriptorRegistration(b)
+						if d.Registration, err = newDescriptorRegistration(i, offsetDescriptorEnd); err != nil {
+							err = errors.Wrap(err, "astits: parsing Registration descriptor failed")
+							return
+						}
 					case DescriptorTagService:
-						d.Service = newDescriptorService(b)
+						if d.Service, err = newDescriptorService(i); err != nil {
+							err = errors.Wrap(err, "astits: parsing Service descriptor failed")
+							return
+						}
 					case DescriptorTagShortEvent:
-						d.ShortEvent = newDescriptorShortEvent(b)
+						if d.ShortEvent, err = newDescriptorShortEvent(i); err != nil {
+							err = errors.Wrap(err, "astits: parsing Short Event descriptor failed")
+							return
+						}
 					case DescriptorTagStreamIdentifier:
-						d.StreamIdentifier = newDescriptorStreamIdentifier(b)
+						if d.StreamIdentifier, err = newDescriptorStreamIdentifier(i); err != nil {
+							err = errors.Wrap(err, "astits: parsing Stream Identifier descriptor failed")
+							return
+						}
 					case DescriptorTagSubtitling:
-						d.Subtitling = newDescriptorSubtitling(b)
+						if d.Subtitling, err = newDescriptorSubtitling(i, offsetDescriptorEnd); err != nil {
+							err = errors.Wrap(err, "astits: parsing Subtitling descriptor failed")
+							return
+						}
 					case DescriptorTagTeletext:
-						d.Teletext = newDescriptorTeletext(b)
+						if d.Teletext, err = newDescriptorTeletext(i, offsetDescriptorEnd); err != nil {
+							err = errors.Wrap(err, "astits: parsing Teletext descriptor failed")
+							return
+						}
 					case DescriptorTagVBIData:
-						d.VBIData = newDescriptorVBIData(b)
+						if d.VBIData, err = newDescriptorVBIData(i, offsetDescriptorEnd); err != nil {
+							err = errors.Wrap(err, "astits: parsing VBI Date descriptor failed")
+							return
+						}
 					case DescriptorTagVBITeletext:
-						d.VBITeletext = newDescriptorTeletext(b)
+						if d.VBITeletext, err = newDescriptorTeletext(i, offsetDescriptorEnd); err != nil {
+							err = errors.Wrap(err, "astits: parsing VBI Teletext descriptor failed")
+							return
+						}
 					default:
 						// TODO Remove this log
 						astilog.Debugf("astits: unlisted descriptor tag 0x%x", d.Tag)
 					}
 				}
-				*offset += int(d.Length)
+
+				// Seek in iterator to make sure we move to the end of the descriptor since its content may be
+				// corrupted
+				i.Seek(offsetDescriptorEnd)
 			}
 			o = append(o, d)
 		}

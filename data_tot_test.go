@@ -5,6 +5,7 @@ import (
 
 	"github.com/asticode/go-astitools/binary"
 	"github.com/stretchr/testify/assert"
+	"github.com/asticode/go-astitools/byte"
 )
 
 var tot = &TOTData{
@@ -21,7 +22,7 @@ func totBytes() []byte {
 }
 
 func TestParseTOTSection(t *testing.T) {
-	var offset int
-	d := parseTOTSection(totBytes(), &offset)
+	d, err := parseTOTSection(astibyte.NewIterator(totBytes()))
 	assert.Equal(t, d, tot)
+	assert.NoError(t, err)
 }

@@ -2,6 +2,7 @@ package astits
 
 import (
 	"github.com/pkg/errors"
+	"github.com/asticode/go-astitools/byte"
 )
 
 // PIDs
@@ -38,40 +39,53 @@ func parseData(ps []*Packet, prs PacketsParser, pm programMap) (ds []*Data, err 
 		}
 	}
 
-	// Reconstruct payload
+	// Get payload length
 	var l int
 	for _, p := range ps {
 		l += len(p.Payload)
 	}
+
+	// Append payload
 	var payload = make([]byte, l)
 	var c int
 	for _, p := range ps {
 		c += copy(payload[c:], p.Payload)
 	}
 
+	// Create iterator
+	i := astibyte.NewIterator(payload)
+
 	// Parse PID
-	var pid = ps[0].Header.PID
+	pid := ps[0].Header.PID
 
 	// Parse payload
 	if pid == PIDCAT {
 		// Information in a CAT payload is private and dependent on the CA system. Use the PacketsParser
 		// to parse this type of payload
 	} else if isPSIPayload(pid, pm) {
+		// Parse PSI data
 		var psiData *PSIData
-		if psiData, err = parsePSIData(payload); err != nil {
+		if psiData, err = parsePSIData(i); err != nil {
 			err = errors.Wrap(err, "astits: parsing PSI data failed")
 			return
 		}
+
+		// Append data
 		ds = psiData.toData(ps[0], pid)
 	} else if isPESPayload(payload) {
-		d, err := parsePESData(payload)
-		if err == nil {
-			ds = append(ds, &Data{
-				FirstPacket: ps[0],
-				PES:         d,
-				PID:         pid,
-			})
+		// Parse PES data
+		var pesData *PESData
+		if pesData, err = parsePESData(i); err != nil {
+			err = errors.Wrap(err, "astits: parsing PES data failed")
+			return
 		}
+
+		// Append data
+		ds = append(ds, &Data{
+			FirstPacket: ps[0],
+			PES:         pesData,
+			PID:         pid,
+		})
 	}
 	return
 }
