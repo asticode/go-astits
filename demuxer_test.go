@@ -58,9 +58,6 @@ func TestDemuxerNextData(t *testing.T) {
 	w.Write(b1)
 	b2, _ := packet(PacketHeader{ContinuityCounter: uint8(1), PID: PIDPAT}, PacketAdaptationField{}, b[147:])
 	w.Write(b2)
-	// We write this additional empty packet since we don't dump the packet pool anymore
-	b3, _ := packet(PacketHeader{ContinuityCounter: uint8(2), PayloadUnitStartIndicator: true, PID: PIDPAT}, PacketAdaptationField{}, []byte{})
-	w.Write(b3)
 	dmx := New(context.Background(), bytes.NewReader(w.Bytes()))
 	p, err := dmx.NextPacket()
 	assert.NoError(t, err)

@@ -109,8 +109,26 @@ func (dmx *Demuxer) NextData() (d *Data, err error) {
 	for {
 		// Get next packet
 		if p, err = dmx.NextPacket(); err != nil {
-			// We don't dump the packet pool since we don't want incomplete data
+			// If the end of the stream has been reached, we dump the packet pool
 			if err == ErrNoMorePackets {
+				for {
+					// Dump packet pool
+					if ps = dmx.packetPool.dump(); len(ps) == 0 {
+						break
+					}
+
+					// Parse data
+					if ds, err = parseData(ps, dmx.optPacketsParser, dmx.programMap); err != nil {
+						// We need to silence this error as there may be some incomplete data here
+						// We still want to try to parse all packets, in case final data is complete
+						continue
+					}
+
+					// Update data
+					if d = dmx.updateData(ds); d != nil {
+						return
+					}
+				}
 				return
 			}
 			err = errors.Wrap(err, "astits: fetching next packet failed")
@@ -128,26 +146,33 @@ func (dmx *Demuxer) NextData() (d *Data, err error) {
 			return
 		}
 
-		// Check whether there is data to be processed
-		if len(ds) > 0 {
-			// Process data
-			d = ds[0]
-			dmx.dataBuffer = append(dmx.dataBuffer, ds[1:]...)
-
-			// Update program map
-			for _, v := range ds {
-				if v.PAT != nil {
-					for _, pgm := range v.PAT.Programs {
-						// Program number 0 is reserved to NIT
-						if pgm.ProgramNumber > 0 {
-							dmx.programMap.set(pgm.ProgramMapID, pgm.ProgramNumber)
-						}
-					}
-				}
-			}
+		// Update data
+		if d = dmx.updateData(ds); d != nil {
 			return
 		}
 	}
+}
+
+func (dmx *Demuxer) updateData(ds []*Data) (d *Data) {
+	// Check whether there is data to be processed
+	if len(ds) > 0 {
+		// Process data
+		d = ds[0]
+		dmx.dataBuffer = append(dmx.dataBuffer, ds[1:]...)
+
+		// Update program map
+		for _, v := range ds {
+			if v.PAT != nil {
+				for _, pgm := range v.PAT.Programs {
+					// Program number 0 is reserved to NIT
+					if pgm.ProgramNumber > 0 {
+						dmx.programMap.set(pgm.ProgramMapID, pgm.ProgramNumber)
+					}
+				}
+			}
+		}
+	}
+	return
 }
 
 // Rewind rewinds the demuxer reader
