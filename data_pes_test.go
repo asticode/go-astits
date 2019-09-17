@@ -222,10 +222,10 @@ func TestParsePESSection(t *testing.T) {
 	// No optional header and specific packet length
 	d, err := parsePESData(astibyte.NewIterator(pesWithoutHeaderBytes()))
 	assert.NoError(t, err)
-	assert.Equal(t, d, pesWithoutHeader)
+	assert.Equal(t, pesWithoutHeader, d)
 
 	// Optional header and no specific header length
 	d, err = parsePESData(astibyte.NewIterator(pesWithHeaderBytes()))
 	assert.NoError(t, err)
-	assert.Equal(t, d, pesWithHeader)
+	assert.Equal(t, pesWithHeader, d)
 }

@@ -123,7 +123,7 @@ func parsePESData(i *astibyte.Iterator) (d *PESData, err error) {
 
 	// Parse data
 	if d.Header != nil && d.Header.PacketLength > 0 {
-		if d.Data, err = i.NextBytes(int(d.Header.PacketLength)); err != nil {
+		if d.Data, err = i.NextBytes(int(d.Header.PacketLength)-dataStart); err != nil {
 			err = errors.Wrap(err, "astits: getting next bytes failed")
 			return
 		}
