@@ -218,7 +218,7 @@ func pesWithHeaderBytes() []byte {
 	return w.Bytes()
 }
 
-func TestParsePESSection(t *testing.T) {
+func TestParsePESData(t *testing.T) {
 	// No optional header and specific packet length
 	d, err := parsePESData(astibyte.NewIterator(pesWithoutHeaderBytes()))
 	assert.NoError(t, err)
