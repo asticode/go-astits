@@ -3,9 +3,9 @@ package astits
 import (
 	"testing"
 
-	"github.com/asticode/go-astitools/binary"
+	astibinary "github.com/asticode/go-astitools/binary"
+	astibyte "github.com/asticode/go-astitools/byte"
 	"github.com/stretchr/testify/assert"
-	"github.com/asticode/go-astitools/byte"
 )
 
 func TestHasPESOptionalHeader(t *testing.T) {
@@ -113,9 +113,9 @@ func TestParseESCR(t *testing.T) {
 }
 
 var pesWithoutHeader = &PESData{
-	Data: []byte("stuffdata"),
+	Data: []byte("data"),
 	Header: &PESHeader{
-		PacketLength: 9,
+		PacketLength: 4,
 		StreamID:     StreamIDPaddingStream,
 	},
 }
@@ -124,18 +124,17 @@ func pesWithoutHeaderBytes() []byte {
 	w := astibinary.New()
 	w.Write("000000000000000000000001")   // Prefix
 	w.Write(uint8(StreamIDPaddingStream)) // Stream ID
-	w.Write(uint16(9))                    // Packet length
-	w.Write([]byte("stuff"))              // Stuffing bytes
-	w.Write([]byte("datadummy"))          // Data
+	w.Write(uint16(4))                    // Packet length
+	w.Write([]byte("datastuff"))          // Data
 	return w.Bytes()
 }
 
 var pesWithHeader = &PESData{
-	Data: []byte("stuffdata"),
+	Data: []byte("data"),
 	Header: &PESHeader{
 		OptionalHeader: &PESOptionalHeader{
-			AdditionalCopyInfo: 127,
-			CRC:                4,
+			AdditionalCopyInfo:              127,
+			CRC:                             4,
 			DataAlignmentIndicator:          true,
 			DSMTrickMode:                    dsmTrickModeSlow,
 			DTS:                             dtsClockReference,
@@ -170,7 +169,8 @@ var pesWithHeader = &PESData{
 			PTS:                             ptsClockReference,
 			ScramblingControl:               1,
 		},
-		StreamID: 1,
+		PacketLength: 69,
+		StreamID:     1,
 	},
 }
 
@@ -178,7 +178,7 @@ func pesWithHeaderBytes() []byte {
 	w := astibinary.New()
 	w.Write("000000000000000000000001") // Prefix
 	w.Write(uint8(1))                   // Stream ID
-	w.Write(uint16(0))                  // Packet length
+	w.Write(uint16(69))                 // Packet length
 	w.Write("10")                       // Marker bits
 	w.Write("01")                       // Scrambling control
 	w.Write("1")                        // Priority
@@ -213,8 +213,7 @@ func pesWithHeaderBytes() []byte {
 	w.Write("0000101000000000")         // Extension 2 header
 	w.Write([]byte("extension2"))       // Extension 2 data
 	w.Write([]byte("stuff"))            // Optional header stuffing bytes
-	w.Write([]byte("stuff"))            // Stuffing bytes
-	w.Write([]byte("data"))             // Data
+	w.Write([]byte("datastuff"))        // Data
 	return w.Bytes()
 }
 
