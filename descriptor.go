@@ -3,8 +3,8 @@ package astits
 import (
 	"time"
 
+	"github.com/asticode/go-astikit"
 	"github.com/asticode/go-astilog"
-	"github.com/asticode/go-astitools/byte"
 	"github.com/pkg/errors"
 )
 
@@ -132,7 +132,7 @@ type DescriptorAC3 struct {
 	MainID           uint8
 }
 
-func newDescriptorAC3(i *astibyte.Iterator, offsetEnd int) (d *DescriptorAC3, err error) {
+func newDescriptorAC3(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorAC3, err error) {
 	// Get next byte
 	var b byte
 	if b, err = i.NextByte(); err != nil {
@@ -207,7 +207,7 @@ type DescriptorAVCVideo struct {
 	ProfileIDC           uint8
 }
 
-func newDescriptorAVCVideo(i *astibyte.Iterator) (d *DescriptorAVCVideo, err error) {
+func newDescriptorAVCVideo(i *astikit.BytesIterator) (d *DescriptorAVCVideo, err error) {
 	// Init
 	d = &DescriptorAVCVideo{}
 
@@ -267,7 +267,7 @@ type DescriptorComponent struct {
 	Text               []byte
 }
 
-func newDescriptorComponent(i *astibyte.Iterator, offsetEnd int) (d *DescriptorComponent, err error) {
+func newDescriptorComponent(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorComponent, err error) {
 	// Init
 	d = &DescriptorComponent{}
 
@@ -332,7 +332,7 @@ type DescriptorContentItem struct {
 	UserByte            uint8
 }
 
-func newDescriptorContent(i *astibyte.Iterator, offsetEnd int) (d *DescriptorContent, err error) {
+func newDescriptorContent(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorContent, err error) {
 	// Init
 	d = &DescriptorContent{}
 
@@ -360,7 +360,7 @@ type DescriptorDataStreamAlignment struct {
 	Type uint8
 }
 
-func newDescriptorDataStreamAlignment(i *astibyte.Iterator) (d *DescriptorDataStreamAlignment, err error) {
+func newDescriptorDataStreamAlignment(i *astikit.BytesIterator) (d *DescriptorDataStreamAlignment, err error) {
 	var b byte
 	if b, err = i.NextByte(); err != nil {
 		err = errors.Wrap(err, "astits: fetching next byte failed")
@@ -391,7 +391,7 @@ type DescriptorEnhancedAC3 struct {
 	SubStream3       uint8
 }
 
-func newDescriptorEnhancedAC3(i *astibyte.Iterator, offsetEnd int) (d *DescriptorEnhancedAC3, err error) {
+func newDescriptorEnhancedAC3(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorEnhancedAC3, err error) {
 	// Get next byte
 	var b byte
 	if b, err = i.NextByte(); err != nil {
@@ -508,7 +508,7 @@ type DescriptorExtendedEventItem struct {
 	Description []byte
 }
 
-func newDescriptorExtendedEvent(i *astibyte.Iterator) (d *DescriptorExtendedEvent, err error) {
+func newDescriptorExtendedEvent(i *astikit.BytesIterator) (d *DescriptorExtendedEvent, err error) {
 	// Init
 	d = &DescriptorExtendedEvent{}
 
@@ -571,7 +571,7 @@ func newDescriptorExtendedEvent(i *astibyte.Iterator) (d *DescriptorExtendedEven
 	return
 }
 
-func newDescriptorExtendedEventItem(i *astibyte.Iterator) (d *DescriptorExtendedEventItem, err error) {
+func newDescriptorExtendedEventItem(i *astikit.BytesIterator) (d *DescriptorExtendedEventItem, err error) {
 	// Init
 	d = &DescriptorExtendedEventItem{}
 
@@ -615,7 +615,7 @@ type DescriptorExtension struct {
 	Tag                uint8
 }
 
-func newDescriptorExtension(i *astibyte.Iterator, offsetEnd int) (d *DescriptorExtension, err error) {
+func newDescriptorExtension(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorExtension, err error) {
 	// Get next byte
 	var b byte
 	if b, err = i.NextByte(); err != nil {
@@ -650,7 +650,7 @@ type DescriptorExtensionSupplementaryAudio struct {
 	PrivateData             []byte
 }
 
-func newDescriptorExtensionSupplementaryAudio(i *astibyte.Iterator, offsetEnd int) (d *DescriptorExtensionSupplementaryAudio, err error) {
+func newDescriptorExtensionSupplementaryAudio(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorExtensionSupplementaryAudio, err error) {
 	// Get next byte
 	var b byte
 	if b, err = i.NextByte(); err != nil {
@@ -691,7 +691,7 @@ type DescriptorISO639LanguageAndAudioType struct {
 }
 
 // In some actual cases, the length is 3 and the language is described in only 2 bytes
-func newDescriptorISO639LanguageAndAudioType(i *astibyte.Iterator, offsetEnd int) (d *DescriptorISO639LanguageAndAudioType, err error) {
+func newDescriptorISO639LanguageAndAudioType(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorISO639LanguageAndAudioType, err error) {
 	// Get next bytes
 	var bs []byte
 	if bs, err = i.NextBytes(offsetEnd - i.Offset()); err != nil {
@@ -724,7 +724,7 @@ type DescriptorLocalTimeOffsetItem struct {
 	TimeOfChange            time.Time
 }
 
-func newDescriptorLocalTimeOffset(i *astibyte.Iterator, offsetEnd int) (d *DescriptorLocalTimeOffset, err error) {
+func newDescriptorLocalTimeOffset(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorLocalTimeOffset, err error) {
 	// Init
 	d = &DescriptorLocalTimeOffset{}
 
@@ -781,7 +781,7 @@ type DescriptorMaximumBitrate struct {
 	Bitrate uint32 // In bytes/second
 }
 
-func newDescriptorMaximumBitrate(i *astibyte.Iterator) (d *DescriptorMaximumBitrate, err error) {
+func newDescriptorMaximumBitrate(i *astikit.BytesIterator) (d *DescriptorMaximumBitrate, err error) {
 	// Get next bytes
 	var bs []byte
 	if bs, err = i.NextBytes(3); err != nil {
@@ -800,7 +800,7 @@ type DescriptorNetworkName struct {
 	Name []byte
 }
 
-func newDescriptorNetworkName(i *astibyte.Iterator, offsetEnd int) (d *DescriptorNetworkName, err error) {
+func newDescriptorNetworkName(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorNetworkName, err error) {
 	// Create descriptor
 	d = &DescriptorNetworkName{}
 
@@ -834,7 +834,7 @@ func (d DescriptorParentalRatingItem) MinimumAge() int {
 	return int(d.Rating) + 3
 }
 
-func newDescriptorParentalRating(i *astibyte.Iterator, offsetEnd int) (d *DescriptorParentalRating, err error) {
+func newDescriptorParentalRating(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorParentalRating, err error) {
 	// Create descriptor
 	d = &DescriptorParentalRating{}
 
@@ -861,7 +861,7 @@ type DescriptorPrivateDataIndicator struct {
 	Indicator uint32
 }
 
-func newDescriptorPrivateDataIndicator(i *astibyte.Iterator) (d *DescriptorPrivateDataIndicator, err error) {
+func newDescriptorPrivateDataIndicator(i *astikit.BytesIterator) (d *DescriptorPrivateDataIndicator, err error) {
 	// Get next bytes
 	var bs []byte
 	if bs, err = i.NextBytes(4); err != nil {
@@ -879,7 +879,7 @@ type DescriptorPrivateDataSpecifier struct {
 	Specifier uint32
 }
 
-func newDescriptorPrivateDataSpecifier(i *astibyte.Iterator) (d *DescriptorPrivateDataSpecifier, err error) {
+func newDescriptorPrivateDataSpecifier(i *astikit.BytesIterator) (d *DescriptorPrivateDataSpecifier, err error) {
 	// Get next bytes
 	var bs []byte
 	if bs, err = i.NextBytes(4); err != nil {
@@ -899,7 +899,7 @@ type DescriptorRegistration struct {
 	FormatIdentifier             uint32
 }
 
-func newDescriptorRegistration(i *astibyte.Iterator, offsetEnd int) (d *DescriptorRegistration, err error) {
+func newDescriptorRegistration(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorRegistration, err error) {
 	// Get next bytes
 	var bs []byte
 	if bs, err = i.NextBytes(4); err != nil {
@@ -928,7 +928,7 @@ type DescriptorService struct {
 	Type     uint8
 }
 
-func newDescriptorService(i *astibyte.Iterator) (d *DescriptorService, err error) {
+func newDescriptorService(i *astikit.BytesIterator) (d *DescriptorService, err error) {
 	// Get next byte
 	var b byte
 	if b, err = i.NextByte(); err != nil {
@@ -979,7 +979,7 @@ type DescriptorShortEvent struct {
 	Text      []byte
 }
 
-func newDescriptorShortEvent(i *astibyte.Iterator) (d *DescriptorShortEvent, err error) {
+func newDescriptorShortEvent(i *astikit.BytesIterator) (d *DescriptorShortEvent, err error) {
 	// Create descriptor
 	d = &DescriptorShortEvent{}
 
@@ -1026,7 +1026,7 @@ func newDescriptorShortEvent(i *astibyte.Iterator) (d *DescriptorShortEvent, err
 // Chapter: 6.2.39 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorStreamIdentifier struct{ ComponentTag uint8 }
 
-func newDescriptorStreamIdentifier(i *astibyte.Iterator) (d *DescriptorStreamIdentifier, err error) {
+func newDescriptorStreamIdentifier(i *astikit.BytesIterator) (d *DescriptorStreamIdentifier, err error) {
 	var b byte
 	if b, err = i.NextByte(); err != nil {
 		err = errors.Wrap(err, "astits: fetching next byte failed")
@@ -1051,7 +1051,7 @@ type DescriptorSubtitlingItem struct {
 	Type              uint8
 }
 
-func newDescriptorSubtitling(i *astibyte.Iterator, offsetEnd int) (d *DescriptorSubtitling, err error) {
+func newDescriptorSubtitling(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorSubtitling, err error) {
 	// Create descriptor
 	d = &DescriptorSubtitling{}
 
@@ -1116,7 +1116,7 @@ type DescriptorTeletextItem struct {
 	Type     uint8
 }
 
-func newDescriptorTeletext(i *astibyte.Iterator, offsetEnd int) (d *DescriptorTeletext, err error) {
+func newDescriptorTeletext(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorTeletext, err error) {
 	// Create descriptor
 	d = &DescriptorTeletext{}
 
@@ -1179,7 +1179,7 @@ type DescriptorVBIDataDescriptor struct {
 	LineOffset  uint8
 }
 
-func newDescriptorVBIData(i *astibyte.Iterator, offsetEnd int) (d *DescriptorVBIData, err error) {
+func newDescriptorVBIData(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorVBIData, err error) {
 	// Create descriptor
 	d = &DescriptorVBIData{}
 
@@ -1237,7 +1237,7 @@ func newDescriptorVBIData(i *astibyte.Iterator, offsetEnd int) (d *DescriptorVBI
 }
 
 // parseDescriptors parses descriptors
-func parseDescriptors(i *astibyte.Iterator) (o []*Descriptor, err error) {
+func parseDescriptors(i *astikit.BytesIterator) (o []*Descriptor, err error) {
 	// Get next 2 bytes
 	var bs []byte
 	if bs, err = i.NextBytes(2); err != nil {

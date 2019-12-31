@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/asticode/go-astitools/binary"
+	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,12 +27,13 @@ func TestDemuxerNextPacket(t *testing.T) {
 	assert.Error(t, err)
 
 	// Valid
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	b1, p1 := packet(*packetHeader, *packetAdaptationField, []byte("1"))
 	w.Write(b1)
 	b2, p2 := packet(*packetHeader, *packetAdaptationField, []byte("2"))
 	w.Write(b2)
-	dmx = New(context.Background(), bytes.NewReader(w.Bytes()))
+	dmx = New(context.Background(), bytes.NewReader(buf.Bytes()))
 
 	// First packet
 	p, err := dmx.NextPacket()
@@ -52,13 +53,14 @@ func TestDemuxerNextPacket(t *testing.T) {
 
 func TestDemuxerNextData(t *testing.T) {
 	// Init
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	b := psiBytes()
 	b1, _ := packet(PacketHeader{ContinuityCounter: uint8(0), PayloadUnitStartIndicator: true, PID: PIDPAT}, PacketAdaptationField{}, b[:147])
 	w.Write(b1)
 	b2, _ := packet(PacketHeader{ContinuityCounter: uint8(1), PID: PIDPAT}, PacketAdaptationField{}, b[147:])
 	w.Write(b2)
-	dmx := New(context.Background(), bytes.NewReader(w.Bytes()))
+	dmx := New(context.Background(), bytes.NewReader(buf.Bytes()))
 	p, err := dmx.NextPacket()
 	assert.NoError(t, err)
 	_, err = dmx.Rewind()

@@ -3,7 +3,7 @@ package astits
 import (
 	"time"
 
-	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/asticode/go-astikit"
 	"github.com/pkg/errors"
 )
 
@@ -15,7 +15,7 @@ type TOTData struct {
 }
 
 // parseTOTSection parses a TOT section
-func parseTOTSection(i *astibyte.Iterator) (d *TOTData, err error) {
+func parseTOTSection(i *astikit.BytesIterator) (d *TOTData, err error) {
 	// Create data
 	d = &TOTData{}
 

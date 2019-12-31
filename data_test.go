@@ -1,9 +1,10 @@
 package astits
 
 import (
+	"bytes"
 	"testing"
 
-	"github.com/asticode/go-astitools/binary"
+	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -77,10 +78,11 @@ func TestIsPSIPayload(t *testing.T) {
 }
 
 func TestIsPESPayload(t *testing.T) {
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write("0000000000000001")
-	assert.False(t, isPESPayload(w.Bytes()))
-	w.Reset()
+	assert.False(t, isPESPayload(buf.Bytes()))
+	buf.Reset()
 	w.Write("000000000000000000000001")
-	assert.True(t, isPESPayload(w.Bytes()))
+	assert.True(t, isPESPayload(buf.Bytes()))
 }

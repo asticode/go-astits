@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"io"
 
-	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/asticode/go-astikit"
 	"github.com/pkg/errors"
 )
 
 // packetBuffer represents a packet buffer
 type packetBuffer struct {
-	b          []*Packet
 	packetSize int
 	r          io.Reader
 }
@@ -104,7 +103,7 @@ func (pb *packetBuffer) next() (p *Packet, err error) {
 	}
 
 	// Parse packet
-	if p, err = parsePacket(astibyte.NewIterator(b)); err != nil {
+	if p, err = parsePacket(astikit.NewBytesIterator(b)); err != nil {
 		err = errors.Wrap(err, "astits: building packet failed")
 		return
 	}

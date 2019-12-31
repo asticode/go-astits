@@ -1,11 +1,11 @@
 package astits
 
 import (
+	"bytes"
 	"testing"
 
-	"github.com/asticode/go-astitools/binary"
+	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
-	"github.com/asticode/go-astitools/byte"
 )
 
 var eit = &EITData{
@@ -25,7 +25,8 @@ var eit = &EITData{
 }
 
 func eitBytes() []byte {
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write(uint16(2))               // Transport stream ID
 	w.Write(uint16(3))               // Original network ID
 	w.Write(uint8(4))                // Segment last section number
@@ -36,12 +37,12 @@ func eitBytes() []byte {
 	w.Write("111")                   // Event #1 running status
 	w.Write("1")                     // Event #1 free CA mode
 	descriptorsBytes(w)              // Event #1 descriptors
-	return w.Bytes()
+	return buf.Bytes()
 }
 
 func TestParseEITSection(t *testing.T) {
 	var b = eitBytes()
-	d, err := parseEITSection(astibyte.NewIterator(b), len(b), uint16(1))
+	d, err := parseEITSection(astikit.NewBytesIterator(b), len(b), uint16(1))
 	assert.Equal(t, d, eit)
 	assert.NoError(t, err)
 }

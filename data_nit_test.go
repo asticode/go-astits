@@ -1,10 +1,10 @@
 package astits
 
 import (
+	"bytes"
 	"testing"
 
-	astibinary "github.com/asticode/go-astitools/binary"
-	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,7 +19,8 @@ var nit = &NITData{
 }
 
 func nitBytes() []byte {
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write("0000")         // Reserved for future use
 	descriptorsBytes(w)     // Network descriptors
 	w.Write("0000")         // Reserved for future use
@@ -28,12 +29,12 @@ func nitBytes() []byte {
 	w.Write(uint16(3))      // Transport stream #1 original network id
 	w.Write("0000")         // Transport stream #1 reserved for future use
 	descriptorsBytes(w)     // Transport stream #1 descriptors
-	return w.Bytes()
+	return buf.Bytes()
 }
 
 func TestParseNITSection(t *testing.T) {
 	var b = nitBytes()
-	d, err := parseNITSection(astibyte.NewIterator(b), uint16(1))
+	d, err := parseNITSection(astikit.NewBytesIterator(b), uint16(1))
 	assert.Equal(t, d, nit)
 	assert.NoError(t, err)
 }

@@ -1,10 +1,10 @@
 package astits
 
 import (
+	"bytes"
 	"testing"
 
-	astibinary "github.com/asticode/go-astitools/binary"
-	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -99,7 +99,8 @@ var psi = &PSIData{
 }
 
 func psiBytes() []byte {
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write(uint8(4))                      // Pointer field
 	w.Write([]byte("test"))                // Pointer field bytes
 	w.Write(uint8(78))                     // EIT table ID
@@ -151,12 +152,13 @@ func psiBytes() []byte {
 	w.Write(uint32(0x6969b13))             // TOT CRC32
 	w.Write(uint8(254))                    // Unknown table ID
 	w.Write(uint8(0))                      // PAT table ID
-	return w.Bytes()
+	return buf.Bytes()
 }
 
 func TestParsePSIData(t *testing.T) {
 	// Invalid CRC32
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write(uint8(0))       // Pointer field
 	w.Write(uint8(115))     // TOT table ID
 	w.Write("1")            // TOT syntax section indicator
@@ -165,11 +167,11 @@ func TestParsePSIData(t *testing.T) {
 	w.Write("000000001110") // TOT section length
 	w.Write(totBytes())     // TOT data
 	w.Write(uint32(32))     // TOT CRC32
-	_, err := parsePSIData(astibyte.NewIterator(w.Bytes()))
+	_, err := parsePSIData(astikit.NewBytesIterator(buf.Bytes()))
 	assert.EqualError(t, err, "astits: parsing PSI table failed: astits: Table CRC32 20 != computed CRC32 6969b13")
 
 	// Valid
-	d, err := parsePSIData(astibyte.NewIterator(psiBytes()))
+	d, err := parsePSIData(astikit.NewBytesIterator(psiBytes()))
 	assert.NoError(t, err)
 	assert.Equal(t, d, psi)
 }
@@ -183,22 +185,24 @@ var psiSectionHeader = &PSISectionHeader{
 }
 
 func psiSectionHeaderBytes() []byte {
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write(uint8(0))       // Table ID
 	w.Write("1")            // Syntax section indicator
 	w.Write("1")            // Private bit
 	w.Write("11")           // Reserved
 	w.Write("101010101010") // Section length
-	return w.Bytes()
+	return buf.Bytes()
 }
 
 func TestParsePSISectionHeader(t *testing.T) {
 	// Unknown table type
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write(uint8(254)) // Table ID
 	w.Write("1")        // Syntax section indicator
 	w.Write("0000000")  // Finish the byte
-	d, _, _, _, _, err := parsePSISectionHeader(astibyte.NewIterator(w.Bytes()))
+	d, _, _, _, _, err := parsePSISectionHeader(astikit.NewBytesIterator(buf.Bytes()))
 	assert.Equal(t, d, &PSISectionHeader{
 		TableID:   254,
 		TableType: PSITableTypeUnknown,
@@ -206,7 +210,7 @@ func TestParsePSISectionHeader(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Valid table type
-	d, offsetStart, offsetSectionsStart, offsetSectionsEnd, offsetEnd, err := parsePSISectionHeader(astibyte.NewIterator(psiSectionHeaderBytes()))
+	d, offsetStart, offsetSectionsStart, offsetSectionsEnd, offsetEnd, err := parsePSISectionHeader(astikit.NewBytesIterator(psiSectionHeaderBytes()))
 	assert.Equal(t, d, psiSectionHeader)
 	assert.Equal(t, 0, offsetStart)
 	assert.Equal(t, 3, offsetSectionsStart)
@@ -245,18 +249,19 @@ var psiSectionSyntaxHeader = &PSISectionSyntaxHeader{
 }
 
 func psiSectionSyntaxHeaderBytes() []byte {
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write(uint16(1)) // Table ID extension
 	w.Write("11")      // Reserved bits
 	w.Write("10101")   // Version number
 	w.Write("1")       // Current/next indicator
 	w.Write(uint8(2))  // Section number
 	w.Write(uint8(3))  // Last section number
-	return w.Bytes()
+	return buf.Bytes()
 }
 
 func TestParsePSISectionSyntaxHeader(t *testing.T) {
-	h, err := parsePSISectionSyntaxHeader(astibyte.NewIterator(psiSectionSyntaxHeaderBytes()))
+	h, err := parsePSISectionSyntaxHeader(astikit.NewBytesIterator(psiSectionSyntaxHeaderBytes()))
 	assert.Equal(t, psiSectionSyntaxHeader, h)
 	assert.NoError(t, err)
 }

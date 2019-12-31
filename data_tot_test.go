@@ -1,11 +1,11 @@
 package astits
 
 import (
+	"bytes"
 	"testing"
 
-	"github.com/asticode/go-astitools/binary"
+	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
-	"github.com/asticode/go-astitools/byte"
 )
 
 var tot = &TOTData{
@@ -14,15 +14,16 @@ var tot = &TOTData{
 }
 
 func totBytes() []byte {
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write(dvbTimeBytes) // UTC time
 	w.Write("0000")       // Reserved
 	descriptorsBytes(w)   // Service #1 descriptors
-	return w.Bytes()
+	return buf.Bytes()
 }
 
 func TestParseTOTSection(t *testing.T) {
-	d, err := parseTOTSection(astibyte.NewIterator(totBytes()))
+	d, err := parseTOTSection(astikit.NewBytesIterator(totBytes()))
 	assert.Equal(t, d, tot)
 	assert.NoError(t, err)
 }

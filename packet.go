@@ -1,7 +1,7 @@
 package astits
 
 import (
-	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/asticode/go-astikit"
 	"github.com/pkg/errors"
 )
 
@@ -66,7 +66,7 @@ type PacketAdaptationExtensionField struct {
 }
 
 // parsePacket parses a packet
-func parsePacket(i *astibyte.Iterator) (p *Packet, err error) {
+func parsePacket(i *astikit.BytesIterator) (p *Packet, err error) {
 	// Get next byte
 	var b byte
 	if b, err = i.NextByte(); err != nil {
@@ -119,7 +119,7 @@ func payloadOffset(offsetStart int, h *PacketHeader, a *PacketAdaptationField) (
 }
 
 // parsePacketHeader parses the packet header
-func parsePacketHeader(i *astibyte.Iterator) (h *PacketHeader, err error) {
+func parsePacketHeader(i *astikit.BytesIterator) (h *PacketHeader, err error) {
 	// Get next bytes
 	var bs []byte
 	if bs, err = i.NextBytes(3); err != nil {
@@ -142,7 +142,7 @@ func parsePacketHeader(i *astibyte.Iterator) (h *PacketHeader, err error) {
 }
 
 // parsePacketAdaptationField parses the packet adaptation field
-func parsePacketAdaptationField(i *astibyte.Iterator) (a *PacketAdaptationField, err error) {
+func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationField, err error) {
 	// Create adaptation field
 	a = &PacketAdaptationField{}
 
@@ -275,7 +275,7 @@ func parsePacketAdaptationField(i *astibyte.Iterator) (a *PacketAdaptationField,
 					a.AdaptationExtensionField.SpliceType = uint8(b&0xf0) >> 4
 
 					// We need to rewind since the current byte is used by the DTS next access unit as well
-					i.FastForward(-1)
+					i.Skip(-1)
 
 					// DTS Next access unit
 					if a.AdaptationExtensionField.DTSNextAccessUnit, err = parsePTSOrDTS(i); err != nil {
@@ -291,7 +291,7 @@ func parsePacketAdaptationField(i *astibyte.Iterator) (a *PacketAdaptationField,
 
 // parsePCR parses a Program Clock Reference
 // Program clock reference, stored as 33 bits base, 6 bits reserved, 9 bits extension.
-func parsePCR(i *astibyte.Iterator) (cr *ClockReference, err error) {
+func parsePCR(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 	var bs []byte
 	if bs, err = i.NextBytes(6); err != nil {
 		err = errors.Wrap(err, "astits: fetching next bytes failed")

@@ -3,7 +3,7 @@ package astits
 import (
 	"time"
 
-	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/asticode/go-astikit"
 	"github.com/pkg/errors"
 )
 
@@ -29,7 +29,7 @@ type EITDataEvent struct {
 }
 
 // parseEITSection parses an EIT section
-func parseEITSection(i *astibyte.Iterator, offsetSectionsEnd int, tableIDExtension uint16) (d *EITData, err error) {
+func parseEITSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExtension uint16) (d *EITData, err error) {
 	// Create data
 	d = &EITData{ServiceID: tableIDExtension}
 
@@ -108,7 +108,7 @@ func parseEITSection(i *astibyte.Iterator, offsetSectionsEnd int, tableIDExtensi
 		e.HasFreeCSAMode = uint8(b&0x10) > 0
 
 		// We need to rewind since the current byte is used by the descriptor as well
-		i.FastForward(-1)
+		i.Skip(-1)
 
 		// Descriptors
 		if e.Descriptors, err = parseDescriptors(i); err != nil {

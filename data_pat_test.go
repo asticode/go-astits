@@ -1,11 +1,11 @@
 package astits
 
 import (
+	"bytes"
 	"testing"
 
-	"github.com/asticode/go-astitools/binary"
+	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
-	"github.com/asticode/go-astitools/byte"
 )
 
 var pat = &PATData{
@@ -17,19 +17,20 @@ var pat = &PATData{
 }
 
 func patBytes() []byte {
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write(uint16(2))       // Program #1 number
 	w.Write("111")           // Program #1 reserved bits
 	w.Write("0000000000011") // Program #1 map ID
 	w.Write(uint16(4))       // Program #2 number
 	w.Write("111")           // Program #2 reserved bits
 	w.Write("0000000000101") // Program #3 map ID
-	return w.Bytes()
+	return buf.Bytes()
 }
 
 func TestParsePATSection(t *testing.T) {
 	var b = patBytes()
-	d, err := parsePATSection(astibyte.NewIterator(b), len(b), uint16(1))
+	d, err := parsePATSection(astikit.NewBytesIterator(b), len(b), uint16(1))
 	assert.Equal(t, d, pat)
 	assert.NoError(t, err)
 }

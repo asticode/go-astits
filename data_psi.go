@@ -3,8 +3,8 @@ package astits
 import (
 	"fmt"
 
+	"github.com/asticode/go-astikit"
 	"github.com/asticode/go-astilog"
-	astibyte "github.com/asticode/go-astitools/byte"
 	"github.com/pkg/errors"
 )
 
@@ -75,7 +75,7 @@ type PSISectionSyntaxData struct {
 }
 
 // parsePSIData parses a PSI data
-func parsePSIData(i *astibyte.Iterator) (d *PSIData, err error) {
+func parsePSIData(i *astikit.BytesIterator) (d *PSIData, err error) {
 	// Init data
 	d = &PSIData{}
 
@@ -90,7 +90,7 @@ func parsePSIData(i *astibyte.Iterator) (d *PSIData, err error) {
 	d.PointerField = int(b)
 
 	// Pointer filler bytes
-	i.FastForward(d.PointerField)
+	i.Skip(d.PointerField)
 
 	// Parse sections
 	var s *PSISection
@@ -106,7 +106,7 @@ func parsePSIData(i *astibyte.Iterator) (d *PSIData, err error) {
 }
 
 // parsePSISection parses a PSI section
-func parsePSISection(i *astibyte.Iterator) (s *PSISection, stop bool, err error) {
+func parsePSISection(i *astikit.BytesIterator) (s *PSISection, stop bool, err error) {
 	// Init section
 	s = &PSISection{}
 
@@ -171,7 +171,7 @@ func parsePSISection(i *astibyte.Iterator) (s *PSISection, stop bool, err error)
 }
 
 // parseCRC32 parses a CRC32
-func parseCRC32(i *astibyte.Iterator) (c uint32, err error) {
+func parseCRC32(i *astikit.BytesIterator) (c uint32, err error) {
 	var bs []byte
 	if bs, err = i.NextBytes(4); err != nil {
 		err = errors.Wrap(err, "astits: fetching next bytes failed")
@@ -204,7 +204,7 @@ func shouldStopPSIParsing(tableType string) bool {
 }
 
 // parsePSISectionHeader parses a PSI section header
-func parsePSISectionHeader(i *astibyte.Iterator) (h *PSISectionHeader, offsetStart, offsetSectionsStart, offsetSectionsEnd, offsetEnd int, err error) {
+func parsePSISectionHeader(i *astikit.BytesIterator) (h *PSISectionHeader, offsetStart, offsetSectionsStart, offsetSectionsEnd, offsetEnd int, err error) {
 	// Init
 	h = &PSISectionHeader{}
 	offsetStart = i.Offset()
@@ -300,7 +300,7 @@ func psiTableType(tableID int) string {
 }
 
 // parsePSISectionSyntax parses a PSI section syntax
-func parsePSISectionSyntax(i *astibyte.Iterator, h *PSISectionHeader, offsetSectionsEnd int) (s *PSISectionSyntax, err error) {
+func parsePSISectionSyntax(i *astikit.BytesIterator, h *PSISectionHeader, offsetSectionsEnd int) (s *PSISectionSyntax, err error) {
 	// Init
 	s = &PSISectionSyntax{}
 
@@ -330,7 +330,7 @@ func hasPSISyntaxHeader(tableType string) bool {
 }
 
 // parsePSISectionSyntaxHeader parses a PSI section syntax header
-func parsePSISectionSyntaxHeader(i *astibyte.Iterator) (h *PSISectionSyntaxHeader, err error) {
+func parsePSISectionSyntaxHeader(i *astikit.BytesIterator) (h *PSISectionSyntaxHeader, err error) {
 	// Init
 	h = &PSISectionSyntaxHeader{}
 
@@ -378,7 +378,7 @@ func parsePSISectionSyntaxHeader(i *astibyte.Iterator) (h *PSISectionSyntaxHeade
 }
 
 // parsePSISectionSyntaxData parses a PSI section data
-func parsePSISectionSyntaxData(i *astibyte.Iterator, h *PSISectionHeader, sh *PSISectionSyntaxHeader, offsetSectionsEnd int) (d *PSISectionSyntaxData, err error) {
+func parsePSISectionSyntaxData(i *astikit.BytesIterator, h *PSISectionHeader, sh *PSISectionSyntaxHeader, offsetSectionsEnd int) (d *PSISectionSyntaxData, err error) {
 	// Init
 	d = &PSISectionSyntaxData{}
 

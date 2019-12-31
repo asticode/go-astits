@@ -1,8 +1,8 @@
 package astits
 
 import (
+	"github.com/asticode/go-astikit"
 	"github.com/pkg/errors"
-	"github.com/asticode/go-astitools/byte"
 )
 
 // PIDs
@@ -52,8 +52,8 @@ func parseData(ps []*Packet, prs PacketsParser, pm programMap) (ds []*Data, err 
 		c += copy(payload[c:], p.Payload)
 	}
 
-	// Create iterator
-	i := astibyte.NewIterator(payload)
+	// Create reader
+	i := astikit.NewBytesIterator(payload)
 
 	// Parse PID
 	pid := ps[0].Header.PID

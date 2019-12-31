@@ -1,7 +1,7 @@
 package astits
 
 import (
-	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/asticode/go-astikit"
 	"github.com/pkg/errors"
 )
 
@@ -21,7 +21,7 @@ type NITDataTransportStream struct {
 }
 
 // parseNITSection parses a NIT section
-func parseNITSection(i *astibyte.Iterator, tableIDExtension uint16) (d *NITData, err error) {
+func parseNITSection(i *astikit.BytesIterator, tableIDExtension uint16) (d *NITData, err error) {
 	// Create data
 	d = &NITData{NetworkID: tableIDExtension}
 

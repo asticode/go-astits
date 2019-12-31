@@ -1,7 +1,7 @@
 package astits
 
 import (
-	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/asticode/go-astikit"
 	"github.com/pkg/errors"
 )
 
@@ -30,7 +30,7 @@ type PMTElementaryStream struct {
 }
 
 // parsePMTSection parses a PMT section
-func parsePMTSection(i *astibyte.Iterator, offsetSectionsEnd int, tableIDExtension uint16) (d *PMTData, err error) {
+func parsePMTSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExtension uint16) (d *PMTData, err error) {
 	// Create data
 	d = &PMTData{ProgramNumber: tableIDExtension}
 

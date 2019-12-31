@@ -1,10 +1,10 @@
 package astits
 
 import (
+	"bytes"
 	"testing"
 
-	astibinary "github.com/asticode/go-astitools/binary"
-	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,7 +14,7 @@ var descriptors = []*Descriptor{{
 	Tag:              DescriptorTagStreamIdentifier,
 }}
 
-func descriptorsBytes(w *astibinary.Writer) {
+func descriptorsBytes(w *astikit.BitsWriter) {
 	w.Write("000000000011")                       // Overall length
 	w.Write(uint8(DescriptorTagStreamIdentifier)) // Tag
 	w.Write(uint8(1))                             // Length
@@ -23,7 +23,8 @@ func descriptorsBytes(w *astibinary.Writer) {
 
 func TestParseDescriptor(t *testing.T) {
 	// Init
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write(uint16(242)) // Descriptors length
 	// AC3
 	w.Write(uint8(DescriptorTagAC3)) // Tag
@@ -215,7 +216,7 @@ func TestParseDescriptor(t *testing.T) {
 	w.Write([]byte("test")) // Additional identification info
 
 	// Assert
-	ds, err := parseDescriptors(astibyte.NewIterator(w.Bytes()))
+	ds, err := parseDescriptors(astikit.NewBytesIterator(buf.Bytes()))
 	assert.NoError(t, err)
 	assert.Equal(t, *ds[0].AC3, DescriptorAC3{
 		AdditionalInfo:   []byte("info"),

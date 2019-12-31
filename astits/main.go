@@ -13,9 +13,8 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/asticode/go-astikit"
 	"github.com/asticode/go-astilog"
-	"github.com/asticode/go-astitools/flag"
-	"github.com/asticode/go-astitools/io"
 	"github.com/asticode/go-astits"
 	"github.com/pkg/errors"
 	"github.com/pkg/profile"
@@ -25,7 +24,7 @@ import (
 var (
 	ctx, cancel     = context.WithCancel(context.Background())
 	cpuProfiling    = flag.Bool("cp", false, "if yes, cpu profiling is enabled")
-	dataTypes       = astiflag.NewStringsMap()
+	dataTypes       = astikit.NewFlagStrings()
 	format          = flag.String("f", "", "the format")
 	inputPath       = flag.String("i", "", "the input path")
 	memoryProfiling = flag.Bool("mp", false, "if yes, memory profiling is enabled")
@@ -38,7 +37,8 @@ func main() {
 		flag.PrintDefaults()
 	}
 	flag.Var(dataTypes, "d", "the datatypes whitelist (all, pat, pmt, pes, eit, nit, sdt, tot)")
-	var s = astiflag.Subcommand()
+	cmd := astikit.FlagCmd()
+	astilog.SetHandyFlags()
 	flag.Parse()
 	astilog.FlagInit()
 
@@ -68,8 +68,8 @@ func main() {
 	// Create the demuxer
 	var dmx = astits.New(ctx, r)
 
-	// Switch on subcommand
-	switch s {
+	// Switch on command
+	switch cmd {
 	case "data":
 		// Fetch data
 		if err = data(dmx); err != nil {
@@ -117,8 +117,8 @@ func handleSignals() {
 			switch s {
 			case syscall.SIGABRT, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM:
 				cancel()
+				return
 			}
-			return
 		}
 	}()
 }
@@ -154,14 +154,7 @@ func buildReader(ctx context.Context) (r io.Reader, err error) {
 			return
 		}
 		c.SetReadBuffer(4096)
-
-		// Initialize linearizer
-		// It will read 4096 bytes at each iteration, and will store up to 2MB in its buffer
-		var l = astiio.NewLinearizer(ctx, c, 4096, 2048*1024)
-
-		// Start linearizer
-		go l.Start()
-		r = l
+		r = c
 	default:
 		// Open file
 		var f *os.File

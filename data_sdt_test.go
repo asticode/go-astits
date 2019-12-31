@@ -1,10 +1,10 @@
 package astits
 
 import (
+	"bytes"
 	"testing"
 
-	astibinary "github.com/asticode/go-astitools/binary"
-	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,7 +22,8 @@ var sdt = &SDTData{
 }
 
 func sdtBytes() []byte {
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write(uint16(2))  // Original network ID
 	w.Write(uint8(0))   // Reserved for future use
 	w.Write(uint16(3))  // Service #1 id
@@ -32,12 +33,12 @@ func sdtBytes() []byte {
 	w.Write("101")      // Service #1 running status
 	w.Write("1")        // Service #1 free CA mode
 	descriptorsBytes(w) // Service #1 descriptors
-	return w.Bytes()
+	return buf.Bytes()
 }
 
 func TestParseSDTSection(t *testing.T) {
 	var b = sdtBytes()
-	d, err := parseSDTSection(astibyte.NewIterator(b), len(b), uint16(1))
+	d, err := parseSDTSection(astikit.NewBytesIterator(b), len(b), uint16(1))
 	assert.Equal(t, d, sdt)
 	assert.NoError(t, err)
 }

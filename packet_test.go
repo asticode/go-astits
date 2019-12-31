@@ -1,23 +1,24 @@
 package astits
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
-	astibinary "github.com/asticode/go-astitools/binary"
-	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
 )
 
 func packet(h PacketHeader, a PacketAdaptationField, i []byte) ([]byte, *Packet) {
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write(uint8(syncByte))                             // Sync byte
 	w.Write([]byte("test"))                              // Sometimes packets are 192 bytes
 	w.Write(packetHeaderBytes(h))                        // Header
 	w.Write(packetAdaptationFieldBytes(a))               // Adaptation field
 	var payload = append(i, make([]byte, 147-len(i))...) // Payload
 	w.Write(payload)
-	return w.Bytes(), &Packet{
+	return buf.Bytes(), &Packet{
 		AdaptationField: packetAdaptationField,
 		Header:          packetHeader,
 		Payload:         payload,
@@ -26,14 +27,15 @@ func packet(h PacketHeader, a PacketAdaptationField, i []byte) ([]byte, *Packet)
 
 func TestParsePacket(t *testing.T) {
 	// Packet not starting with a sync
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write(uint16(1)) // Invalid sync byte
-	_, err := parsePacket(astibyte.NewIterator(w.Bytes()))
+	_, err := parsePacket(astikit.NewBytesIterator(buf.Bytes()))
 	assert.EqualError(t, err, ErrPacketMustStartWithASyncByte.Error())
 
 	// Valid
 	b, ep := packet(*packetHeader, *packetAdaptationField, []byte("payload"))
-	p, err := parsePacket(astibyte.NewIterator(b))
+	p, err := parsePacket(astikit.NewBytesIterator(b))
 	assert.NoError(t, err)
 	assert.Equal(t, p, ep)
 }
@@ -55,7 +57,8 @@ var packetHeader = &PacketHeader{
 }
 
 func packetHeaderBytes(h PacketHeader) []byte {
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write(h.TransportErrorIndicator)                // Transport error indicator
 	w.Write(h.PayloadUnitStartIndicator)              // Payload unit start indicator
 	w.Write("1")                                      // Transport priority
@@ -63,11 +66,11 @@ func packetHeaderBytes(h PacketHeader) []byte {
 	w.Write("10")                                     // Scrambling control
 	w.Write("11")                                     // Adaptation field control
 	w.Write(fmt.Sprintf("%.4b", h.ContinuityCounter)) // Continuity counter
-	return w.Bytes()
+	return buf.Bytes()
 }
 
 func TestParsePacketHeader(t *testing.T) {
-	v, err := parsePacketHeader(astibyte.NewIterator(packetHeaderBytes(*packetHeader)))
+	v, err := parsePacketHeader(astikit.NewBytesIterator(packetHeaderBytes(*packetHeader)))
 	assert.Equal(t, packetHeader, v)
 	assert.NoError(t, err)
 }
@@ -101,7 +104,8 @@ var packetAdaptationField = &PacketAdaptationField{
 }
 
 func packetAdaptationFieldBytes(a PacketAdaptationField) []byte {
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write(uint8(36))                // Length
 	w.Write(a.DiscontinuityIndicator) // Discontinuity indicator
 	w.Write("1")                      // Random access indicator
@@ -127,11 +131,11 @@ func packetAdaptationFieldBytes(a PacketAdaptationField) []byte {
 	w.Write("1010101010101010101010") // Piecewise rate
 	w.Write(dtsBytes())               // Splice type + DTS next access unit
 	w.Write([]byte("stuff"))          // Stuffing bytes
-	return w.Bytes()
+	return buf.Bytes()
 }
 
 func TestParsePacketAdaptationField(t *testing.T) {
-	v, err := parsePacketAdaptationField(astibyte.NewIterator(packetAdaptationFieldBytes(*packetAdaptationField)))
+	v, err := parsePacketAdaptationField(astikit.NewBytesIterator(packetAdaptationFieldBytes(*packetAdaptationField)))
 	assert.Equal(t, packetAdaptationField, v)
 	assert.NoError(t, err)
 }
@@ -142,15 +146,16 @@ var pcr = &ClockReference{
 }
 
 func pcrBytes() []byte {
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write("101010101010101010101010101010101") // Base
 	w.Write("111111")                            // Reserved
 	w.Write("101010101")                         // Extension
-	return w.Bytes()
+	return buf.Bytes()
 }
 
 func TestParsePCR(t *testing.T) {
-	v, err := parsePCR(astibyte.NewIterator(pcrBytes()))
+	v, err := parsePCR(astikit.NewBytesIterator(pcrBytes()))
 	assert.Equal(t, pcr, v)
 	assert.NoError(t, err)
 }

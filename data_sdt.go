@@ -1,7 +1,7 @@
 package astits
 
 import (
-	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/asticode/go-astikit"
 	"github.com/pkg/errors"
 )
 
@@ -34,7 +34,7 @@ type SDTDataService struct {
 }
 
 // parseSDTSection parses an SDT section
-func parseSDTSection(i *astibyte.Iterator, offsetSectionsEnd int, tableIDExtension uint16) (d *SDTData, err error) {
+func parseSDTSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExtension uint16) (d *SDTData, err error) {
 	// Create data
 	d = &SDTData{TransportStreamID: tableIDExtension}
 
@@ -49,7 +49,7 @@ func parseSDTSection(i *astibyte.Iterator, offsetSectionsEnd int, tableIDExtensi
 	d.OriginalNetworkID = uint16(bs[0])<<8 | uint16(bs[1])
 
 	// Reserved for future use
-	i.FastForward(1)
+	i.Skip(1)
 
 	// Loop until end of section data is reached
 	for i.Offset() < offsetSectionsEnd {
@@ -91,7 +91,7 @@ func parseSDTSection(i *astibyte.Iterator, offsetSectionsEnd int, tableIDExtensi
 		s.HasFreeCSAMode = uint8(b&0x10) > 0
 
 		// We need to rewind since the current byte is used by the descriptor as well
-		i.FastForward(-1)
+		i.Skip(-1)
 
 		// Descriptors
 		if s.Descriptors, err = parseDescriptors(i); err != nil {

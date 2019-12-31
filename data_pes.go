@@ -1,7 +1,7 @@
 package astits
 
 import (
-	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/asticode/go-astikit"
 	"github.com/pkg/errors"
 )
 
@@ -102,7 +102,7 @@ type DSMTrickMode struct {
 }
 
 // parsePESData parses a PES data
-func parsePESData(i *astibyte.Iterator) (d *PESData, err error) {
+func parsePESData(i *astikit.BytesIterator) (d *PESData, err error) {
 	// Create data
 	d = &PESData{}
 
@@ -133,7 +133,7 @@ func hasPESOptionalHeader(streamID uint8) bool {
 }
 
 // parsePESData parses a PES header
-func parsePESHeader(i *astibyte.Iterator) (h *PESHeader, dataStart, dataEnd int, err error) {
+func parsePESHeader(i *astikit.BytesIterator) (h *PESHeader, dataStart, dataEnd int, err error) {
 	// Create header
 	h = &PESHeader{}
 
@@ -177,7 +177,7 @@ func parsePESHeader(i *astibyte.Iterator) (h *PESHeader, dataStart, dataEnd int,
 }
 
 // parsePESOptionalHeader parses a PES optional header
-func parsePESOptionalHeader(i *astibyte.Iterator) (h *PESOptionalHeader, dataStart int, err error) {
+func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dataStart int, err error) {
 	// Create header
 	h = &PESOptionalHeader{}
 
@@ -390,7 +390,7 @@ func parseDSMTrickMode(i byte) (m *DSMTrickMode) {
 }
 
 // parsePTSOrDTS parses a PTS or a DTS
-func parsePTSOrDTS(i *astibyte.Iterator) (cr *ClockReference, err error) {
+func parsePTSOrDTS(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 	var bs []byte
 	if bs, err = i.NextBytes(5); err != nil {
 		err = errors.Wrap(err, "astits: fetching next bytes failed")
@@ -401,7 +401,7 @@ func parsePTSOrDTS(i *astibyte.Iterator) (cr *ClockReference, err error) {
 }
 
 // parseESCR parses an ESCR
-func parseESCR(i *astibyte.Iterator) (cr *ClockReference, err error) {
+func parseESCR(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 	var bs []byte
 	if bs, err = i.NextBytes(6); err != nil {
 		err = errors.Wrap(err, "astits: fetching next bytes failed")

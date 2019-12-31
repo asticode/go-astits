@@ -1,7 +1,7 @@
 package astits
 
 import (
-	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/asticode/go-astikit"
 	"github.com/pkg/errors"
 )
 
@@ -19,7 +19,7 @@ type PATProgram struct {
 }
 
 // parsePATSection parses a PAT section
-func parsePATSection(i *astibyte.Iterator, offsetSectionsEnd int, tableIDExtension uint16) (d *PATData, err error) {
+func parsePATSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExtension uint16) (d *PATData, err error) {
 	// Create data
 	d = &PATData{TransportStreamID: tableIDExtension}
 

@@ -1,11 +1,11 @@
 package astits
 
 import (
+	"bytes"
 	"testing"
 
-	"github.com/asticode/go-astitools/binary"
+	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
-	"github.com/asticode/go-astitools/byte"
 )
 
 var pmt = &PMTData{
@@ -20,7 +20,8 @@ var pmt = &PMTData{
 }
 
 func pmtBytes() []byte {
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write("111")                       // Reserved bits
 	w.Write("1010101010101")             // PCR PID
 	w.Write("1111")                      // Reserved
@@ -30,12 +31,12 @@ func pmtBytes() []byte {
 	w.Write("0101010101010")             // Stream #1 PID
 	w.Write("1111")                      // Stream #1 reserved
 	descriptorsBytes(w)                  // Stream #1 descriptors
-	return w.Bytes()
+	return buf.Bytes()
 }
 
 func TestParsePMTSection(t *testing.T) {
 	var b = pmtBytes()
-	d, err := parsePMTSection(astibyte.NewIterator(b), len(b), uint16(1))
+	d, err := parsePMTSection(astikit.NewBytesIterator(b), len(b), uint16(1))
 	assert.Equal(t, d, pmt)
 	assert.NoError(t, err)
 }

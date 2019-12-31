@@ -1,10 +1,10 @@
 package astits
 
 import (
+	"bytes"
 	"testing"
 
-	astibinary "github.com/asticode/go-astitools/binary"
-	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,20 +24,22 @@ var dsmTrickModeSlow = &DSMTrickMode{
 }
 
 func dsmTrickModeSlowBytes() []byte {
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write("001")   // Control
 	w.Write("10101") // Repeat control
-	return w.Bytes()
+	return buf.Bytes()
 }
 
 func TestParseDSMTrickMode(t *testing.T) {
 	// Fast
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write("011") // Control
 	w.Write("10")  // Field ID
 	w.Write("1")   // Intra slice refresh
 	w.Write("11")  // Frequency truncation
-	assert.Equal(t, parseDSMTrickMode(w.Bytes()[0]), &DSMTrickMode{
+	assert.Equal(t, parseDSMTrickMode(buf.Bytes()[0]), &DSMTrickMode{
 		FieldID:             2,
 		FrequencyTruncation: 3,
 		IntraSliceRefresh:   1,
@@ -45,11 +47,11 @@ func TestParseDSMTrickMode(t *testing.T) {
 	})
 
 	// Freeze
-	w.Reset()
+	buf.Reset()
 	w.Write("010") // Control
 	w.Write("10")  // Field ID
 	w.Write("000") // Reserved
-	assert.Equal(t, parseDSMTrickMode(w.Bytes()[0]), &DSMTrickMode{
+	assert.Equal(t, parseDSMTrickMode(buf.Bytes()[0]), &DSMTrickMode{
 		FieldID:          2,
 		TrickModeControl: TrickModeControlFreezeFrame,
 	})
@@ -61,7 +63,8 @@ func TestParseDSMTrickMode(t *testing.T) {
 var ptsClockReference = &ClockReference{Base: 5726623061}
 
 func ptsBytes() []byte {
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write("0010")            // Flag
 	w.Write("101")             // 32...30
 	w.Write("0")               // Dummy
@@ -69,13 +72,14 @@ func ptsBytes() []byte {
 	w.Write("0")               // Dummy
 	w.Write("101010101010101") // 14...0
 	w.Write("0")               // Dummy
-	return w.Bytes()
+	return buf.Bytes()
 }
 
 var dtsClockReference = &ClockReference{Base: 5726623060}
 
 func dtsBytes() []byte {
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write("0010")            // Flag
 	w.Write("101")             // 32...30
 	w.Write("0")               // Dummy
@@ -83,17 +87,18 @@ func dtsBytes() []byte {
 	w.Write("0")               // Dummy
 	w.Write("101010101010100") // 14...0
 	w.Write("0")               // Dummy
-	return w.Bytes()
+	return buf.Bytes()
 }
 
 func TestParsePTSOrDTS(t *testing.T) {
-	v, err := parsePTSOrDTS(astibyte.NewIterator(ptsBytes()))
+	v, err := parsePTSOrDTS(astikit.NewBytesIterator(ptsBytes()))
 	assert.Equal(t, v, ptsClockReference)
 	assert.NoError(t, err)
 }
 
 func escrBytes() []byte {
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write("00")              // Dummy
 	w.Write("011")             // 32...30
 	w.Write("1")               // Dummy
@@ -103,11 +108,11 @@ func escrBytes() []byte {
 	w.Write("1")               // Dummy
 	w.Write("000111010")       // Ext
 	w.Write("1")               // Dummy
-	return w.Bytes()
+	return buf.Bytes()
 }
 
 func TestParseESCR(t *testing.T) {
-	v, err := parseESCR(astibyte.NewIterator(escrBytes()))
+	v, err := parseESCR(astikit.NewBytesIterator(escrBytes()))
 	assert.Equal(t, v, clockReference)
 	assert.NoError(t, err)
 }
@@ -121,12 +126,13 @@ var pesWithoutHeader = &PESData{
 }
 
 func pesWithoutHeaderBytes() []byte {
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write("000000000000000000000001")   // Prefix
 	w.Write(uint8(StreamIDPaddingStream)) // Stream ID
 	w.Write(uint16(4))                    // Packet length
 	w.Write([]byte("datastuff"))          // Data
-	return w.Bytes()
+	return buf.Bytes()
 }
 
 var pesWithHeader = &PESData{
@@ -175,7 +181,8 @@ var pesWithHeader = &PESData{
 }
 
 func pesWithHeaderBytes() []byte {
-	w := astibinary.New()
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write("000000000000000000000001") // Prefix
 	w.Write(uint8(1))                   // Stream ID
 	w.Write(uint16(69))                 // Packet length
@@ -214,17 +221,17 @@ func pesWithHeaderBytes() []byte {
 	w.Write([]byte("extension2"))       // Extension 2 data
 	w.Write([]byte("stuff"))            // Optional header stuffing bytes
 	w.Write([]byte("datastuff"))        // Data
-	return w.Bytes()
+	return buf.Bytes()
 }
 
 func TestParsePESData(t *testing.T) {
 	// No optional header and specific packet length
-	d, err := parsePESData(astibyte.NewIterator(pesWithoutHeaderBytes()))
+	d, err := parsePESData(astikit.NewBytesIterator(pesWithoutHeaderBytes()))
 	assert.NoError(t, err)
 	assert.Equal(t, pesWithoutHeader, d)
 
 	// Optional header and no specific header length
-	d, err = parsePESData(astibyte.NewIterator(pesWithHeaderBytes()))
+	d, err = parsePESData(astikit.NewBytesIterator(pesWithHeaderBytes()))
 	assert.NoError(t, err)
 	assert.Equal(t, pesWithHeader, d)
 }

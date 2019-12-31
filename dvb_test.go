@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	astibyte "github.com/asticode/go-astitools/byte"
+	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,19 +18,19 @@ var (
 )
 
 func TestParseDVBTime(t *testing.T) {
-	d, err := parseDVBTime(astibyte.NewIterator(dvbTimeBytes))
+	d, err := parseDVBTime(astikit.NewBytesIterator(dvbTimeBytes))
 	assert.Equal(t, dvbTime, d)
 	assert.NoError(t, err)
 }
 
 func TestParseDVBDurationMinutes(t *testing.T) {
-	d, err := parseDVBDurationMinutes(astibyte.NewIterator(dvbDurationMinutesBytes))
+	d, err := parseDVBDurationMinutes(astikit.NewBytesIterator(dvbDurationMinutesBytes))
 	assert.Equal(t, dvbDurationMinutes, d)
 	assert.NoError(t, err)
 }
 
 func TestParseDVBDurationSeconds(t *testing.T) {
-	d, err := parseDVBDurationSeconds(astibyte.NewIterator(dvbDurationSecondsBytes))
+	d, err := parseDVBDurationSeconds(astikit.NewBytesIterator(dvbDurationSecondsBytes))
 	assert.Equal(t, dvbDurationSeconds, d)
 	assert.NoError(t, err)
 }
