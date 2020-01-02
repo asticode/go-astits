@@ -200,28 +200,28 @@ func packets(dmx *astits.Demuxer) (err error) {
 func data(dmx *astits.Demuxer) (err error) {
 	// Determine which data to log
 	var logAll, logEIT, logNIT, logPAT, logPES, logPMT, logSDT, logTOT bool
-	if _, ok := dataTypes["all"]; ok {
+	if _, ok := dataTypes.Map["all"]; ok {
 		logAll = true
 	}
-	if _, ok := dataTypes["eit"]; ok {
+	if _, ok := dataTypes.Map["eit"]; ok {
 		logEIT = true
 	}
-	if _, ok := dataTypes["nit"]; ok {
+	if _, ok := dataTypes.Map["nit"]; ok {
 		logNIT = true
 	}
-	if _, ok := dataTypes["pat"]; ok {
+	if _, ok := dataTypes.Map["pat"]; ok {
 		logPAT = true
 	}
-	if _, ok := dataTypes["pes"]; ok {
+	if _, ok := dataTypes.Map["pes"]; ok {
 		logPES = true
 	}
-	if _, ok := dataTypes["pmt"]; ok {
+	if _, ok := dataTypes.Map["pmt"]; ok {
 		logPMT = true
 	}
-	if _, ok := dataTypes["sdt"]; ok {
+	if _, ok := dataTypes.Map["sdt"]; ok {
 		logSDT = true
 	}
-	if _, ok := dataTypes["tot"]; ok {
+	if _, ok := dataTypes.Map["tot"]; ok {
 		logTOT = true
 	}
 
