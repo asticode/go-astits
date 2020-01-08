@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/asticode/go-astikit"
-	"github.com/pkg/errors"
 )
 
 // parseDVBTime parses a DVB time
@@ -18,7 +17,7 @@ func parseDVBTime(i *astikit.BytesIterator) (t time.Time, err error) {
 	// Get next 2 bytes
 	var bs []byte
 	if bs, err = i.NextBytes(2); err != nil {
-		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
 
@@ -38,7 +37,7 @@ func parseDVBTime(i *astikit.BytesIterator) (t time.Time, err error) {
 	// Time
 	var s time.Duration
 	if s, err = parseDVBDurationSeconds(i); err != nil {
-		err = errors.Wrap(err, "astits: parsing DVB duration seconds failed")
+		err = fmt.Errorf("astits: parsing DVB duration seconds failed: %w", err)
 		return
 	}
 	t = t.Add(s)
@@ -50,7 +49,7 @@ func parseDVBTime(i *astikit.BytesIterator) (t time.Time, err error) {
 func parseDVBDurationMinutes(i *astikit.BytesIterator) (d time.Duration, err error) {
 	var bs []byte
 	if bs, err = i.NextBytes(2); err != nil {
-		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
 	d = parseDVBDurationByte(bs[0])*time.Hour + parseDVBDurationByte(bs[1])*time.Minute
@@ -62,7 +61,7 @@ func parseDVBDurationMinutes(i *astikit.BytesIterator) (d time.Duration, err err
 func parseDVBDurationSeconds(i *astikit.BytesIterator) (d time.Duration, err error) {
 	var bs []byte
 	if bs, err = i.NextBytes(3); err != nil {
-		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
 	d = parseDVBDurationByte(bs[0])*time.Hour + parseDVBDurationByte(bs[1])*time.Minute + parseDVBDurationByte(bs[2])*time.Second

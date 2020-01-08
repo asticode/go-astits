@@ -1,10 +1,10 @@
 package astits
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/asticode/go-astikit"
-	"github.com/pkg/errors"
 )
 
 // EITData represents an EIT data
@@ -36,7 +36,7 @@ func parseEITSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 	// Get next 2 bytes
 	var bs []byte
 	if bs, err = i.NextBytes(2); err != nil {
-		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
 
@@ -45,7 +45,7 @@ func parseEITSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 
 	// Get next 2 bytes
 	if bs, err = i.NextBytes(2); err != nil {
-		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
 
@@ -55,7 +55,7 @@ func parseEITSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 	// Get next byte
 	var b byte
 	if b, err = i.NextByte(); err != nil {
-		err = errors.Wrap(err, "astits: fetching next byte failed")
+		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
 		return
 	}
 
@@ -64,7 +64,7 @@ func parseEITSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 
 	// Get next byte
 	if b, err = i.NextByte(); err != nil {
-		err = errors.Wrap(err, "astits: fetching next byte failed")
+		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
 		return
 	}
 
@@ -75,7 +75,7 @@ func parseEITSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 	for i.Offset() < offsetSectionsEnd {
 		// Get next 2 bytes
 		if bs, err = i.NextBytes(2); err != nil {
-			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 			return
 		}
 
@@ -85,19 +85,19 @@ func parseEITSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 
 		// Start time
 		if e.StartTime, err = parseDVBTime(i); err != nil {
-			err = errors.Wrap(err, "astits: parsing DVB time")
+			err = fmt.Errorf("astits: parsing DVB time")
 			return
 		}
 
 		// Duration
 		if e.Duration, err = parseDVBDurationSeconds(i); err != nil {
-			err = errors.Wrap(err, "astits: parsing DVB duration seconds failed")
+			err = fmt.Errorf("astits: parsing DVB duration seconds failed: %w", err)
 			return
 		}
 
 		// Get next byte
 		if b, err = i.NextByte(); err != nil {
-			err = errors.Wrap(err, "astits: fetching next byte failed")
+			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
 			return
 		}
 
@@ -112,7 +112,7 @@ func parseEITSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 
 		// Descriptors
 		if e.Descriptors, err = parseDescriptors(i); err != nil {
-			err = errors.Wrap(err, "astits: parsing descriptors failed")
+			err = fmt.Errorf("astits: parsing descriptors failed: %w", err)
 			return
 		}
 

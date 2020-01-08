@@ -1,8 +1,9 @@
 package astits
 
 import (
+	"fmt"
+
 	"github.com/asticode/go-astikit"
-	"github.com/pkg/errors"
 )
 
 // Scrambling Controls
@@ -70,7 +71,7 @@ func parsePacket(i *astikit.BytesIterator) (p *Packet, err error) {
 	// Get next byte
 	var b byte
 	if b, err = i.NextByte(); err != nil {
-		err = errors.Wrap(err, "astits: getting next byte failed")
+		err = fmt.Errorf("astits: getting next byte failed: %w", err)
 		return
 	}
 
@@ -89,14 +90,14 @@ func parsePacket(i *astikit.BytesIterator) (p *Packet, err error) {
 
 	// Parse header
 	if p.Header, err = parsePacketHeader(i); err != nil {
-		err = errors.Wrap(err, "astits: parsing packet header failed")
+		err = fmt.Errorf("astits: parsing packet header failed: %w", err)
 		return
 	}
 
 	// Parse adaptation field
 	if p.Header.HasAdaptationField {
 		if p.AdaptationField, err = parsePacketAdaptationField(i); err != nil {
-			err = errors.Wrap(err, "astits: parsing packet adaptation field failed")
+			err = fmt.Errorf("astits: parsing packet adaptation field failed: %w", err)
 			return
 		}
 	}
@@ -123,7 +124,7 @@ func parsePacketHeader(i *astikit.BytesIterator) (h *PacketHeader, err error) {
 	// Get next bytes
 	var bs []byte
 	if bs, err = i.NextBytes(3); err != nil {
-		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
 
@@ -149,7 +150,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 	// Get next byte
 	var b byte
 	if b, err = i.NextByte(); err != nil {
-		err = errors.Wrap(err, "astits: fetching next byte failed")
+		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
 		return
 	}
 
@@ -160,7 +161,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 	if a.Length > 0 {
 		// Get next byte
 		if b, err = i.NextByte(); err != nil {
-			err = errors.Wrap(err, "astits: fetching next byte failed")
+			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
 			return
 		}
 
@@ -177,7 +178,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 		// PCR
 		if a.HasPCR {
 			if a.PCR, err = parsePCR(i); err != nil {
-				err = errors.Wrap(err, "astits: parsing PCR failed")
+				err = fmt.Errorf("astits: parsing PCR failed: %w", err)
 				return
 			}
 		}
@@ -185,7 +186,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 		// OPCR
 		if a.HasOPCR {
 			if a.OPCR, err = parsePCR(i); err != nil {
-				err = errors.Wrap(err, "astits: parsing PCR failed")
+				err = fmt.Errorf("astits: parsing PCR failed: %w", err)
 				return
 			}
 		}
@@ -193,7 +194,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 		// Splicing countdown
 		if a.HasSplicingCountdown {
 			if b, err = i.NextByte(); err != nil {
-				err = errors.Wrap(err, "astits: fetching next byte failed")
+				err = fmt.Errorf("astits: fetching next byte failed: %w", err)
 				return
 			}
 			a.SpliceCountdown = int(b)
@@ -203,7 +204,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 		if a.HasTransportPrivateData {
 			// Length
 			if b, err = i.NextByte(); err != nil {
-				err = errors.Wrap(err, "astits: fetching next byte failed")
+				err = fmt.Errorf("astits: fetching next byte failed: %w", err)
 				return
 			}
 			a.TransportPrivateDataLength = int(b)
@@ -211,7 +212,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 			// Data
 			if a.TransportPrivateDataLength > 0 {
 				if a.TransportPrivateData, err = i.NextBytes(a.TransportPrivateDataLength); err != nil {
-					err = errors.Wrap(err, "astits: fetching next bytes failed")
+					err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 					return
 				}
 			}
@@ -224,7 +225,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 
 			// Get next byte
 			if b, err = i.NextByte(); err != nil {
-				err = errors.Wrap(err, "astits: fetching next byte failed")
+				err = fmt.Errorf("astits: fetching next byte failed: %w", err)
 				return
 			}
 
@@ -233,7 +234,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 			if a.AdaptationExtensionField.Length > 0 {
 				// Get next byte
 				if b, err = i.NextByte(); err != nil {
-					err = errors.Wrap(err, "astits: fetching next byte failed")
+					err = fmt.Errorf("astits: fetching next byte failed: %w", err)
 					return
 				}
 
@@ -246,7 +247,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 				if a.AdaptationExtensionField.HasLegalTimeWindow {
 					var bs []byte
 					if bs, err = i.NextBytes(2); err != nil {
-						err = errors.Wrap(err, "astits: fetching next bytes failed")
+						err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 						return
 					}
 					a.AdaptationExtensionField.LegalTimeWindowIsValid = bs[0]&0x80 > 0
@@ -257,7 +258,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 				if a.AdaptationExtensionField.HasPiecewiseRate {
 					var bs []byte
 					if bs, err = i.NextBytes(3); err != nil {
-						err = errors.Wrap(err, "astits: fetching next bytes failed")
+						err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 						return
 					}
 					a.AdaptationExtensionField.PiecewiseRate = uint32(bs[0]&0x3f)<<16 | uint32(bs[1])<<8 | uint32(bs[2])
@@ -267,7 +268,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 				if a.AdaptationExtensionField.HasSeamlessSplice {
 					// Get next byte
 					if b, err = i.NextByte(); err != nil {
-						err = errors.Wrap(err, "astits: fetching next byte failed")
+						err = fmt.Errorf("astits: fetching next byte failed: %w", err)
 						return
 					}
 
@@ -279,7 +280,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 
 					// DTS Next access unit
 					if a.AdaptationExtensionField.DTSNextAccessUnit, err = parsePTSOrDTS(i); err != nil {
-						err = errors.Wrap(err, "astits: parsing DTS failed")
+						err = fmt.Errorf("astits: parsing DTS failed: %w", err)
 						return
 					}
 				}
@@ -294,7 +295,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 func parsePCR(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 	var bs []byte
 	if bs, err = i.NextBytes(6); err != nil {
-		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
 	pcr := uint64(bs[0])<<40 | uint64(bs[1])<<32 | uint64(bs[2])<<24 | uint64(bs[3])<<16 | uint64(bs[4])<<8 | uint64(bs[5])

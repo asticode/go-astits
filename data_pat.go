@@ -1,8 +1,9 @@
 package astits
 
 import (
+	"fmt"
+
 	"github.com/asticode/go-astikit"
-	"github.com/pkg/errors"
 )
 
 // PATData represents a PAT data
@@ -28,7 +29,7 @@ func parsePATSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 		// Get next bytes
 		var bs []byte
 		if bs, err = i.NextBytes(4); err != nil {
-			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 			return
 		}
 

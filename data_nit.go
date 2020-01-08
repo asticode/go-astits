@@ -1,8 +1,9 @@
 package astits
 
 import (
+	"fmt"
+
 	"github.com/asticode/go-astikit"
-	"github.com/pkg/errors"
 )
 
 // NITData represents a NIT data
@@ -27,14 +28,14 @@ func parseNITSection(i *astikit.BytesIterator, tableIDExtension uint16) (d *NITD
 
 	// Network descriptors
 	if d.NetworkDescriptors, err = parseDescriptors(i); err != nil {
-		err = errors.Wrap(err, "astits: parsing descriptors failed")
+		err = fmt.Errorf("astits: parsing descriptors failed: %w", err)
 		return
 	}
 
 	// Get next bytes
 	var bs []byte
 	if bs, err = i.NextBytes(2); err != nil {
-		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
 
@@ -49,7 +50,7 @@ func parseNITSection(i *astikit.BytesIterator, tableIDExtension uint16) (d *NITD
 
 		// Get next bytes
 		if bs, err = i.NextBytes(2); err != nil {
-			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 			return
 		}
 
@@ -58,7 +59,7 @@ func parseNITSection(i *astikit.BytesIterator, tableIDExtension uint16) (d *NITD
 
 		// Get next bytes
 		if bs, err = i.NextBytes(2); err != nil {
-			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 			return
 		}
 
@@ -67,7 +68,7 @@ func parseNITSection(i *astikit.BytesIterator, tableIDExtension uint16) (d *NITD
 
 		// Transport descriptors
 		if ts.TransportDescriptors, err = parseDescriptors(i); err != nil {
-			err = errors.Wrap(err, "astits: parsing descriptors failed")
+			err = fmt.Errorf("astits: parsing descriptors failed: %w", err)
 			return
 		}
 

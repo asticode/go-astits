@@ -1,8 +1,9 @@
 package astits
 
 import (
+	"fmt"
+
 	"github.com/asticode/go-astikit"
-	"github.com/pkg/errors"
 )
 
 // P-STD buffer scales
@@ -112,7 +113,7 @@ func parsePESData(i *astikit.BytesIterator) (d *PESData, err error) {
 	// Parse header
 	var dataStart, dataEnd int
 	if d.Header, dataStart, dataEnd, err = parsePESHeader(i); err != nil {
-		err = errors.Wrap(err, "astits: parsing PES header failed")
+		err = fmt.Errorf("astits: parsing PES header failed: %w", err)
 		return
 	}
 
@@ -121,7 +122,7 @@ func parsePESData(i *astikit.BytesIterator) (d *PESData, err error) {
 
 	// Extract data
 	if d.Data, err = i.NextBytes(dataEnd - dataStart); err != nil {
-		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
 	return
@@ -140,7 +141,7 @@ func parsePESHeader(i *astikit.BytesIterator) (h *PESHeader, dataStart, dataEnd 
 	// Get next byte
 	var b byte
 	if b, err = i.NextByte(); err != nil {
-		err = errors.Wrap(err, "astits: fetching next byte failed")
+		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
 		return
 	}
 
@@ -150,7 +151,7 @@ func parsePESHeader(i *astikit.BytesIterator) (h *PESHeader, dataStart, dataEnd 
 	// Get next bytes
 	var bs []byte
 	if bs, err = i.NextBytes(2); err != nil {
-		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
 
@@ -167,7 +168,7 @@ func parsePESHeader(i *astikit.BytesIterator) (h *PESHeader, dataStart, dataEnd 
 	// Optional header
 	if hasPESOptionalHeader(h.StreamID) {
 		if h.OptionalHeader, dataStart, err = parsePESOptionalHeader(i); err != nil {
-			err = errors.Wrap(err, "astits: parsing PES optional header failed")
+			err = fmt.Errorf("astits: parsing PES optional header failed: %w", err)
 			return
 		}
 	} else {
@@ -184,7 +185,7 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 	// Get next byte
 	var b byte
 	if b, err = i.NextByte(); err != nil {
-		err = errors.Wrap(err, "astits: fetching next byte failed")
+		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
 		return
 	}
 
@@ -208,7 +209,7 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 
 	// Get next byte
 	if b, err = i.NextByte(); err != nil {
-		err = errors.Wrap(err, "astits: fetching next byte failed")
+		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
 		return
 	}
 
@@ -225,7 +226,7 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 
 	// Get next byte
 	if b, err = i.NextByte(); err != nil {
-		err = errors.Wrap(err, "astits: fetching next byte failed")
+		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
 		return
 	}
 
@@ -238,16 +239,16 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 	// PTS/DTS
 	if h.PTSDTSIndicator == PTSDTSIndicatorOnlyPTS {
 		if h.PTS, err = parsePTSOrDTS(i); err != nil {
-			err = errors.Wrap(err, "astits: parsing PTS failed")
+			err = fmt.Errorf("astits: parsing PTS failed: %w", err)
 			return
 		}
 	} else if h.PTSDTSIndicator == PTSDTSIndicatorBothPresent {
 		if h.PTS, err = parsePTSOrDTS(i); err != nil {
-			err = errors.Wrap(err, "astits: parsing PTS failed")
+			err = fmt.Errorf("astits: parsing PTS failed: %w", err)
 			return
 		}
 		if h.DTS, err = parsePTSOrDTS(i); err != nil {
-			err = errors.Wrap(err, "astits: parsing PTS failed")
+			err = fmt.Errorf("astits: parsing PTS failed: %w", err)
 			return
 		}
 	}
@@ -255,7 +256,7 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 	// ESCR
 	if h.HasESCR {
 		if h.ESCR, err = parseESCR(i); err != nil {
-			err = errors.Wrap(err, "astits: parsing ESCR failed")
+			err = fmt.Errorf("astits: parsing ESCR failed: %w", err)
 			return
 		}
 	}
@@ -264,7 +265,7 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 	if h.HasESRate {
 		var bs []byte
 		if bs, err = i.NextBytes(3); err != nil {
-			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 			return
 		}
 		h.ESRate = uint32(bs[0])&0x7f<<15 | uint32(bs[1])<<7 | uint32(bs[2])>>1
@@ -273,7 +274,7 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 	// Trick mode
 	if h.HasDSMTrickMode {
 		if b, err = i.NextByte(); err != nil {
-			err = errors.Wrap(err, "astits: fetching next byte failed")
+			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
 			return
 		}
 		h.DSMTrickMode = parseDSMTrickMode(b)
@@ -282,7 +283,7 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 	// Additional copy info
 	if h.HasAdditionalCopyInfo {
 		if b, err = i.NextByte(); err != nil {
-			err = errors.Wrap(err, "astits: fetching next byte failed")
+			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
 			return
 		}
 		h.AdditionalCopyInfo = b & 0x7f
@@ -292,7 +293,7 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 	if h.HasCRC {
 		var bs []byte
 		if bs, err = i.NextBytes(2); err != nil {
-			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 			return
 		}
 		h.CRC = uint16(bs[0])>>8 | uint16(bs[1])
@@ -302,7 +303,7 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 	if h.HasExtension {
 		// Get next byte
 		if b, err = i.NextByte(); err != nil {
-			err = errors.Wrap(err, "astits: fetching next byte failed")
+			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
 			return
 		}
 
@@ -316,7 +317,7 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 		// Private data
 		if h.HasPrivateData {
 			if h.PrivateData, err = i.NextBytes(16); err != nil {
-				err = errors.Wrap(err, "astits: fetching next bytes failed")
+				err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 				return
 			}
 		}
@@ -324,7 +325,7 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 		// Pack field length
 		if h.HasPackHeaderField {
 			if b, err = i.NextByte(); err != nil {
-				err = errors.Wrap(err, "astits: fetching next byte failed")
+				err = fmt.Errorf("astits: fetching next byte failed: %w", err)
 				return
 			}
 			h.PackField = uint8(b)
@@ -334,7 +335,7 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 		if h.HasProgramPacketSequenceCounter {
 			var bs []byte
 			if bs, err = i.NextBytes(2); err != nil {
-				err = errors.Wrap(err, "astits: fetching next bytes failed")
+				err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 				return
 			}
 			h.PacketSequenceCounter = uint8(bs[0]) & 0x7f
@@ -346,7 +347,7 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 		if h.HasPSTDBuffer {
 			var bs []byte
 			if bs, err = i.NextBytes(2); err != nil {
-				err = errors.Wrap(err, "astits: fetching next bytes failed")
+				err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 				return
 			}
 			h.PSTDBufferScale = bs[0] >> 5 & 0x1
@@ -358,14 +359,14 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 			// Length
 			var bs []byte
 			if bs, err = i.NextBytes(2); err != nil {
-				err = errors.Wrap(err, "astits: fetching next bytes failed")
+				err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 				return
 			}
 			h.Extension2Length = uint8(bs[0]) & 0x7f
 
 			// Data
 			if h.Extension2Data, err = i.NextBytes(int(h.Extension2Length)); err != nil {
-				err = errors.Wrap(err, "astits: fetching next bytes failed")
+				err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 				return
 			}
 		}
@@ -393,7 +394,7 @@ func parseDSMTrickMode(i byte) (m *DSMTrickMode) {
 func parsePTSOrDTS(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 	var bs []byte
 	if bs, err = i.NextBytes(5); err != nil {
-		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
 	cr = newClockReference(int(uint64(bs[0])>>1&0x7<<30|uint64(bs[1])<<22|uint64(bs[2])>>1&0x7f<<15|uint64(bs[3])<<7|uint64(bs[4])>>1&0x7f), 0)
@@ -404,7 +405,7 @@ func parsePTSOrDTS(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 func parseESCR(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 	var bs []byte
 	if bs, err = i.NextBytes(6); err != nil {
-		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
 	escr := uint64(bs[0])>>3&0x7<<39 | uint64(bs[0])&0x3<<37 | uint64(bs[1])<<29 | uint64(bs[2])>>3<<24 | uint64(bs[2])&0x3<<22 | uint64(bs[3])<<14 | uint64(bs[4])>>3<<9 | uint64(bs[4])&0x3<<7 | uint64(bs[5])>>1

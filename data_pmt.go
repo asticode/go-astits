@@ -1,8 +1,9 @@
 package astits
 
 import (
+	"fmt"
+
 	"github.com/asticode/go-astikit"
-	"github.com/pkg/errors"
 )
 
 // Stream types
@@ -37,7 +38,7 @@ func parsePMTSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 	// Get next bytes
 	var bs []byte
 	if bs, err = i.NextBytes(2); err != nil {
-		err = errors.Wrap(err, "astits: fetching next bytes failed")
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
 
@@ -46,7 +47,7 @@ func parsePMTSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 
 	// Program descriptors
 	if d.ProgramDescriptors, err = parseDescriptors(i); err != nil {
-		err = errors.Wrap(err, "astits: parsing descriptors failed")
+		err = fmt.Errorf("astits: parsing descriptors failed: %w", err)
 		return
 	}
 
@@ -58,7 +59,7 @@ func parsePMTSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 		// Get next byte
 		var b byte
 		if b, err = i.NextByte(); err != nil {
-			err = errors.Wrap(err, "astits: fetching next byte failed")
+			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
 			return
 		}
 
@@ -67,7 +68,7 @@ func parsePMTSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 
 		// Get next bytes
 		if bs, err = i.NextBytes(2); err != nil {
-			err = errors.Wrap(err, "astits: fetching next bytes failed")
+			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 			return
 		}
 
@@ -76,7 +77,7 @@ func parsePMTSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 
 		// Elementary descriptors
 		if e.ElementaryStreamDescriptors, err = parseDescriptors(i); err != nil {
-			err = errors.Wrap(err, "astits: parsing descriptors failed")
+			err = fmt.Errorf("astits: parsing descriptors failed: %w", err)
 			return
 		}
 

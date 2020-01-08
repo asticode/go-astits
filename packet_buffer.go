@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/asticode/go-astikit"
-	"github.com/pkg/errors"
 )
 
 // packetBuffer represents a packet buffer
@@ -26,7 +25,7 @@ func newPacketBuffer(r io.Reader, packetSize int) (pb *packetBuffer, err error) 
 	if pb.packetSize == 0 {
 		// Auto detect packet size
 		if pb.packetSize, err = autoDetectPacketSize(r); err != nil {
-			err = errors.Wrap(err, "astits: auto detecting packet size failed")
+			err = fmt.Errorf("astits: auto detecting packet size failed: %w", err)
 			return
 		}
 	}
@@ -41,7 +40,7 @@ func autoDetectPacketSize(r io.Reader) (packetSize int, err error) {
 	const l = 193
 	var b = make([]byte, l)
 	if _, err = r.Read(b); err != nil {
-		err = errors.Wrapf(err, "astits: reading first %d bytes failed", l)
+		err = fmt.Errorf("astits: reading first %d bytes failed: %w", l, err)
 		return
 	}
 
@@ -60,12 +59,12 @@ func autoDetectPacketSize(r io.Reader) (packetSize int, err error) {
 			// Rewind or sync reader
 			var n int64
 			if n, err = rewind(r); err != nil {
-				err = errors.Wrap(err, "astits: rewinding failed")
+				err = fmt.Errorf("astits: rewinding failed: %w", err)
 				return
 			} else if n == -1 {
 				var ls = packetSize - (l - packetSize)
 				if _, err = r.Read(make([]byte, ls)); err != nil {
-					err = errors.Wrapf(err, "astits: reading %d bytes to sync reader failed", ls)
+					err = fmt.Errorf("astits: reading %d bytes to sync reader failed: %w", ls, err)
 					return
 				}
 			}
@@ -80,7 +79,7 @@ func autoDetectPacketSize(r io.Reader) (packetSize int, err error) {
 func rewind(r io.Reader) (n int64, err error) {
 	if s, ok := r.(io.Seeker); ok {
 		if n, err = s.Seek(0, 0); err != nil {
-			err = errors.Wrap(err, "astits: seeking to 0 failed")
+			err = fmt.Errorf("astits: seeking to 0 failed: %w", err)
 			return
 		}
 		return
@@ -97,14 +96,14 @@ func (pb *packetBuffer) next() (p *Packet, err error) {
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			err = ErrNoMorePackets
 		} else {
-			err = errors.Wrapf(err, "astits: reading %d bytes failed", pb.packetSize)
+			err = fmt.Errorf("astits: reading %d bytes failed: %w", pb.packetSize, err)
 		}
 		return
 	}
 
 	// Parse packet
 	if p, err = parsePacket(astikit.NewBytesIterator(b)); err != nil {
-		err = errors.Wrap(err, "astits: building packet failed")
+		err = fmt.Errorf("astits: building packet failed: %w", err)
 		return
 	}
 	return

@@ -2,9 +2,9 @@ package astits
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
-
-	"github.com/pkg/errors"
 )
 
 // Sync byte
@@ -78,7 +78,7 @@ func (dmx *Demuxer) NextPacket() (p *Packet, err error) {
 	// Create packet buffer if not exists
 	if dmx.packetBuffer == nil {
 		if dmx.packetBuffer, err = newPacketBuffer(dmx.r, dmx.optPacketSize); err != nil {
-			err = errors.Wrap(err, "astits: creating packet buffer failed")
+			err = fmt.Errorf("astits: creating packet buffer failed: %w", err)
 			return
 		}
 	}
@@ -86,7 +86,7 @@ func (dmx *Demuxer) NextPacket() (p *Packet, err error) {
 	// Fetch next packet from buffer
 	if p, err = dmx.packetBuffer.next(); err != nil {
 		if err != ErrNoMorePackets {
-			err = errors.Wrap(err, "astits: fetching next packet from buffer failed")
+			err = fmt.Errorf("astits: fetching next packet from buffer failed: %w", err)
 		}
 		return
 	}
@@ -131,7 +131,7 @@ func (dmx *Demuxer) NextData() (d *Data, err error) {
 				}
 				return
 			}
-			err = errors.Wrap(err, "astits: fetching next packet failed")
+			err = fmt.Errorf("astits: fetching next packet failed: %w", err)
 			return
 		}
 
@@ -142,7 +142,7 @@ func (dmx *Demuxer) NextData() (d *Data, err error) {
 
 		// Parse data
 		if ds, err = parseData(ps, dmx.optPacketsParser, dmx.programMap); err != nil {
-			err = errors.Wrap(err, "astits: building new data failed")
+			err = fmt.Errorf("astits: building new data failed: %w", err)
 			return
 		}
 
@@ -181,7 +181,7 @@ func (dmx *Demuxer) Rewind() (n int64, err error) {
 	dmx.packetBuffer = nil
 	dmx.packetPool = newPacketPool()
 	if n, err = rewind(dmx.r); err != nil {
-		err = errors.Wrap(err, "astits: rewinding reader failed")
+		err = fmt.Errorf("astits: rewinding reader failed: %w", err)
 		return
 	}
 	return

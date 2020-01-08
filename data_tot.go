@@ -1,10 +1,10 @@
 package astits
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/asticode/go-astikit"
-	"github.com/pkg/errors"
 )
 
 // TOTData represents a TOT data
@@ -21,13 +21,13 @@ func parseTOTSection(i *astikit.BytesIterator) (d *TOTData, err error) {
 
 	// UTC time
 	if d.UTCTime, err = parseDVBTime(i); err != nil {
-		err = errors.Wrap(err, "astits: parsing DVB time failed")
+		err = fmt.Errorf("astits: parsing DVB time failed: %w", err)
 		return
 	}
 
 	// Descriptors
 	if d.Descriptors, err = parseDescriptors(i); err != nil {
-		err = errors.Wrap(err, "astits: parsing descriptors failed")
+		err = fmt.Errorf("astits: parsing descriptors failed: %w", err)
 		return
 	}
 	return

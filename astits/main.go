@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/url"
 	"os"
@@ -14,9 +16,7 @@ import (
 	"syscall"
 
 	"github.com/asticode/go-astikit"
-	"github.com/asticode/go-astilog"
 	"github.com/asticode/go-astits"
-	"github.com/pkg/errors"
 	"github.com/pkg/profile"
 )
 
@@ -38,9 +38,7 @@ func main() {
 	}
 	flag.Var(dataTypes, "d", "the datatypes whitelist (all, pat, pmt, pes, eit, nit, sdt, tot)")
 	cmd := astikit.FlagCmd()
-	astilog.SetHandyFlags()
 	flag.Parse()
-	astilog.FlagInit()
 
 	// Handle signals
 	handleSignals()
@@ -56,8 +54,7 @@ func main() {
 	var r io.Reader
 	var err error
 	if r, err = buildReader(ctx); err != nil {
-		astilog.Error(errors.Wrap(err, "astits: parsing input failed"))
-		return
+		log.Fatal(fmt.Errorf("astits: parsing input failed: %w", err))
 	}
 
 	// Make sure the reader is closed properly
@@ -73,21 +70,18 @@ func main() {
 	case "data":
 		// Fetch data
 		if err = data(dmx); err != nil {
-			astilog.Error(errors.Wrap(err, "astits: fetching data failed"))
-			return
+			log.Fatal(fmt.Errorf("astits: fetching data failed: %w", err))
 		}
 	case "packets":
 		// Fetch packets
 		if err = packets(dmx); err != nil {
-			astilog.Error(errors.Wrap(err, "astits: fetching packets failed"))
-			return
+			log.Fatal(fmt.Errorf("astits: fetching packets failed: %w", err))
 		}
 	default:
 		// Fetch the programs
 		var pgms []*Program
 		if pgms, err = programs(dmx); err != nil {
-			astilog.Error(errors.Wrap(err, "astits: fetching programs failed"))
-			return
+			log.Fatal(fmt.Errorf("astits: fetching programs failed: %w", err))
 		}
 
 		// Print
@@ -96,13 +90,12 @@ func main() {
 			var e = json.NewEncoder(os.Stdout)
 			e.SetIndent("", "  ")
 			if err = e.Encode(pgms); err != nil {
-				astilog.Error(errors.Wrap(err, "astits: json encoding to stdout failed"))
-				return
+				log.Fatal(fmt.Errorf("astits: json encoding to stdout failed: %w", err))
 			}
 		default:
 			fmt.Println("Programs are:")
 			for _, pgm := range pgms {
-				fmt.Printf("* %s\n", pgm)
+				log.Printf("* %s\n", pgm)
 			}
 		}
 	}
@@ -113,7 +106,7 @@ func handleSignals() {
 	signal.Notify(ch)
 	go func() {
 		for s := range ch {
-			astilog.Debugf("Received signal %s", s)
+			log.Printf("Received signal %s\n", s)
 			switch s {
 			case syscall.SIGABRT, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM:
 				cancel()
@@ -126,14 +119,14 @@ func handleSignals() {
 func buildReader(ctx context.Context) (r io.Reader, err error) {
 	// Validate input
 	if len(*inputPath) <= 0 {
-		err = errors.New("Use -i to indicate an input path")
+		err = errors.New("use -i to indicate an input path")
 		return
 	}
 
 	// Parse input
 	var u *url.URL
 	if u, err = url.Parse(*inputPath); err != nil {
-		err = errors.Wrap(err, "astits: parsing input path failed")
+		err = fmt.Errorf("astits: parsing input path failed: %w", err)
 		return
 	}
 
@@ -143,14 +136,14 @@ func buildReader(ctx context.Context) (r io.Reader, err error) {
 		// Resolve addr
 		var addr *net.UDPAddr
 		if addr, err = net.ResolveUDPAddr("udp", u.Host); err != nil {
-			err = errors.Wrapf(err, "astits: resolving udp addr %s failed", u.Host)
+			err = fmt.Errorf("astits: resolving udp addr %s failed: %w", u.Host, err)
 			return
 		}
 
 		// Listen to multicast UDP
 		var c *net.UDPConn
 		if c, err = net.ListenMulticastUDP("udp", nil, addr); err != nil {
-			err = errors.Wrapf(err, "astits: listening on multicast udp addr %s failed", u.Host)
+			err = fmt.Errorf("astits: listening on multicast udp addr %s failed: %w", u.Host, err)
 			return
 		}
 		c.SetReadBuffer(4096)
@@ -159,7 +152,7 @@ func buildReader(ctx context.Context) (r io.Reader, err error) {
 		// Open file
 		var f *os.File
 		if f, err = os.Open(*inputPath); err != nil {
-			err = errors.Wrapf(err, "astits: opening %s failed", *inputPath)
+			err = fmt.Errorf("astits: opening %s failed: %w", *inputPath, err)
 			return
 		}
 		r = f
@@ -170,28 +163,28 @@ func buildReader(ctx context.Context) (r io.Reader, err error) {
 func packets(dmx *astits.Demuxer) (err error) {
 	// Loop through packets
 	var p *astits.Packet
-	astilog.Debug("Fetching packets...")
+	log.Println("Fetching packets...")
 	for {
 		// Get next packet
 		if p, err = dmx.NextPacket(); err != nil {
 			if err == astits.ErrNoMorePackets {
 				break
 			}
-			err = errors.Wrap(err, "astits: getting next packet failed")
+			err = fmt.Errorf("astits: getting next packet failed: %w", err)
 			return
 		}
 
 		// Log packet
-		astilog.Infof("PKT: %d", p.Header.PID)
-		astilog.Infof("  Continuity Counter: %v", p.Header.ContinuityCounter)
-		astilog.Infof("  Payload Unit Start Indicator: %v", p.Header.PayloadUnitStartIndicator)
-		astilog.Infof("  Has Payload: %v", p.Header.HasPayload)
-		astilog.Infof("  Has Adaptation Field: %v", p.Header.HasAdaptationField)
-		astilog.Infof("  Transport Error Indicator: %v", p.Header.TransportErrorIndicator)
-		astilog.Infof("  Transport Priority: %v", p.Header.TransportPriority)
-		astilog.Infof("  Transport Scrambling Control: %v", p.Header.TransportScramblingControl)
+		log.Printf("PKT: %d\n", p.Header.PID)
+		log.Printf("  Continuity Counter: %v\n", p.Header.ContinuityCounter)
+		log.Printf("  Payload Unit Start Indicator: %v\n", p.Header.PayloadUnitStartIndicator)
+		log.Printf("  Has Payload: %v\n", p.Header.HasPayload)
+		log.Printf("  Has Adaptation Field: %v\n", p.Header.HasAdaptationField)
+		log.Printf("  Transport Error Indicator: %v\n", p.Header.TransportErrorIndicator)
+		log.Printf("  Transport Priority: %v\n", p.Header.TransportPriority)
+		log.Printf("  Transport Scrambling Control: %v\n", p.Header.TransportScramblingControl)
 		if p.Header.HasAdaptationField {
-			astilog.Infof("  Adaptation Field: %+v", p.AdaptationField)
+			log.Printf("  Adaptation Field: %+v\n", p.AdaptationField)
 		}
 	}
 	return nil
@@ -227,51 +220,51 @@ func data(dmx *astits.Demuxer) (err error) {
 
 	// Loop through data
 	var d *astits.Data
-	astilog.Debug("Fetching data...")
+	log.Println("Fetching data...")
 	for {
 		// Get next data
 		if d, err = dmx.NextData(); err != nil {
 			if err == astits.ErrNoMorePackets {
 				break
 			}
-			err = errors.Wrap(err, "astits: getting next data failed")
+			err = fmt.Errorf("astits: getting next data failed: %w", err)
 			return
 		}
 
 		// Log data
 		if d.EIT != nil && (logAll || logEIT) {
-			astilog.Infof("EIT: %d", d.PID)
-			astilog.Info(eventsToString(d.EIT.Events))
+			log.Printf("EIT: %d\n", d.PID)
+			log.Println(eventsToString(d.EIT.Events))
 		} else if d.NIT != nil && (logAll || logNIT) {
-			astilog.Infof("NIT: %d", d.PID)
+			log.Printf("NIT: %d\n", d.PID)
 		} else if d.PAT != nil && (logAll || logPAT) {
-			astilog.Infof("PAT: %d", d.PID)
-			astilog.Infof("  Transport Stream ID: %v", d.PAT.TransportStreamID)
-			astilog.Infof("  Programs:")
+			log.Printf("PAT: %d\n", d.PID)
+			log.Printf("  Transport Stream ID: %v\n", d.PAT.TransportStreamID)
+			log.Println("  Programs:")
 			for _, p := range d.PAT.Programs {
-				astilog.Infof("    %+v", p)
+				log.Printf("    %+v\n", p)
 			}
 		} else if d.PES != nil && (logAll || logPES) {
-			astilog.Infof("PES: %d", d.PID)
-			astilog.Infof("  Stream ID: %v", d.PES.Header.StreamID)
-			astilog.Infof("  Packet Length: %v", d.PES.Header.PacketLength)
-			astilog.Infof("  Optional Header: %+v", d.PES.Header.OptionalHeader)
+			log.Printf("PES: %d\n", d.PID)
+			log.Printf("  Stream ID: %v\n", d.PES.Header.StreamID)
+			log.Printf("  Packet Length: %v\n", d.PES.Header.PacketLength)
+			log.Printf("  Optional Header: %+v\n", d.PES.Header.OptionalHeader)
 		} else if d.PMT != nil && (logAll || logPMT) {
-			astilog.Infof("PMT: %d", d.PID)
-			astilog.Infof("  ProgramNumber: %v", d.PMT.ProgramNumber)
-			astilog.Infof("  PCR PID: %v", d.PMT.PCRPID)
-			astilog.Infof("  Elementary Streams:")
+			log.Printf("PMT: %d\n", d.PID)
+			log.Printf("  ProgramNumber: %v\n", d.PMT.ProgramNumber)
+			log.Printf("  PCR PID: %v\n", d.PMT.PCRPID)
+			log.Println("  Elementary Streams:")
 			for _, s := range d.PMT.ElementaryStreams {
-				astilog.Infof("    %+v", s)
+				log.Printf("    %+v\n", s)
 			}
-			astilog.Infof("  Program Descriptors:")
+			log.Println("  Program Descriptors:")
 			for _, d := range d.PMT.ProgramDescriptors {
-				astilog.Infof("    %+v", d)
+				log.Printf("    %+v\n", d)
 			}
 		} else if d.SDT != nil && (logAll || logSDT) {
-			astilog.Infof("SDT: %d", d.PID)
+			log.Printf("SDT: %d\n", d.PID)
 		} else if d.TOT != nil && (logAll || logTOT) {
-			astilog.Infof("TOT: %d", d.PID)
+			log.Printf("TOT: %d\n", d.PID)
 		}
 	}
 	return
@@ -282,7 +275,7 @@ func programs(dmx *astits.Demuxer) (o []*Program, err error) {
 	var d *astits.Data
 	var pgmsToProcess = make(map[uint16]bool)
 	var pgms = make(map[uint16]*Program)
-	astilog.Debug("Fetching data...")
+	log.Println("Fetching data...")
 	for {
 		// Get next data
 		if d, err = dmx.NextData(); err != nil {
@@ -290,7 +283,7 @@ func programs(dmx *astits.Demuxer) (o []*Program, err error) {
 				err = nil
 				break
 			}
-			err = errors.Wrap(err, "astits: getting next data failed")
+			err = fmt.Errorf("astits: getting next data failed: %w", err)
 			return
 		}
 

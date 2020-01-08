@@ -1,8 +1,9 @@
 package astits
 
 import (
+	"fmt"
+
 	"github.com/asticode/go-astikit"
-	"github.com/pkg/errors"
 )
 
 // PIDs
@@ -32,7 +33,7 @@ func parseData(ps []*Packet, prs PacketsParser, pm programMap) (ds []*Data, err 
 	if prs != nil {
 		var skip bool
 		if ds, skip, err = prs(ps); err != nil {
-			err = errors.Wrap(err, "astits: custom packets parsing failed")
+			err = fmt.Errorf("astits: custom packets parsing failed: %w", err)
 			return
 		} else if skip {
 			return
@@ -66,7 +67,7 @@ func parseData(ps []*Packet, prs PacketsParser, pm programMap) (ds []*Data, err 
 		// Parse PSI data
 		var psiData *PSIData
 		if psiData, err = parsePSIData(i); err != nil {
-			err = errors.Wrap(err, "astits: parsing PSI data failed")
+			err = fmt.Errorf("astits: parsing PSI data failed: %w", err)
 			return
 		}
 
@@ -76,7 +77,7 @@ func parseData(ps []*Packet, prs PacketsParser, pm programMap) (ds []*Data, err 
 		// Parse PES data
 		var pesData *PESData
 		if pesData, err = parsePESData(i); err != nil {
-			err = errors.Wrap(err, "astits: parsing PES data failed")
+			err = fmt.Errorf("astits: parsing PES data failed: %w", err)
 			return
 		}
 
