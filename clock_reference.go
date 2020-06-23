@@ -7,11 +7,11 @@ import (
 // ClockReference represents a clock reference
 // Base is based on a 90 kHz clock and extension is based on a 27 MHz clock
 type ClockReference struct {
-	Base, Extension int
+	Base, Extension int64
 }
 
 // newClockReference builds a new clock reference
-func newClockReference(base, extension int) *ClockReference {
+func newClockReference(base, extension int64) *ClockReference {
 	return &ClockReference{
 		Base:      base,
 		Extension: extension,

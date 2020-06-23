@@ -299,6 +299,6 @@ func parsePCR(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 		return
 	}
 	pcr := uint64(bs[0])<<40 | uint64(bs[1])<<32 | uint64(bs[2])<<24 | uint64(bs[3])<<16 | uint64(bs[4])<<8 | uint64(bs[5])
-	cr = newClockReference(int(pcr>>15), int(pcr&0x1ff))
+	cr = newClockReference(int64(pcr>>15), int64(pcr&0x1ff))
 	return
 }
