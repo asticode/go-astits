@@ -383,14 +383,18 @@ func (s Stream) String() (o string) {
 	// Get type
 	var t = fmt.Sprintf("unlisted stream type %d", s.Type)
 	switch s.Type {
-	case astits.StreamTypeLowerBitrateVideo:
-		t = "Lower bitrate video"
 	case astits.StreamTypeMPEG1Audio:
 		t = "MPEG-1 audio"
 	case astits.StreamTypeMPEG2HalvedSampleRateAudio:
 		t = "MPEG-2 halved sample rate audio"
 	case astits.StreamTypeMPEG2PacketizedData:
 		t = "DVB subtitles/VBI or AC-3"
+	case astits.StreamTypeADTS:
+		t = "ADTS"
+	case astits.StreamTypeH264Video:
+		t = "H264 video"
+	case astits.StreamTypeH265Video:
+		t = "H265 video"
 	}
 
 	// Output
