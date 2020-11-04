@@ -2,7 +2,6 @@ package astits
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/asticode/go-astikit"
@@ -634,7 +633,7 @@ func newDescriptorExtension(i *astikit.BytesIterator, offsetEnd int) (d *Descrip
 			return
 		}
 	default:
-		log.Printf("astits: unlisted extension tag 0x%x\n", d.Tag)
+		logger.Debugf("astits: unlisted extension tag 0x%x\n", d.Tag)
 	}
 	return
 }
@@ -1395,7 +1394,7 @@ func parseDescriptors(i *astikit.BytesIterator) (o []*Descriptor, err error) {
 							return
 						}
 					default:
-						log.Printf("astits: unlisted descriptor tag 0x%x\n", d.Tag)
+						logger.Debugf("astits: unlisted descriptor tag 0x%x\n", d.Tag)
 					}
 				}
 

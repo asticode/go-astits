@@ -2,7 +2,6 @@ package astits
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/asticode/go-astikit"
 )
@@ -293,7 +292,7 @@ func psiTableType(tableID int) string {
 	case tableID == 0x73:
 		return PSITableTypeTOT
 	default:
-		log.Printf("astits: unlisted PSI table ID %d\n", tableID)
+		logger.Debugf("astits: unlisted PSI table ID %d\n", tableID)
 	}
 	return PSITableTypeUnknown
 }
