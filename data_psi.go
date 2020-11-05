@@ -292,9 +292,8 @@ func psiTableType(tableID int) string {
 	case tableID == 0x73:
 		return PSITableTypeTOT
 	default:
-		logger.Debugf("astits: unlisted PSI table ID %d\n", tableID)
+		return PSITableTypeUnknown
 	}
-	return PSITableTypeUnknown
 }
 
 // parsePSISectionSyntax parses a PSI section syntax

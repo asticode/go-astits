@@ -112,6 +112,7 @@ type Descriptor struct {
 	Subtitling                 *DescriptorSubtitling
 	Tag                        uint8 // the tag defines the structure of the contained data following the descriptor length.
 	Teletext                   *DescriptorTeletext
+	Unknown                    *DescriptorUnknown
 	UserDefined                []byte
 	VBIData                    *DescriptorVBIData
 	VBITeletext                *DescriptorTeletext
@@ -612,6 +613,7 @@ func newDescriptorExtendedEventItem(i *astikit.BytesIterator) (d *DescriptorExte
 type DescriptorExtension struct {
 	SupplementaryAudio *DescriptorExtensionSupplementaryAudio
 	Tag                uint8
+	Unknown            *[]byte
 }
 
 func newDescriptorExtension(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorExtension, err error) {
@@ -633,7 +635,15 @@ func newDescriptorExtension(i *astikit.BytesIterator, offsetEnd int) (d *Descrip
 			return
 		}
 	default:
-		logger.Debugf("astits: unlisted extension tag 0x%x\n", d.Tag)
+		// Get next bytes
+		var b []byte
+		if b, err = i.NextBytes(offsetEnd - i.Offset()); err != nil {
+			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
+			return
+		}
+
+		// Update unknown
+		d.Unknown = &b
 	}
 	return
 }
@@ -1157,6 +1167,23 @@ func newDescriptorTeletext(i *astikit.BytesIterator, offsetEnd int) (d *Descript
 	return
 }
 
+type DescriptorUnknown struct {
+	Content []byte
+	Tag     uint8
+}
+
+func newDescriptorUnknown(i *astikit.BytesIterator, tag, length uint8) (d *DescriptorUnknown, err error) {
+	// Create descriptor
+	d = &DescriptorUnknown{Tag: tag}
+
+	// Get next bytes
+	if d.Content, err = i.NextBytes(int(length)); err != nil {
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
+		return
+	}
+	return
+}
+
 // DescriptorVBIData represents a VBI data descriptor
 // Chapter: 6.2.47 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorVBIData struct {
@@ -1394,7 +1421,10 @@ func parseDescriptors(i *astikit.BytesIterator) (o []*Descriptor, err error) {
 							return
 						}
 					default:
-						logger.Debugf("astits: unlisted descriptor tag 0x%x\n", d.Tag)
+						if d.Unknown, err = newDescriptorUnknown(i, d.Tag, d.Length); err != nil {
+							err = fmt.Errorf("astits: parsing unknown descriptor failed: %w", err)
+							return
+						}
 					}
 				}
 

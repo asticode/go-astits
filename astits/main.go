@@ -40,9 +40,6 @@ func main() {
 	cmd := astikit.FlagCmd()
 	flag.Parse()
 
-	// Set logger
-	astits.SetLogger(log.New(log.Writer(), log.Prefix(), log.Flags()))
-
 	// Handle signals
 	handleSignals()
 
