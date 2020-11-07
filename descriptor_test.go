@@ -25,7 +25,7 @@ func TestParseDescriptor(t *testing.T) {
 	// Init
 	buf := &bytes.Buffer{}
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	w.Write(uint16(242)) // Descriptors length
+	w.Write(uint16(255)) // Descriptors length
 	// AC3
 	w.Write(uint8(DescriptorTagAC3)) // Tag
 	w.Write(uint8(9))                // Length
@@ -214,6 +214,15 @@ func TestParseDescriptor(t *testing.T) {
 	w.Write(uint8(8))       // Length
 	w.Write(uint32(1))      // Format identifier
 	w.Write([]byte("test")) // Additional identification info
+	// Unknown
+	w.Write(uint8(0x1))     // Tag
+	w.Write(uint8(4))       // Length
+	w.Write([]byte("test")) // Content
+	// Extension unknown
+	w.Write(uint8(DescriptorTagExtension)) // Tag
+	w.Write(uint8(5))                      // Length
+	w.Write(uint8(0))                      // Extension tag
+	w.Write([]byte("test"))                // Content
 
 	// Assert
 	ds, err := parseDescriptors(astikit.NewBytesIterator(buf.Bytes()))
@@ -371,4 +380,9 @@ func TestParseDescriptor(t *testing.T) {
 		AdditionalIdentificationInfo: []byte("test"),
 		FormatIdentifier:             uint32(1),
 	})
+	assert.Equal(t, *ds[24].Unknown, DescriptorUnknown{
+		Content: []byte("test"),
+		Tag:     0x1,
+	})
+	assert.Equal(t, *ds[25].Extension.Unknown, []byte("test"))
 }

@@ -238,6 +238,7 @@ func TestPSITableType(t *testing.T) {
 	assert.Equal(t, PSITableTypeST, psiTableType(114))
 	assert.Equal(t, PSITableTypeTDT, psiTableType(112))
 	assert.Equal(t, PSITableTypeTOT, psiTableType(115))
+	assert.Equal(t, PSITableTypeUnknown, psiTableType(1))
 }
 
 var psiSectionSyntaxHeader = &PSISectionSyntaxHeader{
