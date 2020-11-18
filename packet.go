@@ -67,6 +67,8 @@ type PacketAdaptationExtensionField struct {
 	SpliceType             uint8  // Indicates the parameters of the H.262 splice.
 }
 
+var ErrNoRoomInBuffer = errors.New("No room to serialise into buffer")
+
 //ParsePacket parses a packet into
 func ParsePacket(b []byte) (p *Packet, err error) {
 	return parsePacket(astikit.NewBytesIterator(b))

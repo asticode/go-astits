@@ -90,6 +90,9 @@ func parsePMTSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 }
 
 func (p *PMTData) Serialise(b []byte) (int, error) {
+	if len(b) < 4 {
+		return 0, ErrNoRoomInBuffer
+	}
 	b[0] = 0x7<<5 | uint8(0x1f&(p.PCRPID>>8))
 	b[1] = uint8(0xff & p.PCRPID)
 	program_info_length := 0
@@ -115,7 +118,9 @@ func (p *PMTData) Serialise(b []byte) (int, error) {
 }
 
 func (pes *PMTElementaryStream) Serialise(b []byte) (int, error) {
-
+	if len(b) < 5 {
+		return 0, ErrNoRoomInBuffer
+	}
 	b[0] = pes.StreamType
 	b[1] = 0x7<<5 | uint8(0x1f&(pes.ElementaryPID>>8))
 	b[2] = uint8(0xff & pes.ElementaryPID)
@@ -132,9 +137,4 @@ func (pes *PMTElementaryStream) Serialise(b []byte) (int, error) {
 	b[3] = 0xf0 | (uint8(0x3 & (es_info_length >> 8)))
 	b[4] = uint8(es_info_length)
 	return idx, nil
-	// type PMTElementaryStream struct {
-	// 	ElementaryPID               uint16        // The packet identifier that contains the stream type data.
-	// 	ElementaryStreamDescriptors []*Descriptor // Elementary stream descriptors
-	// 	StreamType                  uint8         // This defines the structure of the data contained within the elementary packet identifier.
-	// }
 }

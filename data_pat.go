@@ -56,6 +56,9 @@ func (p *PATData) Serialise(b []byte) (int, error) {
 }
 
 func (p *PATProgram) Serialise(b []byte) (int, error) {
+	if len(b) < 4 {
+		return 0, ErrNoRoomInBuffer
+	}
 	b[0], b[1] = U16toU8s(p.ProgramNumber)
 	// if p.ProgramNumber == 0 {
 	// 	//TODO figure out Network PID

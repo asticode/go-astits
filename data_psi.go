@@ -479,6 +479,9 @@ func (s *PSISection) Serialise(b []byte) (int, error) {
 	if s.Header.TableID == 255 {
 		return 0, nil
 	}
+	if len(b) < 3 {
+		return 0, ErrNoRoomInBuffer
+	}
 	idx := 3 // Skip 3 byte header we put in afterward
 
 	if s.Syntax != nil {
@@ -537,6 +540,9 @@ func (h *PSISectionHeader) Serialise(b []byte) (int, error) {
 	if h.TableID == 255 {
 		return 0, nil
 	}
+	if len(b) < 3 {
+		return 0, ErrNoRoomInBuffer
+	}
 	b[0] = uint8(h.TableID)
 	b[1] = Btou8(h.SectionSyntaxIndicator)<<7 | Btou8(h.PrivateBit)<<6 | 3<<4 | uint8(0xf&(h.SectionLength>>8))
 	b[2] = uint8(0xff & h.SectionLength) // TODO how do we calculate this without having done the whole section?
@@ -564,6 +570,9 @@ func (s *PSISectionSyntax) Serialise(b []byte) (int, error) {
 	return idx, nil
 }
 func (sh *PSISectionSyntaxHeader) Serialise(b []byte) (int, error) {
+	if len(b) < 5 {
+		return 0, ErrNoRoomInBuffer
+	}
 	b[0], b[1] = U16toU8s(sh.TableIDExtension)
 	reservedBits := uint8(3 << 6) //TODO figure out if reserved are always set
 	b[2] = uint8((0x1f&sh.VersionNumber)<<1) | Btou8(sh.CurrentNextIndicator) | reservedBits
