@@ -491,7 +491,6 @@ func (s *PSISection) Serialise(b []byte) (int, error) {
 		}
 		idx += n
 	}
-	fmt.Printf("Header length: %x, idx+4: %x idx: %d\n", s.Header.SectionLength, uint16(idx+4), idx)
 
 	s.Header.SectionLength = uint16(idx + 4 - 3) // Add CRC32 field subtract initial 3 bytes
 
@@ -536,7 +535,6 @@ func (s *PSISection) Serialise(b []byte) (int, error) {
 }
 
 func (h *PSISectionHeader) Serialise(b []byte) (int, error) {
-	// TableID                int    // Table Identifier, that defines the structure of the syntax section and other contained data. As an exception, if this is the byte that immediately follow previous table section and is set to 0xFF, then it indicates that the repeat of table section end here and the rest of TS data payload shall be stuffed with 0xFF. Consequently the value 0xFF shall not be used for the Table Identifier.
 	if h.TableID == 255 {
 		return 0, nil
 	}
@@ -578,33 +576,22 @@ func (sh *PSISectionSyntaxHeader) Serialise(b []byte) (int, error) {
 	b[2] = uint8((0x1f&sh.VersionNumber)<<1) | Btou8(sh.CurrentNextIndicator) | reservedBits
 	b[3] = sh.SectionNumber
 	b[4] = sh.LastSectionNumber
-	// TableIDExtension     uint16 // Informational only identifier. The PAT uses this for the transport stream identifier and the PMT uses this for the Program number.
-	// VersionNumber        uint8  // Syntax version number. Incremented when data is changed and wrapped around on overflow for values greater than 32.
-	// CurrentNextIndicator bool   // Indicates if data is current in effect or is for future use. If the bit is flagged on, then the data is to be used at the present moment.
-	// SectionNumber        uint8  // This is an index indicating which table this is in a related sequence of tables. The first table starts from 0.
-	// LastSectionNumber    uint8  // This indicates which table is the last table in the sequence of tables.
 	return 5, nil
 }
 
 func (sd *PSISectionSyntaxData) Serialise(b []byte) (int, error) {
-	// if sd.EIT != nil {
-	// 	sd.EIT.Serialise(b)
-	// }
-	// if sd.NIT != nil {
-	// 	sd.NIT.Serialise(b)
-	// }
+
 	if sd.PAT != nil {
 		return sd.PAT.Serialise(b)
 	}
 	if sd.PMT != nil {
 		return sd.PMT.Serialise(b)
 	}
-	// if sd.SDT != nil {
+	//TODO implement serialisation of other packets
+	// 	sd.EIT.Serialise(b)
+	// 	sd.NIT.Serialise(b)
 	// 	sd.SDT.Serialise(b)
-	// }
-	// if sd.TOT != nil {
 	// 	sd.TOT.Serialise(b)
-	// }
 	return 0, nil
 }
 
