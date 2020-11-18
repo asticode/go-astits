@@ -81,6 +81,7 @@ func ParsePSIPacket(p *Packet) (*PSIData, error) {
 
 //ParsePESPacket parses a known PES packet
 func ParsePESPacket(p *Packet) (d *PESData, err error) {
+	//Need to protect against posibility of reading a header that doesn't have payload attached
 	defer func() {
 		if re := recover(); re != nil {
 			err = fmt.Errorf("Error parsing packet: %v", re)
@@ -91,6 +92,7 @@ func ParsePESPacket(p *Packet) (d *PESData, err error) {
 
 //ParsePESPacket parses a known PES packet
 func ParsePESPacketHeader(p *Packet) (d *PESData, err error) {
+	//Need to protect against posibility of reading a header that doesn't have payload attached
 	defer func() {
 		if re := recover(); re != nil {
 			err = fmt.Errorf("Error parsing packet: %v", re)
