@@ -1,6 +1,7 @@
 package astits
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/asticode/go-astikit"
@@ -64,6 +65,98 @@ type PacketAdaptationExtensionField struct {
 	Length                 int
 	PiecewiseRate          uint32 // The rate of the stream, measured in 188-byte packets, to define the end-time of the LTW.
 	SpliceType             uint8  // Indicates the parameters of the H.262 splice.
+}
+
+//ParsePacket parses a packet into
+func ParsePacket(b []byte) (p *Packet, err error) {
+	return parsePacket(astikit.NewBytesIterator(b))
+}
+
+//ParsePSIPacket parses a known PSI packet
+func ParsePSIPacket(p *Packet) (*PSIData, error) {
+	return parsePSIData(astikit.NewBytesIterator(p.Payload))
+}
+
+//ParsePESPacket parses a known PES packet
+func ParsePESPacket(p *Packet) (d *PESData, err error) {
+	defer func() {
+		if re := recover(); re != nil {
+			err = fmt.Errorf("Error parsing packet: %v", re)
+		}
+	}()
+	return parsePESData(astikit.NewBytesIterator(p.Payload))
+}
+
+//ParsePESPacket parses a known PES packet
+func ParsePESPacketHeader(p *Packet) (d *PESData, err error) {
+	defer func() {
+		if re := recover(); re != nil {
+			err = fmt.Errorf("Error parsing packet: %v", re)
+		}
+	}()
+	i := astikit.NewBytesIterator(p.Payload)
+	// Create data
+	d = &PESData{}
+
+	// Skip first 3 bytes that are there to identify the PES payload
+	i.Seek(3)
+
+	// Parse header
+	if d.Header, _, _, err = parsePESHeader(i); err != nil {
+		err = fmt.Errorf("astits: parsing PES header failed: %w", err)
+		return
+	}
+	return
+}
+
+func (p *Packet) Serialise(b []byte) (int, error) {
+	if len(b) < 188 {
+		return 0, errors.New("b not large enough to hold a packet")
+	}
+	b[0] = syncByte
+	p.Header.Serialise(b)
+	payloadStart := 4
+	if p.Header.HasAdaptationField {
+		return 4, errors.New("Serialising adaptation field unimplemented")
+		err := p.AdaptationField.Serialise(b)
+		if err != nil {
+			return payloadStart, err
+		}
+		payloadStart += p.AdaptationField.Length
+	}
+	copy(b[payloadStart:], p.Payload)
+	return payloadStart, nil
+}
+
+func (h *PacketHeader) Serialise(b []byte) {
+	teiBit, tpBit, pusiBit := uint8(0x0), uint8(0x0), uint8(0x0)
+	if h.TransportErrorIndicator {
+		teiBit = 0x80
+	}
+	if h.TransportPriority {
+		tpBit = 0x20
+	}
+	if h.PayloadUnitStartIndicator {
+		pusiBit = 0x40
+	}
+	pidBits := uint8((h.PID & uint16(0x1f00)) >> 8)
+	b[1] = teiBit | tpBit | pusiBit | pidBits
+	b[2] = uint8(h.PID & uint16(0xff))
+
+	afBit, pBit, ccBits, tscBits := uint8(0x0), uint8(0x0), uint8(0x0), uint8(0x0)
+	if h.HasAdaptationField {
+		afBit = 0x20
+	}
+	if h.HasPayload {
+		pBit = 0x10
+	}
+	ccBits = uint8(h.ContinuityCounter & 0xf)
+	tscBits = h.TransportScramblingControl << 6
+	b[3] = afBit | pBit | ccBits | tscBits
+}
+
+func (p *PacketAdaptationField) Serialise(b []byte) error {
+	return nil
 }
 
 // parsePacket parses a packet
@@ -130,11 +223,11 @@ func parsePacketHeader(i *astikit.BytesIterator) (h *PacketHeader, err error) {
 
 	// Create header
 	h = &PacketHeader{
-		ContinuityCounter:          uint8(bs[2] & 0xf),
-		HasAdaptationField:         bs[2]&0x20 > 0,
-		HasPayload:                 bs[2]&0x10 > 0,
-		PayloadUnitStartIndicator:  bs[0]&0x40 > 0,
-		PID:                        uint16(bs[0]&0x1f)<<8 | uint16(bs[1]),
+		ContinuityCounter:         uint8(bs[2] & 0xf),
+		HasAdaptationField:        bs[2]&0x20 > 0,
+		HasPayload:                bs[2]&0x10 > 0,
+		PayloadUnitStartIndicator: bs[0]&0x40 > 0,
+		PID: uint16(bs[0]&0x1f)<<8 | uint16(bs[1]),
 		TransportErrorIndicator:    bs[0]&0x80 > 0,
 		TransportPriority:          bs[0]&0x20 > 0,
 		TransportScramblingControl: uint8(bs[2]) >> 6 & 0x3,

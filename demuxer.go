@@ -27,7 +27,7 @@ type Demuxer struct {
 	optPacketsParser PacketsParser
 	packetBuffer     *packetBuffer
 	packetPool       *packetPool
-	programMap       programMap
+	programMap       ProgramMap
 	r                io.Reader
 }
 
@@ -41,7 +41,7 @@ func New(ctx context.Context, r io.Reader, opts ...func(*Demuxer)) (d *Demuxer) 
 	d = &Demuxer{
 		ctx:        ctx,
 		packetPool: newPacketPool(),
-		programMap: newProgramMap(),
+		programMap: NewProgramMap(),
 		r:          r,
 	}
 
@@ -166,7 +166,7 @@ func (dmx *Demuxer) updateData(ds []*Data) (d *Data) {
 				for _, pgm := range v.PAT.Programs {
 					// Program number 0 is reserved to NIT
 					if pgm.ProgramNumber > 0 {
-						dmx.programMap.set(pgm.ProgramMapID, pgm.ProgramNumber)
+						dmx.programMap.Set(pgm.ProgramMapID, pgm.ProgramNumber)
 					}
 				}
 			}

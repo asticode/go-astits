@@ -116,6 +116,7 @@ type Descriptor struct {
 	UserDefined                []byte
 	VBIData                    *DescriptorVBIData
 	VBITeletext                *DescriptorTeletext
+	originalBytes              []byte // internal struct to use for reserialising
 }
 
 // DescriptorAC3 represents an AC3 descriptor
@@ -1295,6 +1296,17 @@ func parseDescriptors(i *astikit.BytesIterator) (o []*Descriptor, err error) {
 				// previously therefore we must fetch bytes in descriptor functions and seek at the end
 				offsetDescriptorEnd := i.Offset() + int(d.Length)
 
+				// <Hack>: assign the original bytes to an internal byte slice for use when reserialising later
+				// TODO fix this to actually serialise the struct
+				origOffset := i.Offset()
+				if d.originalBytes, err = i.NextBytes(int(d.Length)); err != nil {
+					err = fmt.Errorf("astits: fetching original bytes failed: %w", err)
+					return
+				}
+				// Reset iterator so parsing can continue
+				i.Seek(origOffset)
+				// </Hack>
+
 				// User defined
 				if d.Tag >= 0x80 && d.Tag <= 0xfe {
 					// Get next bytes
@@ -1436,4 +1448,13 @@ func parseDescriptors(i *astikit.BytesIterator) (o []*Descriptor, err error) {
 		}
 	}
 	return
+}
+
+func (d *Descriptor) Serialise(b []byte) (int, error) {
+	b[0] = d.Tag
+	b[1] = d.Length
+	//TODO actually create the descriptor from the struct
+	copy(b[2:], d.originalBytes)
+	// +2 to account for the Tag and Length fields
+	return int(d.Length + 2), nil
 }

@@ -7,8 +7,8 @@ import (
 )
 
 func TestProgramMap(t *testing.T) {
-	pm := newProgramMap()
-	assert.False(t, pm.exists(1))
-	pm.set(1, 1)
-	assert.True(t, pm.exists(1))
+	pm := NewProgramMap()
+	assert.False(t, pm.Exists(1))
+	pm.Set(1, 1)
+	assert.True(t, pm.Exists(1))
 }
