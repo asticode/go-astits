@@ -10,7 +10,7 @@ import (
 
 func TestParseData(t *testing.T) {
 	// Init
-	pm := newProgramMap()
+	pm := NewProgramMap()
 	ps := []*Packet{}
 
 	// Custom parser
@@ -47,7 +47,7 @@ func TestParseData(t *testing.T) {
 	assert.Equal(t, []*Data{{FirstPacket: ps[0], PES: pesWithHeader, PID: uint16(256)}}, ds)
 
 	// PSI
-	pm.set(uint16(256), uint16(1))
+	pm.Set(uint16(256), uint16(1))
 	p = psiBytes()
 	ps = []*Packet{
 		{
@@ -61,20 +61,23 @@ func TestParseData(t *testing.T) {
 	}
 	ds, err = parseData(ps, nil, pm)
 	assert.NoError(t, err)
+	for i := range ds {
+		removeOriginalBytesFromData(ds[i])
+	}
 	assert.Equal(t, psi.toData(ps[0], uint16(256)), ds)
 }
 
 func TestIsPSIPayload(t *testing.T) {
-	pm := newProgramMap()
+	pm := NewProgramMap()
 	var pids []int
 	for i := 0; i <= 255; i++ {
-		if isPSIPayload(uint16(i), pm) {
+		if IsPSIPayload(uint16(i), pm) {
 			pids = append(pids, i)
 		}
 	}
 	assert.Equal(t, []int{0, 16, 17, 18, 19, 20, 30, 31}, pids)
-	pm.set(uint16(1), uint16(0))
-	assert.True(t, isPSIPayload(uint16(1), pm))
+	pm.Set(uint16(1), uint16(0))
+	assert.True(t, IsPSIPayload(uint16(1), pm))
 }
 
 func TestIsPESPayload(t *testing.T) {

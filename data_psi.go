@@ -1,6 +1,7 @@
 package astits
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/asticode/go-astikit"
@@ -448,4 +449,159 @@ func (d *PSIData) toData(firstPacket *Packet, pid uint16) (ds []*Data) {
 		}
 	}
 	return
+}
+
+func (d *PSIData) Serialise(b []byte) (int, error) {
+
+	//TODO take care of pointer field
+	if d.PointerField != 0 {
+		return 0, errors.New("Error pointer field muxing unimplemented")
+	}
+	b[0] = uint8(d.PointerField)
+	idx := 1
+	for i := range d.Sections {
+		n, err := d.Sections[i].Serialise(b[idx:])
+		if err != nil {
+			return idx, err
+		}
+		idx += n
+	}
+	//TODO Handle Section.TableID=255 as stuffing bytes, but for now this works
+	//Stuff the rest with 0xff
+	for ; idx < len(b); idx++ {
+		b[idx] = 0xff
+	}
+	return idx, nil
+}
+
+func (s *PSISection) Serialise(b []byte) (int, error) {
+
+	if s.Header.TableID == 255 {
+		return 0, nil
+	}
+	if len(b) < 3 {
+		return 0, ErrNoRoomInBuffer
+	}
+	idx := 3 // Skip 3 byte header we put in afterward
+
+	if s.Syntax != nil {
+		n, err := s.Syntax.Serialise(b[idx:])
+		if err != nil {
+			return idx, err
+		}
+		idx += n
+	}
+
+	s.Header.SectionLength = uint16(idx + 4 - 3) // Add CRC32 field subtract initial 3 bytes
+
+	//Serialise header afterward so we ensure the section length is accurate
+	if s.Header != nil {
+		_, err := s.Header.Serialise(b[0:])
+		if err != nil {
+			return idx, err
+		}
+	}
+
+	if hasCRC32(s.Header.TableType) {
+
+		i := astikit.NewBytesIterator(b)
+		// Get CRC32 data
+		var crc32Data []byte
+		var err error
+		if crc32Data, err = i.NextBytes(idx); err != nil {
+			return idx, fmt.Errorf("astits: fetching next bytes failed: %w", err)
+		}
+
+		// Compute CRC32
+		var crc32 uint32
+		if crc32, err = computeCRC32(crc32Data); err != nil {
+			return idx, fmt.Errorf("astits: computing CRC32 failed: %w", err)
+		}
+
+		// Check CRC32
+		// TODO emit a warning here if it is not valid
+		// if crc32 != s.CRC32 {
+		// 	return idx, fmt.Errorf("astits: Table CRC32 %x != computed CRC32 %x", s.CRC32, crc32)
+		// }
+		b[idx] = uint8(crc32 >> 24)
+		b[idx+1] = uint8(crc32 >> 16)
+		b[idx+2] = uint8(crc32 >> 8)
+		b[idx+3] = uint8(crc32)
+		idx += 4
+	}
+
+	return idx, nil
+
+}
+
+func (h *PSISectionHeader) Serialise(b []byte) (int, error) {
+	if h.TableID == 255 {
+		return 0, nil
+	}
+	if len(b) < 3 {
+		return 0, ErrNoRoomInBuffer
+	}
+	b[0] = uint8(h.TableID)
+	b[1] = Btou8(h.SectionSyntaxIndicator)<<7 | Btou8(h.PrivateBit)<<6 | 3<<4 | uint8(0xf&(h.SectionLength>>8))
+	b[2] = uint8(0xff & h.SectionLength) // TODO how do we calculate this without having done the whole section?
+	return 3, nil
+	// TableType              string
+}
+
+func (s *PSISectionSyntax) Serialise(b []byte) (int, error) {
+	idx := 0
+	if s.Header != nil {
+		n, err := s.Header.Serialise(b[idx:])
+		if err != nil {
+			return idx, err
+		}
+		idx += n
+	}
+	if s.Data != nil {
+		n, err := s.Data.Serialise(b[idx:])
+		if err != nil {
+			return idx, err
+		}
+		idx += n
+	}
+
+	return idx, nil
+}
+func (sh *PSISectionSyntaxHeader) Serialise(b []byte) (int, error) {
+	if len(b) < 5 {
+		return 0, ErrNoRoomInBuffer
+	}
+	b[0], b[1] = U16toU8s(sh.TableIDExtension)
+	reservedBits := uint8(3 << 6) //TODO figure out if reserved are always set
+	b[2] = uint8((0x1f&sh.VersionNumber)<<1) | Btou8(sh.CurrentNextIndicator) | reservedBits
+	b[3] = sh.SectionNumber
+	b[4] = sh.LastSectionNumber
+	return 5, nil
+}
+
+func (sd *PSISectionSyntaxData) Serialise(b []byte) (int, error) {
+
+	if sd.PAT != nil {
+		return sd.PAT.Serialise(b)
+	}
+	if sd.PMT != nil {
+		return sd.PMT.Serialise(b)
+	}
+	//TODO implement serialisation of other packets
+	// 	sd.EIT.Serialise(b)
+	// 	sd.NIT.Serialise(b)
+	// 	sd.SDT.Serialise(b)
+	// 	sd.TOT.Serialise(b)
+	return 0, nil
+}
+
+func Btou8(b bool) uint8 {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+func U16toU8s(a uint16) (uint8, uint8) {
+	return uint8(0xff & (a >> 8)), uint8(0xff & a)
 }

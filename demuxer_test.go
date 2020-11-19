@@ -75,6 +75,10 @@ func TestDemuxerNextData(t *testing.T) {
 			ds = append(ds, d)
 		}
 	}
+	//Remove originalBytes field from all descriptors
+	for i := range ds {
+		removeOriginalBytesFromData(ds[i])
+	}
 	assert.Equal(t, psi.toData(p, PIDPAT), ds)
 	assert.Equal(t, map[uint16]uint16{0x3: 0x2, 0x5: 0x4}, dmx.programMap.p)
 
@@ -98,4 +102,46 @@ func TestDemuxerRewind(t *testing.T) {
 	assert.Equal(t, 0, len(dmx.dataBuffer))
 	assert.Equal(t, 0, len(dmx.packetPool.b))
 	assert.Nil(t, dmx.packetBuffer)
+}
+
+func removeOriginalBytesFromData(d *Data) {
+	if d.PMT != nil {
+		for j := range d.PMT.ProgramDescriptors {
+			d.PMT.ProgramDescriptors[j].originalBytes = nil
+		}
+		for k := range d.PMT.ElementaryStreams {
+			for l := range d.PMT.ElementaryStreams[k].ElementaryStreamDescriptors {
+				d.PMT.ElementaryStreams[k].ElementaryStreamDescriptors[l].originalBytes = nil
+			}
+		}
+	}
+	if d.EIT != nil {
+		for j := range d.EIT.Events {
+			for k := range d.EIT.Events[j].Descriptors {
+				d.EIT.Events[j].Descriptors[k].originalBytes = nil
+			}
+		}
+	}
+	if d.NIT != nil {
+		for j := range d.NIT.TransportStreams {
+			for k := range d.NIT.TransportStreams[j].TransportDescriptors {
+				d.NIT.TransportStreams[j].TransportDescriptors[k].originalBytes = nil
+			}
+		}
+		for l := range d.NIT.NetworkDescriptors {
+			d.NIT.NetworkDescriptors[l].originalBytes = nil
+		}
+	}
+	if d.SDT != nil {
+		for j := range d.SDT.Services {
+			for k := range d.SDT.Services[j].Descriptors {
+				d.SDT.Services[j].Descriptors[k].originalBytes = nil
+			}
+		}
+	}
+	if d.TOT != nil {
+		for k := range d.TOT.Descriptors {
+			d.TOT.Descriptors[k].originalBytes = nil
+		}
+	}
 }

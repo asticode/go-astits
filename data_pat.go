@@ -41,3 +41,30 @@ func parsePATSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 	}
 	return
 }
+
+func (p *PATData) Serialise(b []byte) (int, error) {
+	currentIdx := 0
+	for i := range p.Programs {
+		n, err := p.Programs[i].Serialise(b[currentIdx:])
+		if err != nil {
+			return currentIdx, err
+		}
+		currentIdx += n
+	}
+
+	return currentIdx, nil
+}
+
+func (p *PATProgram) Serialise(b []byte) (int, error) {
+	if len(b) < 4 {
+		return 0, ErrNoRoomInBuffer
+	}
+	b[0], b[1] = U16toU8s(p.ProgramNumber)
+	// if p.ProgramNumber == 0 {
+	// 	//TODO figure out Network PID
+	// 	return 2, errors.New("Network PID not implemented")
+	// }
+	b[2] = uint8(0x1f&(p.ProgramMapID>>8)) | 7<<5
+	b[3] = uint8(0xff & p.ProgramMapID)
+	return 4, nil
+}

@@ -88,3 +88,53 @@ func parsePMTSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 	}
 	return
 }
+
+func (p *PMTData) Serialise(b []byte) (int, error) {
+	if len(b) < 4 {
+		return 0, ErrNoRoomInBuffer
+	}
+	b[0] = 0x7<<5 | uint8(0x1f&(p.PCRPID>>8))
+	b[1] = uint8(0xff & p.PCRPID)
+	program_info_length := 0
+	idx := 4
+	for i := range p.ProgramDescriptors {
+		n, err := p.ProgramDescriptors[i].Serialise(b[idx:])
+		if err != nil {
+			return idx, err
+		}
+		idx += n
+		program_info_length += n
+	}
+	for i := range p.ElementaryStreams {
+		n, err := p.ElementaryStreams[i].Serialise(b[idx:])
+		if err != nil {
+			return idx, err
+		}
+		idx += n
+	}
+	b[2] = 0xf0 | uint8(0x3&(uint8(program_info_length)>>8))
+	b[3] = uint8(program_info_length)
+	return idx, nil
+}
+
+func (pes *PMTElementaryStream) Serialise(b []byte) (int, error) {
+	if len(b) < 5 {
+		return 0, ErrNoRoomInBuffer
+	}
+	b[0] = pes.StreamType
+	b[1] = 0x7<<5 | uint8(0x1f&(pes.ElementaryPID>>8))
+	b[2] = uint8(0xff & pes.ElementaryPID)
+	es_info_length := 0
+	idx := 5
+	for i := range pes.ElementaryStreamDescriptors {
+		n, err := pes.ElementaryStreamDescriptors[i].Serialise(b[idx:])
+		if err != nil {
+			return idx, err
+		}
+		idx += n
+		es_info_length += n
+	}
+	b[3] = 0xf0 | (uint8(0x3 & (es_info_length >> 8)))
+	b[4] = uint8(es_info_length)
+	return idx, nil
+}

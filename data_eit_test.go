@@ -43,6 +43,7 @@ func eitBytes() []byte {
 func TestParseEITSection(t *testing.T) {
 	var b = eitBytes()
 	d, err := parseEITSection(astikit.NewBytesIterator(b), len(b), uint16(1))
+	removeOriginalBytesFromData(&Data{EIT: d})
 	assert.Equal(t, d, eit)
 	assert.NoError(t, err)
 }

@@ -35,6 +35,7 @@ func nitBytes() []byte {
 func TestParseNITSection(t *testing.T) {
 	var b = nitBytes()
 	d, err := parseNITSection(astikit.NewBytesIterator(b), uint16(1))
+	removeOriginalBytesFromData(&Data{NIT: d})
 	assert.Equal(t, d, nit)
 	assert.NoError(t, err)
 }

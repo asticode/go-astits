@@ -28,7 +28,7 @@ type Data struct {
 }
 
 // parseData parses a payload spanning over multiple packets and returns a set of data
-func parseData(ps []*Packet, prs PacketsParser, pm programMap) (ds []*Data, err error) {
+func parseData(ps []*Packet, prs PacketsParser, pm ProgramMap) (ds []*Data, err error) {
 	// Use custom parser first
 	if prs != nil {
 		var skip bool
@@ -63,7 +63,7 @@ func parseData(ps []*Packet, prs PacketsParser, pm programMap) (ds []*Data, err 
 	if pid == PIDCAT {
 		// Information in a CAT payload is private and dependent on the CA system. Use the PacketsParser
 		// to parse this type of payload
-	} else if isPSIPayload(pid, pm) {
+	} else if IsPSIPayload(pid, pm) {
 		// Parse PSI data
 		var psiData *PSIData
 		if psiData, err = parsePSIData(i); err != nil {
@@ -91,10 +91,10 @@ func parseData(ps []*Packet, prs PacketsParser, pm programMap) (ds []*Data, err 
 	return
 }
 
-// isPSIPayload checks whether the payload is a PSI one
-func isPSIPayload(pid uint16, pm programMap) bool {
+// IsPSIPayload checks whether the payload is a PSI one
+func IsPSIPayload(pid uint16, pm ProgramMap) bool {
 	return pid == PIDPAT || // PAT
-		pm.exists(pid) || // PMT
+		pm.Exists(pid) || // PMT
 		((pid >= 0x10 && pid <= 0x14) || (pid >= 0x1e && pid <= 0x1f)) //DVB
 }
 
