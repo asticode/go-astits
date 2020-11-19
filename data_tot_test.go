@@ -24,6 +24,7 @@ func totBytes() []byte {
 
 func TestParseTOTSection(t *testing.T) {
 	d, err := parseTOTSection(astikit.NewBytesIterator(totBytes()))
+	removeOriginalBytesFromData(&Data{TOT: d})
 	assert.Equal(t, d, tot)
 	assert.NoError(t, err)
 }

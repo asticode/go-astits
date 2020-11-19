@@ -37,6 +37,7 @@ func pmtBytes() []byte {
 func TestParsePMTSection(t *testing.T) {
 	var b = pmtBytes()
 	d, err := parsePMTSection(astikit.NewBytesIterator(b), len(b), uint16(1))
+	removeOriginalBytesFromData(&Data{PMT: d})
 	assert.Equal(t, d, pmt)
 	assert.NoError(t, err)
 }

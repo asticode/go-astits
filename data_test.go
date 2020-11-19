@@ -61,6 +61,9 @@ func TestParseData(t *testing.T) {
 	}
 	ds, err = parseData(ps, nil, pm)
 	assert.NoError(t, err)
+	for i := range ds {
+		removeOriginalBytesFromData(ds[i])
+	}
 	assert.Equal(t, psi.toData(ps[0], uint16(256)), ds)
 }
 

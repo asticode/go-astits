@@ -39,6 +39,7 @@ func sdtBytes() []byte {
 func TestParseSDTSection(t *testing.T) {
 	var b = sdtBytes()
 	d, err := parseSDTSection(astikit.NewBytesIterator(b), len(b), uint16(1))
+	removeOriginalBytesFromData(&Data{SDT: d})
 	assert.Equal(t, d, sdt)
 	assert.NoError(t, err)
 }
