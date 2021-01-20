@@ -217,11 +217,11 @@ func parsePacketHeader(i *astikit.BytesIterator) (h *PacketHeader, err error) {
 
 	// Create header
 	h = &PacketHeader{
-		ContinuityCounter:         uint8(bs[2] & 0xf),
-		HasAdaptationField:        bs[2]&0x20 > 0,
-		HasPayload:                bs[2]&0x10 > 0,
-		PayloadUnitStartIndicator: bs[0]&0x40 > 0,
-		PID: uint16(bs[0]&0x1f)<<8 | uint16(bs[1]),
+		ContinuityCounter:          uint8(bs[2] & 0xf),
+		HasAdaptationField:         bs[2]&0x20 > 0,
+		HasPayload:                 bs[2]&0x10 > 0,
+		PayloadUnitStartIndicator:  bs[0]&0x40 > 0,
+		PID:                        uint16(bs[0]&0x1f)<<8 | uint16(bs[1]),
 		TransportErrorIndicator:    bs[0]&0x80 > 0,
 		TransportPriority:          bs[0]&0x20 > 0,
 		TransportScramblingControl: uint8(bs[2]) >> 6 & 0x3,

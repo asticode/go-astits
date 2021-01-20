@@ -2,3 +2,4 @@
 
 ## Unreleased
  - Add serialisation methods for PAT and PMT packets
+ - Make ParseData public

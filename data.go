@@ -27,8 +27,8 @@ type Data struct {
 	TOT         *TOTData
 }
 
-// parseData parses a payload spanning over multiple packets and returns a set of data
-func parseData(ps []*Packet, prs PacketsParser, pm ProgramMap) (ds []*Data, err error) {
+// ParseData parses a payload spanning over multiple packets and returns a set of data
+func ParseData(ps []*Packet, prs PacketsParser, pm ProgramMap) (ds []*Data, err error) {
 	// Use custom parser first
 	if prs != nil {
 		var skip bool

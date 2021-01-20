@@ -118,7 +118,7 @@ func (dmx *Demuxer) NextData() (d *Data, err error) {
 					}
 
 					// Parse data
-					if ds, err = parseData(ps, dmx.optPacketsParser, dmx.programMap); err != nil {
+					if ds, err = ParseData(ps, dmx.optPacketsParser, dmx.programMap); err != nil {
 						// We need to silence this error as there may be some incomplete data here
 						// We still want to try to parse all packets, in case final data is complete
 						continue
@@ -141,7 +141,7 @@ func (dmx *Demuxer) NextData() (d *Data, err error) {
 		}
 
 		// Parse data
-		if ds, err = parseData(ps, dmx.optPacketsParser, dmx.programMap); err != nil {
+		if ds, err = ParseData(ps, dmx.optPacketsParser, dmx.programMap); err != nil {
 			err = fmt.Errorf("astits: building new data failed: %w", err)
 			return
 		}
