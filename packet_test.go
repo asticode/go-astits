@@ -159,3 +159,14 @@ func TestParsePCR(t *testing.T) {
 	assert.Equal(t, pcr, v)
 	assert.NoError(t, err)
 }
+
+func TestWritePCR(t *testing.T) {
+	expected := []byte{0xaa, 0xaa, 0xaa, 0xaa, 0x81, 0x55}
+	cr := &ClockReference{Base: 5726623061, Extension: 341}
+
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+	err := writePCR(w, cr)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, buf.Bytes())
+}

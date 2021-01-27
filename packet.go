@@ -2,7 +2,6 @@ package astits
 
 import (
 	"fmt"
-
 	"github.com/asticode/go-astikit"
 )
 
@@ -12,6 +11,7 @@ const (
 	ScramblingControlReservedForFutureUse = 1
 	ScramblingControlScrambledWithEvenKey = 2
 	ScramblingControlScrambledWithOddKey  = 3
+	MpegTsPacketSize                      = 188
 )
 
 // Packet represents a packet
@@ -301,4 +301,16 @@ func parsePCR(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 	pcr := uint64(bs[0])<<40 | uint64(bs[1])<<32 | uint64(bs[2])<<24 | uint64(bs[3])<<16 | uint64(bs[4])<<8 | uint64(bs[5])
 	cr = newClockReference(int64(pcr>>15), int64(pcr&0x1ff))
 	return
+}
+
+func writePCR(w *astikit.BitsWriter, cr *ClockReference) error {
+	var bs [6]byte
+	base := cr.Base << 15
+	bs[0] = byte((base >> 40) & 0xff)
+	bs[1] = byte((base >> 32) & 0xff)
+	bs[2] = byte((base >> 24) & 0xff)
+	bs[3] = byte((base >> 16) & 0xff)
+	bs[4] = byte((base>>8)&0x80) | byte((cr.Extension>>8)&0x7f)
+	bs[5] = byte(cr.Extension & 0xff)
+	return w.Write(bs[:])
 }
