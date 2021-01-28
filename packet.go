@@ -303,14 +303,178 @@ func parsePCR(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 	return
 }
 
-func writePCR(w *astikit.BitsWriter, cr *ClockReference) error {
+func recoverAndSaveError(retErr *error) {
+	if err := recover(); err != nil {
+		*retErr = err.(error)
+	}
+}
+
+func tryWrite(w *astikit.BitsWriter, i interface{}) {
+	if err := w.Write(i); err != nil {
+		panic(err)
+	}
+}
+
+func tryWriteN(w *astikit.BitsWriter, i interface{}, n int) {
+	if err := w.WriteN(i, n); err != nil {
+		panic(err)
+	}
+}
+
+func writePacketHeader(w *astikit.BitsWriter, h *PacketHeader) (written int, retErr error) {
+	defer recoverAndSaveError(&retErr)
+
+	tryWrite(w, h.TransportErrorIndicator)
+	tryWrite(w, h.PayloadUnitStartIndicator)
+	tryWrite(w, h.TransportPriority)
+	tryWriteN(w, h.PID, 13)
+	tryWriteN(w, h.TransportScramblingControl, 2)
+	tryWrite(w, h.HasAdaptationField) // adaptation_field_control higher bit
+	tryWrite(w, h.HasPayload)         // adaptation_field_control lower bit
+	tryWriteN(w, h.ContinuityCounter, 4)
+
+	return 3, nil
+}
+
+func writePCR(w *astikit.BitsWriter, cr *ClockReference) (int, error) {
 	var bs [6]byte
 	base := cr.Base << 15
 	bs[0] = byte((base >> 40) & 0xff)
 	bs[1] = byte((base >> 32) & 0xff)
 	bs[2] = byte((base >> 24) & 0xff)
 	bs[3] = byte((base >> 16) & 0xff)
-	bs[4] = byte((base>>8)&0x80) | byte((cr.Extension>>8)&0x7f)
+	bs[4] = byte((base>>8)&0x80) | byte((cr.Extension>>8)&0x7f) | byte(0b1111110) // last 6 are reserved bits
 	bs[5] = byte(cr.Extension & 0xff)
-	return w.Write(bs[:])
+
+	if err := w.Write(bs[:]); err != nil {
+		return 0, err
+	}
+	return len(bs), nil
+}
+
+func writePacketAdaptationField(w *astikit.BitsWriter, af *PacketAdaptationField) (writtenBytes int, retErr error) {
+	defer recoverAndSaveError(&retErr)
+
+	tryWrite(w, uint8(af.Length))
+	writtenBytes++
+
+	if af.Length == 0 {
+		return
+	}
+
+	tryWrite(w, af.DiscontinuityIndicator)
+	tryWrite(w, af.RandomAccessIndicator)
+	tryWrite(w, af.ElementaryStreamPriorityIndicator)
+	tryWrite(w, af.HasPCR)
+	tryWrite(w, af.HasOPCR)
+	tryWrite(w, af.HasSplicingCountdown)
+	tryWrite(w, af.HasTransportPrivateData)
+	tryWrite(w, af.HasAdaptationExtensionField)
+
+	writtenBytes++
+
+	if af.HasPCR {
+		n, err := writePCR(w, af.PCR)
+		if err != nil {
+			return 0, err
+		}
+		writtenBytes += n
+	}
+
+	if af.HasOPCR {
+		n, err := writePCR(w, af.OPCR)
+		if err != nil {
+			return 0, err
+		}
+		writtenBytes += n
+	}
+
+	if af.HasSplicingCountdown {
+		tryWrite(w, uint8(af.SpliceCountdown))
+		writtenBytes++
+	}
+
+	if af.HasTransportPrivateData {
+		tryWrite(w, uint8(af.TransportPrivateDataLength))
+		writtenBytes++
+		if af.TransportPrivateDataLength > 0 {
+			tryWrite(w, af.TransportPrivateData)
+		}
+		writtenBytes += len(af.TransportPrivateData)
+	}
+
+	if af.HasAdaptationExtensionField {
+		n, err := writePacketAdaptationFieldExtension(w, af.AdaptationExtensionField)
+		if err != nil {
+			return 0, err
+		}
+		writtenBytes += n
+	}
+
+	if writtenBytes-1 > af.Length {
+		return writtenBytes, fmt.Errorf(
+			"PacketAdaptationField provided Length %d is less than actually written %d",
+			af.Length, writtenBytes,
+		)
+	}
+
+	// stuffing
+	for writtenBytes-1 < af.Length {
+		tryWrite(w, uint8(0))
+		writtenBytes++
+	}
+
+	return
+}
+
+func writePacketAdaptationFieldExtension(w *astikit.BitsWriter, afe *PacketAdaptationExtensionField) (writtenBytes int, retErr error) {
+	defer recoverAndSaveError(&retErr)
+
+	tryWrite(w, uint8(afe.Length))
+	writtenBytes++
+
+	if afe.Length == 0 {
+		return writtenBytes, nil
+	}
+
+	tryWrite(w, afe.HasLegalTimeWindow)
+	tryWrite(w, afe.HasPiecewiseRate)
+	tryWrite(w, afe.HasSeamlessSplice)
+	tryWriteN(w, uint8(0xff), 5) // reserved
+	writtenBytes++
+
+	if afe.HasLegalTimeWindow {
+		tryWrite(w, afe.LegalTimeWindowIsValid)
+		tryWriteN(w, afe.LegalTimeWindowOffset, 15)
+		writtenBytes += 2
+	}
+
+	if afe.HasPiecewiseRate {
+		tryWriteN(w, uint8(0xff), 2)
+		tryWriteN(w, afe.PiecewiseRate, 22)
+		writtenBytes += 3
+	}
+
+	if afe.HasSeamlessSplice {
+		n, err := writePTSOrDTS(w, afe.SpliceType, afe.DTSNextAccessUnit)
+		if err != nil {
+			return 0, err
+		}
+		writtenBytes += n
+	}
+
+	if writtenBytes-1 > afe.Length {
+		return writtenBytes, fmt.Errorf(
+			"PacketAdaptationFieldExtension provided Length %d is less than actually written %d",
+			afe.Length, writtenBytes,
+		)
+	}
+
+	// reserved bytes
+	for writtenBytes-1 < afe.Length {
+		tryWrite(w, uint8(1))
+		writtenBytes++
+	}
+
+	return
 }

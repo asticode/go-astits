@@ -96,6 +96,16 @@ func TestParsePTSOrDTS(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestWritePTSOrDTS(t *testing.T) {
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+	n, err := writePTSOrDTS(w, uint8(0b0010), dtsClockReference)
+	assert.NoError(t, err)
+	assert.Equal(t, n, 5)
+	assert.Equal(t, n, buf.Len())
+	assert.Equal(t, dtsBytes(), buf.Bytes())
+}
+
 func escrBytes() []byte {
 	buf := &bytes.Buffer{}
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})

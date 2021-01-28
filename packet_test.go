@@ -75,6 +75,16 @@ func TestParsePacketHeader(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestWritePacketHeader(t *testing.T) {
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+	bytesWritten, err := writePacketHeader(w, packetHeader)
+	assert.NoError(t, err)
+	assert.Equal(t, bytesWritten, 3)
+	assert.Equal(t, bytesWritten, buf.Len())
+	assert.Equal(t, packetHeaderBytes(*packetHeader), buf.Bytes())
+}
+
 var packetAdaptationField = &PacketAdaptationField{
 	AdaptationExtensionField: &PacketAdaptationExtensionField{
 		DTSNextAccessUnit:      dtsClockReference,
@@ -130,7 +140,7 @@ func packetAdaptationFieldBytes(a PacketAdaptationField) []byte {
 	w.Write("11")                     // Piecewise rate reserved
 	w.Write("1010101010101010101010") // Piecewise rate
 	w.Write(dtsBytes())               // Splice type + DTS next access unit
-	w.Write([]byte("stuff"))          // Stuffing bytes
+	w.WriteN(uint64(0), 40)           // Stuffing bytes
 	return buf.Bytes()
 }
 
@@ -138,6 +148,15 @@ func TestParsePacketAdaptationField(t *testing.T) {
 	v, err := parsePacketAdaptationField(astikit.NewBytesIterator(packetAdaptationFieldBytes(*packetAdaptationField)))
 	assert.Equal(t, packetAdaptationField, v)
 	assert.NoError(t, err)
+}
+
+func TestWritePacketAdaptationField(t *testing.T) {
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+	bytesWritten, err := writePacketAdaptationField(w, packetAdaptationField)
+	assert.NoError(t, err)
+	assert.Equal(t, bytesWritten, buf.Len())
+	assert.Equal(t, packetAdaptationFieldBytes(*packetAdaptationField), buf.Bytes())
 }
 
 var pcr = &ClockReference{
@@ -161,12 +180,23 @@ func TestParsePCR(t *testing.T) {
 }
 
 func TestWritePCR(t *testing.T) {
-	expected := []byte{0xaa, 0xaa, 0xaa, 0xaa, 0x81, 0x55}
-	cr := &ClockReference{Base: 5726623061, Extension: 341}
-
 	buf := &bytes.Buffer{}
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	err := writePCR(w, cr)
+	bytesWritten, err := writePCR(w, pcr)
 	assert.NoError(t, err)
-	assert.Equal(t, expected, buf.Bytes())
+	assert.Equal(t, bytesWritten, 6)
+	assert.Equal(t, bytesWritten, buf.Len())
+	assert.Equal(t, pcrBytes(), buf.Bytes())
+}
+
+func BenchmarkWritePCR(b *testing.B) {
+	buf := &bytes.Buffer{}
+	buf.Grow(6)
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		buf.Reset()
+		writePCR(w, pcr)
+	}
 }
