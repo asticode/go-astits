@@ -89,7 +89,7 @@ func parsePacket(i *astikit.BytesIterator) (p *Packet, err error) {
 	p = &Packet{}
 
 	// In case packet size is bigger than 188 bytes, we don't care for the first bytes
-	i.Seek(i.Len() - 188 + 1)
+	i.Seek(i.Len() - MpegTsPacketSize + 1)
 	offsetStart := i.Offset()
 
 	// Parse header

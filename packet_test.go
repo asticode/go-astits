@@ -32,7 +32,7 @@ func packetShort(h PacketHeader, payload []byte) ([]byte, *Packet) {
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write(uint8(syncByte))            // Sync byte
 	w.Write(packetHeaderBytes(h, "01")) // Header
-	p := append(payload, bytes.Repeat([]byte{0}, 188-buf.Len())...)
+	p := append(payload, bytes.Repeat([]byte{0}, MpegTsPacketSize-buf.Len())...)
 	w.Write(p)
 	return buf.Bytes(), &Packet{
 		Header:  &h,
