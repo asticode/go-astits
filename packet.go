@@ -317,19 +317,10 @@ func writePacketHeader(w *astikit.BitsWriter, h *PacketHeader) (written int, ret
 }
 
 func writePCR(w *astikit.BitsWriter, cr *ClockReference) (int, error) {
-	var bs [6]byte
-	base := cr.Base << 15
-	bs[0] = byte((base >> 40) & 0xff)
-	bs[1] = byte((base >> 32) & 0xff)
-	bs[2] = byte((base >> 24) & 0xff)
-	bs[3] = byte((base >> 16) & 0xff)
-	bs[4] = byte((base>>8)&0x80) | byte((cr.Extension>>8)&0x7f) | byte(0b1111110) // last 6 are reserved bits
-	bs[5] = byte(cr.Extension & 0xff)
-
-	if err := w.Write(bs[:]); err != nil {
-		return 0, err
-	}
-	return len(bs), nil
+	w.TryWriteN(uint64(cr.Base), 33)
+	w.TryWriteN(uint8(0xff), 6)
+	w.TryWriteN(uint64(cr.Extension), 9)
+	return 6, w.TryErr()
 }
 
 func writePacketAdaptationField(w *astikit.BitsWriter, af *PacketAdaptationField) (writtenBytes int, retErr error) {
