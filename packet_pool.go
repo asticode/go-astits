@@ -11,7 +11,7 @@ type PacketPool struct {
 	m *sync.Mutex
 }
 
-// newPacketPool creates a new packet pool
+// NewPacketPool creates a new packet pool
 func NewPacketPool() *PacketPool {
 	return &PacketPool{
 		b: make(map[uint16][]*Packet),
@@ -19,7 +19,7 @@ func NewPacketPool() *PacketPool {
 	}
 }
 
-// add adds a new packet to the pool
+// Add adds a new packet to the pool
 func (b *PacketPool) Add(p *Packet) (ps []*Packet) {
 	// Throw away packet if error indicator
 	if p.Header.TransportErrorIndicator {
