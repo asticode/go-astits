@@ -386,6 +386,7 @@ func calcPacketAdaptationFieldLength(af *PacketAdaptationField) (length int) {
 }
 
 // PacketAdaptationField.Length can be overridden in order to put stuffing to adaptation field
+// TODO maybe it's better to introduce new explicit Stuffing int field?
 func writePacketAdaptationField(w *astikit.BitsWriter, af *PacketAdaptationField) (writtenBytes int, retErr error) {
 	if af.Length == 0 {
 		af.Length = calcPacketAdaptationFieldLength(af)
