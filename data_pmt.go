@@ -6,7 +6,7 @@ import (
 	"github.com/asticode/go-astikit"
 )
 
-// Stream types
+// Stream types from https://en.wikipedia.org/wiki/Program-specific_information#Elementary_stream_types
 const (
 	StreamTypeMPEG1Video                                = 0x01 // ISO/IEC 11172-2
 	StreamTypeMPEG2HighRateInterlacedVideo              = 0x02 // Rec. ITU-T H.262 | ISO/IEC 13818-2
