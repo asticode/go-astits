@@ -5,22 +5,22 @@ import (
 	"sync"
 )
 
-// packetPool represents a pool of packets
-type packetPool struct {
+// PacketPool represents a pool of packets
+type PacketPool struct {
 	b map[uint16][]*Packet // Indexed by PID
 	m *sync.Mutex
 }
 
 // newPacketPool creates a new packet pool
-func newPacketPool() *packetPool {
-	return &packetPool{
+func NewPacketPool() *PacketPool {
+	return &PacketPool{
 		b: make(map[uint16][]*Packet),
 		m: &sync.Mutex{},
 	}
 }
 
 // add adds a new packet to the pool
-func (b *packetPool) add(p *Packet) (ps []*Packet) {
+func (b *PacketPool) Add(p *Packet) (ps []*Packet) {
 	// Throw away packet if error indicator
 	if p.Header.TransportErrorIndicator {
 		return
@@ -70,7 +70,7 @@ func (b *packetPool) add(p *Packet) (ps []*Packet) {
 }
 
 // dump dumps the packet pool by looking for the first item with packets inside
-func (b *packetPool) dump() (ps []*Packet) {
+func (b *PacketPool) dump() (ps []*Packet) {
 	b.m.Lock()
 	defer b.m.Unlock()
 	var keys []int

@@ -26,7 +26,7 @@ type Demuxer struct {
 	optPacketSize    int
 	optPacketsParser PacketsParser
 	packetBuffer     *packetBuffer
-	packetPool       *packetPool
+	packetPool       *PacketPool
 	programMap       ProgramMap
 	r                io.Reader
 }
@@ -40,7 +40,7 @@ func New(ctx context.Context, r io.Reader, opts ...func(*Demuxer)) (d *Demuxer) 
 	// Init
 	d = &Demuxer{
 		ctx:        ctx,
-		packetPool: newPacketPool(),
+		packetPool: NewPacketPool(),
 		programMap: NewProgramMap(),
 		r:          r,
 	}
@@ -136,7 +136,7 @@ func (dmx *Demuxer) NextData() (d *Data, err error) {
 		}
 
 		// Add packet to the pool
-		if ps = dmx.packetPool.add(p); len(ps) == 0 {
+		if ps = dmx.packetPool.Add(p); len(ps) == 0 {
 			continue
 		}
 
@@ -179,7 +179,7 @@ func (dmx *Demuxer) updateData(ds []*Data) (d *Data) {
 func (dmx *Demuxer) Rewind() (n int64, err error) {
 	dmx.dataBuffer = []*Data{}
 	dmx.packetBuffer = nil
-	dmx.packetPool = newPacketPool()
+	dmx.packetPool = NewPacketPool()
 	if n, err = rewind(dmx.r); err != nil {
 		err = fmt.Errorf("astits: rewinding reader failed: %w", err)
 		return
