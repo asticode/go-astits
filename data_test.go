@@ -20,13 +20,13 @@ func TestParseData(t *testing.T) {
 		skip = true
 		return
 	}
-	ds, err := parseData(ps, c, pm)
+	ds, err := ParseData(ps, c, pm)
 	assert.NoError(t, err)
 	assert.Equal(t, cds, ds)
 
 	// Do nothing for CAT
 	ps = []*Packet{{Header: &PacketHeader{PID: PIDCAT}}}
-	ds, err = parseData(ps, nil, pm)
+	ds, err = ParseData(ps, nil, pm)
 	assert.NoError(t, err)
 	assert.Empty(t, ds)
 
@@ -42,7 +42,7 @@ func TestParseData(t *testing.T) {
 			Payload: p[33:],
 		},
 	}
-	ds, err = parseData(ps, nil, pm)
+	ds, err = ParseData(ps, nil, pm)
 	assert.NoError(t, err)
 	assert.Equal(t, []*Data{{FirstPacket: ps[0], PES: pesWithHeader, PID: uint16(256)}}, ds)
 
@@ -59,7 +59,7 @@ func TestParseData(t *testing.T) {
 			Payload: p[33:],
 		},
 	}
-	ds, err = parseData(ps, nil, pm)
+	ds, err = ParseData(ps, nil, pm)
 	assert.NoError(t, err)
 	for i := range ds {
 		removeOriginalBytesFromData(ds[i])
