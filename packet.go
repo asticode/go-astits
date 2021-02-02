@@ -11,7 +11,11 @@ const (
 	ScramblingControlReservedForFutureUse = 1
 	ScramblingControlScrambledWithEvenKey = 2
 	ScramblingControlScrambledWithOddKey  = 3
-	MpegTsPacketSize                      = 188
+)
+
+const (
+	MpegTsPacketSize = 188
+	PCRBytesSize     = 6
 )
 
 // Packet represents a packet
@@ -303,6 +307,44 @@ func parsePCR(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 	return
 }
 
+func writePacket(w *astikit.BitsWriter, p *Packet, targetPacketSize int) (written int, retErr error) {
+	if retErr = w.Write(uint8(syncByte)); retErr != nil {
+		return
+	}
+	written += 1
+
+	n, retErr := writePacketHeader(w, p.Header)
+	if retErr != nil {
+		return
+	}
+	written += n
+
+	if p.Header.HasAdaptationField {
+		n, retErr = writePacketAdaptationField(w, p.AdaptationField)
+		if retErr != nil {
+			return
+		}
+		written += n
+	}
+
+	if p.Header.HasPayload {
+		retErr = w.Write(p.Payload)
+		if retErr != nil {
+			return
+		}
+		written += len(p.Payload)
+	}
+
+	for written < targetPacketSize {
+		if retErr = w.Write(uint8(0)); retErr != nil {
+			return
+		}
+		written++
+	}
+
+	return written, nil
+}
+
 func writePacketHeader(w *astikit.BitsWriter, h *PacketHeader) (written int, retErr error) {
 	w.TryWrite(h.TransportErrorIndicator)
 	w.TryWrite(h.PayloadUnitStartIndicator)
@@ -320,16 +362,37 @@ func writePCR(w *astikit.BitsWriter, cr *ClockReference) (int, error) {
 	w.TryWriteN(uint64(cr.Base), 33)
 	w.TryWriteN(uint8(0xff), 6)
 	w.TryWriteN(uint64(cr.Extension), 9)
-	return 6, w.TryErr()
+	return PCRBytesSize, w.TryErr()
 }
 
+func calcPacketAdaptationFieldLength(af *PacketAdaptationField) (length int) {
+	length++
+	if af.HasPCR {
+		length += PCRBytesSize
+	}
+	if af.HasOPCR {
+		length += PCRBytesSize
+	}
+	if af.HasSplicingCountdown {
+		length++
+	}
+	if af.HasTransportPrivateData {
+		length += 1 + len(af.TransportPrivateData)
+	}
+	if af.HasAdaptationExtensionField {
+		length += calcPacketAdaptationFieldExtensionLength(af.AdaptationExtensionField)
+	}
+	return length
+}
+
+// PacketAdaptationField.Length can be overridden in order to put stuffing to adaptation field
 func writePacketAdaptationField(w *astikit.BitsWriter, af *PacketAdaptationField) (writtenBytes int, retErr error) {
+	if af.Length == 0 {
+		af.Length = calcPacketAdaptationFieldLength(af)
+	}
+
 	w.TryWrite(uint8(af.Length))
 	writtenBytes++
-
-	if af.Length == 0 {
-		return
-	}
 
 	w.TryWrite(af.DiscontinuityIndicator)
 	w.TryWrite(af.RandomAccessIndicator)
@@ -389,7 +452,7 @@ func writePacketAdaptationField(w *astikit.BitsWriter, af *PacketAdaptationField
 
 	// stuffing
 	for writtenBytes-1 < af.Length {
-		w.TryWrite(uint8(0))
+		w.TryWrite(uint8(0xff))
 		writtenBytes++
 	}
 
@@ -397,13 +460,24 @@ func writePacketAdaptationField(w *astikit.BitsWriter, af *PacketAdaptationField
 	return
 }
 
+func calcPacketAdaptationFieldExtensionLength(afe *PacketAdaptationExtensionField) (length int) {
+	length++
+	if afe.HasLegalTimeWindow {
+		length += 2
+	}
+	if afe.HasPiecewiseRate {
+		length += 3
+	}
+	if afe.HasSeamlessSplice {
+		length += PTSorDTSByteLength
+	}
+	return length
+}
+
 func writePacketAdaptationFieldExtension(w *astikit.BitsWriter, afe *PacketAdaptationExtensionField) (writtenBytes int, retErr error) {
+	afe.Length = calcPacketAdaptationFieldExtensionLength(afe)
 	w.TryWrite(uint8(afe.Length))
 	writtenBytes++
-
-	if afe.Length == 0 {
-		return writtenBytes, nil
-	}
 
 	w.TryWrite(afe.HasLegalTimeWindow)
 	w.TryWrite(afe.HasPiecewiseRate)
@@ -436,12 +510,6 @@ func writePacketAdaptationFieldExtension(w *astikit.BitsWriter, afe *PacketAdapt
 			"PacketAdaptationFieldExtension provided Length %d is less than actually written %d",
 			afe.Length, writtenBytes,
 		)
-	}
-
-	// reserved bytes
-	for writtenBytes-1 < afe.Length {
-		w.TryWrite(uint8(1))
-		writtenBytes++
 	}
 
 	retErr = w.TryErr()

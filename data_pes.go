@@ -36,6 +36,10 @@ const (
 	TrickModeControlSlowReverse = 4
 )
 
+const (
+	PTSorDTSByteLength = 5
+)
+
 // PESData represents a PES data
 // https://en.wikipedia.org/wiki/Packetized_elementary_stream
 // http://dvd.sourceforge.net/dvdinfo/pes-hdr.html
@@ -422,5 +426,5 @@ func writePTSOrDTS(w *astikit.BitsWriter, flag uint8, cr *ClockReference) (bytes
 	w.TryWriteN(uint64(cr.Base), 15)
 	w.TryWrite(false)
 
-	return 5, w.TryErr()
+	return PTSorDTSByteLength, w.TryErr()
 }

@@ -29,9 +29,9 @@ func TestDemuxerNextPacket(t *testing.T) {
 	// Valid
 	buf := &bytes.Buffer{}
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	b1, p1 := packet(*packetHeader, *packetAdaptationField, []byte("1"))
+	b1, p1 := packet(*packetHeader, *packetAdaptationField, []byte("1"), true)
 	w.Write(b1)
-	b2, p2 := packet(*packetHeader, *packetAdaptationField, []byte("2"))
+	b2, p2 := packet(*packetHeader, *packetAdaptationField, []byte("2"), true)
 	w.Write(b2)
 	dmx = New(context.Background(), bytes.NewReader(buf.Bytes()))
 
@@ -56,9 +56,9 @@ func TestDemuxerNextData(t *testing.T) {
 	buf := &bytes.Buffer{}
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	b := psiBytes()
-	b1, _ := packet(PacketHeader{ContinuityCounter: uint8(0), PayloadUnitStartIndicator: true, PID: PIDPAT}, PacketAdaptationField{}, b[:147])
+	b1, _ := packet(PacketHeader{ContinuityCounter: uint8(0), PayloadUnitStartIndicator: true, PID: PIDPAT}, PacketAdaptationField{}, b[:147], true)
 	w.Write(b1)
-	b2, _ := packet(PacketHeader{ContinuityCounter: uint8(1), PID: PIDPAT}, PacketAdaptationField{}, b[147:])
+	b2, _ := packet(PacketHeader{ContinuityCounter: uint8(1), PID: PIDPAT}, PacketAdaptationField{}, b[147:], true)
 	w.Write(b2)
 	dmx := New(context.Background(), bytes.NewReader(buf.Bytes()))
 	p, err := dmx.NextPacket()
