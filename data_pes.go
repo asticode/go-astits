@@ -414,15 +414,13 @@ func parseESCR(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 }
 
 func writePTSOrDTS(w *astikit.BitsWriter, flag uint8, cr *ClockReference) (bytesWritten int, retErr error) {
-	defer recoverAndSaveError(&retErr)
+	w.TryWriteN(flag, 4)
+	w.TryWriteN(uint64(cr.Base>>30), 3)
+	w.TryWrite(false)
+	w.TryWriteN(uint64(cr.Base>>15), 15)
+	w.TryWrite(false)
+	w.TryWriteN(uint64(cr.Base), 15)
+	w.TryWrite(false)
 
-	tryWriteN(w, flag, 4)
-	tryWriteN(w, uint64(cr.Base>>30), 3)
-	tryWrite(w, false)
-	tryWriteN(w, uint64(cr.Base>>15), 15)
-	tryWrite(w, false)
-	tryWriteN(w, uint64(cr.Base), 15)
-	tryWrite(w, false)
-
-	return 5, nil
+	return 5, w.TryErr()
 }
