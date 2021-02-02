@@ -34,3 +34,13 @@ func TestParsePATSection(t *testing.T) {
 	assert.Equal(t, d, pat)
 	assert.NoError(t, err)
 }
+
+func TestWritePatSection(t *testing.T) {
+	bw := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: bw})
+	n, err := writePATSection(w, pat)
+	assert.NoError(t, err)
+	assert.Equal(t, n, 8)
+	assert.Equal(t, n, bw.Len())
+	assert.Equal(t, patBytes(), bw.Bytes())
+}
