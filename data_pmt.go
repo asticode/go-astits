@@ -88,3 +88,21 @@ func parsePMTSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 	}
 	return
 }
+
+func calcPMTProgramInfoLength(d*PMTData) int {
+	return 0
+}
+
+func writePMTSection(w *astikit.BitsWriter, d* PMTData) (int, error) {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.WriteN(uint8(0xff), 3)
+	b.WriteN(d.PCRPID, 13)
+	b.WriteN(uint8(0xff), 4)
+	b.WriteN(uint16(calcPMTProgramInfoLength(d)), 12)
+	bytesWritten := 4
+
+	for _, desc := range d.ProgramDescriptors {
+		desc.
+	}
+}
