@@ -80,8 +80,6 @@ func TestWritePacket_HeaderOnly(t *testing.T) {
 	buf := &bytes.Buffer{}
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 
-	fmt.Printf("%#v\n", ep.Header)
-
 	n, err := writePacket(w, ep, MpegTsPacketSize)
 	assert.NoError(t, err)
 	assert.Equal(t, MpegTsPacketSize, n)

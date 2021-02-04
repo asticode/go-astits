@@ -13,6 +13,7 @@ import (
 // field are set to "1".
 // I apologize for the computation which is really messy but details are given in the documentation
 // Page: 160 | Annex C | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+// (barbashov) the link above can be broken, alternative: https://dvb.org/wp-content/uploads/2019/12/a038_tm1217r37_en300468v1_17_1_-_rev-134_-_si_specification.pdf
 func parseDVBTime(i *astikit.BytesIterator) (t time.Time, err error) {
 	// Get next 2 bytes
 	var bs []byte
@@ -71,4 +72,59 @@ func parseDVBDurationSeconds(i *astikit.BytesIterator) (d time.Duration, err err
 // parseDVBDurationByte parses a duration byte
 func parseDVBDurationByte(i byte) time.Duration {
 	return time.Duration(uint8(i)>>4*10 + uint8(i)&0xf)
+}
+
+func writeDVBTime(w *astikit.BitsWriter, t time.Time) (int, error) {
+	year := t.Year() - 1900
+	month := t.Month()
+	day := t.Day()
+
+	l := 0
+	if month <= time.February {
+		l = 1
+	}
+
+	mjd := 14956 + day + int(float64(year-l)*365.25) + int(float64(int(month)+1+l*12)*30.6001)
+
+	d := t.Sub(t.Truncate(24 * time.Hour))
+
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.Write(uint16(mjd))
+	bytesWritten, err := writeDVBDurationSeconds(w, d)
+	if err != nil {
+		return 2, err
+	}
+
+	return bytesWritten + 2, b.Err()
+}
+
+func writeDVBDurationMinutes(w *astikit.BitsWriter, d time.Duration) (int, error) {
+	b := astikit.NewBitsWriterBatch(w)
+
+	hours := uint8(d.Hours())
+	minutes := uint8(int(d.Minutes()) % 60)
+
+	b.Write(dvbDurationByteRepresentation(hours))
+	b.Write(dvbDurationByteRepresentation(minutes))
+
+	return 2, b.Err()
+}
+
+func writeDVBDurationSeconds(w *astikit.BitsWriter, d time.Duration) (int, error) {
+	b := astikit.NewBitsWriterBatch(w)
+
+	hours := uint8(d.Hours())
+	minutes := uint8(int(d.Minutes()) % 60)
+	seconds := uint8(int(d.Seconds()) % 60)
+
+	b.Write(dvbDurationByteRepresentation(hours))
+	b.Write(dvbDurationByteRepresentation(minutes))
+	b.Write(dvbDurationByteRepresentation(seconds))
+
+	return 3, b.Err()
+}
+
+func dvbDurationByteRepresentation(n uint8) uint8 {
+	return (n/10)<<4 | n%10
 }

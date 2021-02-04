@@ -9,6 +9,7 @@ import (
 
 // EITData represents an EIT data
 // Page: 36 | Chapter: 5.2.4 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
+// (barbashov) the link above can be broken, alternative: https://dvb.org/wp-content/uploads/2019/12/a038_tm1217r37_en300468v1_17_1_-_rev-134_-_si_specification.pdf
 type EITData struct {
 	Events                   []*EITDataEvent
 	LastTableID              uint8
