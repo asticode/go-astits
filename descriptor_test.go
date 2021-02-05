@@ -650,13 +650,13 @@ func TestWriteDescriptorAll(t *testing.T) {
 
 	descLen := uint16(bufExpected.Len() - 2)
 	descBytes := bufExpected.Bytes()
-	descBytes[0] = byte(descLen >> 8)
+	descBytes[0] = byte(descLen>>8) | 0b11110000 // program_info_length is preceded by 4 reserved bits
 	descBytes[1] = byte(descLen & 0xff)
 
 	bufActual := bytes.Buffer{}
 	wActual := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &bufActual})
 
-	n, err := writeDescriptors(wActual, dss)
+	n, err := writeDescriptorsWithLength(wActual, dss)
 	assert.NoError(t, err)
 	assert.Equal(t, n, bufActual.Len())
 	assert.Equal(t, bufExpected.Len(), bufActual.Len())

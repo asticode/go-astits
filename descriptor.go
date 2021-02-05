@@ -2149,11 +2149,7 @@ func calcDescriptorsLength(ds []*Descriptor) uint16 {
 }
 
 func writeDescriptors(w *astikit.BitsWriter, ds []*Descriptor) (int, error) {
-	length := calcDescriptorsLength(ds)
-	if err := w.Write(length); err != nil {
-		return 0, err
-	}
-	written := 2 // length
+	written := 0
 
 	for _, d := range ds {
 		n, err := writeDescriptor(w, d)
@@ -2164,4 +2160,19 @@ func writeDescriptors(w *astikit.BitsWriter, ds []*Descriptor) (int, error) {
 	}
 
 	return written, nil
+}
+
+func writeDescriptorsWithLength(w *astikit.BitsWriter, ds []*Descriptor) (int, error) {
+	length := calcDescriptorsLength(ds)
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.WriteN(uint8(0xff), 4) // reserved
+	b.WriteN(length, 12)     // program_info_length
+
+	if err := b.Err(); err != nil {
+		return 0, err
+	}
+
+	written, err := writeDescriptors(w, ds)
+	return written + 2, err // 2 for length
 }

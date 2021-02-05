@@ -1,7 +1,6 @@
 package astits
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/asticode/go-astikit"
@@ -90,22 +89,45 @@ func parsePMTSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 	return
 }
 
-func calcPMTProgramInfoLength(d *PMTData) int {
-	return 0
+func calcPMTProgramInfoLength(d *PMTData) uint16 {
+	ret := calcDescriptorsLength(d.ProgramDescriptors)
+
+	for _, es := range d.ElementaryStreams {
+		ret += 5 // stream_type, elementary_pid, es_info_length
+		ret += calcDescriptorsLength(es.ElementaryStreamDescriptors)
+	}
+
+	return ret
 }
 
 func writePMTSection(w *astikit.BitsWriter, d *PMTData) (int, error) {
 	b := astikit.NewBitsWriterBatch(w)
 
+	// TODO split into sections
+
 	b.WriteN(uint8(0xff), 3)
 	b.WriteN(d.PCRPID, 13)
 	b.WriteN(uint8(0xff), 4)
-	b.WriteN(uint16(calcPMTProgramInfoLength(d)), 12)
-	//bytesWritten := 4
-	//
-	//for _, desc := range d.ProgramDescriptors {
-	//	desc.
-	//}
+	b.WriteN(calcPMTProgramInfoLength(d), 12)
+	bytesWritten := 4
 
-	return 0, errors.New("not implemented")
+	n, err := writeDescriptors(w, d.ProgramDescriptors)
+	if err != nil {
+		return 0, err
+	}
+	bytesWritten += n
+
+	for _, es := range d.ElementaryStreams {
+		b.Write(es.StreamType)
+		b.WriteN(uint8(0xff), 3)
+		b.WriteN(es.ElementaryPID, 13)
+
+		n, err = writeDescriptorsWithLength(w, es.ElementaryStreamDescriptors)
+		if err != nil {
+			return 0, err
+		}
+		bytesWritten += n
+	}
+
+	return bytesWritten, b.Err()
 }
