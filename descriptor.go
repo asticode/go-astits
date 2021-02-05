@@ -1457,244 +1457,210 @@ func writeBytesN(b *astikit.BitsWriterBatch, bs []byte, n int, padByte uint8) {
 	}
 }
 
-func calcDescriptorUserDefinedLength(d *Descriptor) uint8 {
-	return uint8(len(d.UserDefined))
+func calcDescriptorUserDefinedLength(d []byte) uint8 {
+	return uint8(len(d))
 }
 
-func writeDescriptorUserDefined(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorUserDefined(w *astikit.BitsWriter, d []byte) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorUserDefinedLength(d)
+	b.Write(d)
 
-	b.Write(d.Tag)
-	b.Write(d.Length)
-	b.Write(d.UserDefined)
-
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorAC3Length(d *Descriptor) uint8 {
+func calcDescriptorAC3Length(d *DescriptorAC3) uint8 {
 	ret := 1 // flags
 
-	if d.AC3.HasComponentType {
+	if d.HasComponentType {
 		ret++
 	}
-	if d.AC3.HasBSID {
+	if d.HasBSID {
 		ret++
 	}
-	if d.AC3.HasMainID {
+	if d.HasMainID {
 		ret++
 	}
-	if d.AC3.HasASVC {
+	if d.HasASVC {
 		ret++
 	}
 
-	ret += len(d.AC3.AdditionalInfo)
+	ret += len(d.AdditionalInfo)
 
 	return uint8(ret)
 }
 
-func writeDescriptorAC3(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorAC3(w *astikit.BitsWriter, d *DescriptorAC3) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorAC3Length(d)
-
-	b.Write(d.Tag)
-	b.Write(d.Length)
-
-	b.Write(d.AC3.HasComponentType)
-	b.Write(d.AC3.HasBSID)
-	b.Write(d.AC3.HasMainID)
-	b.Write(d.AC3.HasASVC)
+	b.Write(d.HasComponentType)
+	b.Write(d.HasBSID)
+	b.Write(d.HasMainID)
+	b.Write(d.HasASVC)
 	b.WriteN(uint8(0xff), 4)
 
-	if d.AC3.HasComponentType {
-		b.Write(d.AC3.ComponentType)
+	if d.HasComponentType {
+		b.Write(d.ComponentType)
 	}
-	if d.AC3.HasBSID {
-		b.Write(d.AC3.BSID)
+	if d.HasBSID {
+		b.Write(d.BSID)
 	}
-	if d.AC3.HasMainID {
-		b.Write(d.AC3.MainID)
+	if d.HasMainID {
+		b.Write(d.MainID)
 	}
-	if d.AC3.HasASVC {
-		b.Write(d.AC3.ASVC)
+	if d.HasASVC {
+		b.Write(d.ASVC)
 	}
-	b.Write(d.AC3.AdditionalInfo)
+	b.Write(d.AdditionalInfo)
 
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorAVCVideoLength(d *Descriptor) uint8 {
+func calcDescriptorAVCVideoLength(d *DescriptorAVCVideo) uint8 {
 	return 4
 }
 
-func writeDescriptorAVCVideo(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorAVCVideo(w *astikit.BitsWriter, d *DescriptorAVCVideo) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorAVCVideoLength(d)
+	b.Write(d.ProfileIDC)
 
-	b.Write(d.Tag)
-	b.Write(d.Length)
+	b.Write(d.ConstraintSet0Flag)
+	b.Write(d.ConstraintSet1Flag)
+	b.Write(d.ConstraintSet2Flag)
+	b.WriteN(d.CompatibleFlags, 5)
 
-	b.Write(d.AVCVideo.ProfileIDC)
+	b.Write(d.LevelIDC)
 
-	b.Write(d.AVCVideo.ConstraintSet0Flag)
-	b.Write(d.AVCVideo.ConstraintSet1Flag)
-	b.Write(d.AVCVideo.ConstraintSet2Flag)
-	b.WriteN(d.AVCVideo.CompatibleFlags, 5)
-
-	b.Write(d.AVCVideo.LevelIDC)
-
-	b.Write(d.AVCVideo.AVCStillPresent)
-	b.Write(d.AVCVideo.AVC24HourPictureFlag)
+	b.Write(d.AVCStillPresent)
+	b.Write(d.AVC24HourPictureFlag)
 	b.WriteN(uint8(0xff), 6)
 
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorComponentLength(d *Descriptor) uint8 {
-	return uint8(6 + len(d.Component.Text))
+func calcDescriptorComponentLength(d *DescriptorComponent) uint8 {
+	return uint8(6 + len(d.Text))
 }
 
-func writeDescriptorComponent(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorComponent(w *astikit.BitsWriter, d *DescriptorComponent) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorComponentLength(d)
+	b.WriteN(d.StreamContentExt, 4)
+	b.WriteN(d.StreamContent, 4)
 
-	b.Write(d.Tag)
-	b.Write(d.Length)
+	b.Write(d.ComponentType)
+	b.Write(d.ComponentTag)
 
-	b.WriteN(d.Component.StreamContentExt, 4)
-	b.WriteN(d.Component.StreamContent, 4)
+	writeBytesN(&b, d.ISO639LanguageCode, 3, 0)
 
-	b.Write(d.Component.ComponentType)
-	b.Write(d.Component.ComponentTag)
+	b.Write(d.Text)
 
-	writeBytesN(&b, d.Component.ISO639LanguageCode, 3, 0)
-
-	b.Write(d.Component.Text)
-
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorContentLength(d *Descriptor) uint8 {
-	return uint8(2 * len(d.Content.Items))
+func calcDescriptorContentLength(d *DescriptorContent) uint8 {
+	return uint8(2 * len(d.Items))
 }
 
-func writeDescriptorContent(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorContent(w *astikit.BitsWriter, d *DescriptorContent) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorContentLength(d)
-
-	b.Write(d.Tag)
-	b.Write(d.Length)
-
-	for _, item := range d.Content.Items {
+	for _, item := range d.Items {
 		b.WriteN(item.ContentNibbleLevel1, 4)
 		b.WriteN(item.ContentNibbleLevel2, 4)
 		b.Write(item.UserByte)
 	}
 
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorDataStreamAlignmentLength(d *Descriptor) uint8 {
+func calcDescriptorDataStreamAlignmentLength(d *DescriptorDataStreamAlignment) uint8 {
 	return 1
 }
 
-func writeDescriptorDataStreamAlignment(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorDataStreamAlignment(w *astikit.BitsWriter, d *DescriptorDataStreamAlignment) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorDataStreamAlignmentLength(d)
+	b.Write(d.Type)
 
-	b.Write(d.Tag)
-	b.Write(d.Length)
-
-	b.Write(d.DataStreamAlignment.Type)
-
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorEnhancedAC3Length(d *Descriptor) uint8 {
+func calcDescriptorEnhancedAC3Length(d *DescriptorEnhancedAC3) uint8 {
 	ret := 1 // flags
 
-	if d.EnhancedAC3.HasComponentType {
+	if d.HasComponentType {
 		ret++
 	}
-	if d.EnhancedAC3.HasBSID {
+	if d.HasBSID {
 		ret++
 	}
-	if d.EnhancedAC3.HasMainID {
+	if d.HasMainID {
 		ret++
 	}
-	if d.EnhancedAC3.HasASVC {
+	if d.HasASVC {
 		ret++
 	}
-	if d.EnhancedAC3.HasSubStream1 {
+	if d.HasSubStream1 {
 		ret++
 	}
-	if d.EnhancedAC3.HasSubStream2 {
+	if d.HasSubStream2 {
 		ret++
 	}
-	if d.EnhancedAC3.HasSubStream3 {
+	if d.HasSubStream3 {
 		ret++
 	}
 
-	ret += len(d.EnhancedAC3.AdditionalInfo)
+	ret += len(d.AdditionalInfo)
 
 	return uint8(ret)
 }
 
-func writeDescriptorEnhancedAC3(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorEnhancedAC3(w *astikit.BitsWriter, d *DescriptorEnhancedAC3) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorEnhancedAC3Length(d)
+	b.Write(d.HasComponentType)
+	b.Write(d.HasBSID)
+	b.Write(d.HasMainID)
+	b.Write(d.HasASVC)
+	b.Write(d.MixInfoExists)
+	b.Write(d.HasSubStream1)
+	b.Write(d.HasSubStream2)
+	b.Write(d.HasSubStream3)
 
-	b.Write(d.Tag)
-	b.Write(d.Length)
-
-	b.Write(d.EnhancedAC3.HasComponentType)
-	b.Write(d.EnhancedAC3.HasBSID)
-	b.Write(d.EnhancedAC3.HasMainID)
-	b.Write(d.EnhancedAC3.HasASVC)
-	b.Write(d.EnhancedAC3.MixInfoExists)
-	b.Write(d.EnhancedAC3.HasSubStream1)
-	b.Write(d.EnhancedAC3.HasSubStream2)
-	b.Write(d.EnhancedAC3.HasSubStream3)
-
-	if d.EnhancedAC3.HasComponentType {
-		b.Write(d.EnhancedAC3.ComponentType)
+	if d.HasComponentType {
+		b.Write(d.ComponentType)
 	}
-	if d.EnhancedAC3.HasBSID {
-		b.Write(d.EnhancedAC3.BSID)
+	if d.HasBSID {
+		b.Write(d.BSID)
 	}
-	if d.EnhancedAC3.HasMainID {
-		b.Write(d.EnhancedAC3.MainID)
+	if d.HasMainID {
+		b.Write(d.MainID)
 	}
-	if d.EnhancedAC3.HasASVC {
-		b.Write(d.EnhancedAC3.ASVC)
+	if d.HasASVC {
+		b.Write(d.ASVC)
 	}
-	if d.EnhancedAC3.HasSubStream1 {
-		b.Write(d.EnhancedAC3.SubStream1)
+	if d.HasSubStream1 {
+		b.Write(d.SubStream1)
 	}
-	if d.EnhancedAC3.HasSubStream2 {
-		b.Write(d.EnhancedAC3.SubStream2)
+	if d.HasSubStream2 {
+		b.Write(d.SubStream2)
 	}
-	if d.EnhancedAC3.HasSubStream3 {
-		b.Write(d.EnhancedAC3.SubStream3)
+	if d.HasSubStream3 {
+		b.Write(d.SubStream3)
 	}
 
-	b.Write(d.EnhancedAC3.AdditionalInfo)
+	b.Write(d.AdditionalInfo)
 
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorExtendedEventLength(d *Descriptor) (descriptorLength, lengthOfItems uint8) {
+func calcDescriptorExtendedEventLength(d *DescriptorExtendedEvent) (descriptorLength, lengthOfItems uint8) {
 	ret := 1 + 3 + 1 // numbers, language and items length
 
 	itemsRet := 0
-	for _, item := range d.ExtendedEvent.Items {
+	for _, item := range d.Items {
 		itemsRet += 1 // description length
 		itemsRet += len(item.Description)
 		itemsRet += 1 // content length
@@ -1704,38 +1670,35 @@ func calcDescriptorExtendedEventLength(d *Descriptor) (descriptorLength, lengthO
 	ret += itemsRet
 
 	ret += 1 // text length
-	ret += len(d.ExtendedEvent.Text)
+	ret += len(d.Text)
 
 	return uint8(ret), uint8(itemsRet)
 }
 
-func writeDescriptorExtendedEvent(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorExtendedEvent(w *astikit.BitsWriter, d *DescriptorExtendedEvent) error {
 	b := astikit.NewBitsWriterBatch(w)
 
 	var lengthOfItems uint8
 
-	d.Length, lengthOfItems = calcDescriptorExtendedEventLength(d)
+	_, lengthOfItems = calcDescriptorExtendedEventLength(d)
 
-	b.Write(d.Tag)
-	b.Write(d.Length)
+	b.WriteN(d.Number, 4)
+	b.WriteN(d.LastDescriptorNumber, 4)
 
-	b.WriteN(d.ExtendedEvent.Number, 4)
-	b.WriteN(d.ExtendedEvent.LastDescriptorNumber, 4)
-
-	writeBytesN(&b, d.ExtendedEvent.ISO639LanguageCode, 3, 0)
+	writeBytesN(&b, d.ISO639LanguageCode, 3, 0)
 
 	b.Write(lengthOfItems)
-	for _, item := range d.ExtendedEvent.Items {
+	for _, item := range d.Items {
 		b.Write(uint8(len(item.Description)))
 		b.Write(item.Description)
 		b.Write(uint8(len(item.Content)))
 		b.Write(item.Content)
 	}
 
-	b.Write(uint8(len(d.ExtendedEvent.Text)))
-	b.Write(d.ExtendedEvent.Text)
+	b.Write(uint8(len(d.Text)))
+	b.Write(d.Text)
 
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
 func calcDescriptorExtensionSupplementaryAudioLength(d *DescriptorExtensionSupplementaryAudio) int {
@@ -1747,97 +1710,79 @@ func calcDescriptorExtensionSupplementaryAudioLength(d *DescriptorExtensionSuppl
 	return ret
 }
 
-func calcDescriptorExtensionLength(d *Descriptor) uint8 {
+func calcDescriptorExtensionLength(d *DescriptorExtension) uint8 {
 	ret := 1 // tag
 
-	switch d.Extension.Tag {
+	switch d.Tag {
 	case DescriptorTagExtensionSupplementaryAudio:
-		ret += calcDescriptorExtensionSupplementaryAudioLength(d.Extension.SupplementaryAudio)
+		ret += calcDescriptorExtensionSupplementaryAudioLength(d.SupplementaryAudio)
 	default:
-		if d.Extension.Unknown != nil {
-			ret += len(*d.Extension.Unknown)
+		if d.Unknown != nil {
+			ret += len(*d.Unknown)
 		}
 	}
 
 	return uint8(ret)
 }
 
-func writeDescriptorExtensionSupplementaryAudio(w *astikit.BitsWriter, d *DescriptorExtensionSupplementaryAudio) (int, error) {
+func writeDescriptorExtensionSupplementaryAudio(w *astikit.BitsWriter, d *DescriptorExtensionSupplementaryAudio) error {
 	b := astikit.NewBitsWriterBatch(w)
 
 	b.Write(d.MixType)
 	b.WriteN(d.EditorialClassification, 5)
 	b.Write(true) // reserved
 	b.Write(d.HasLanguageCode)
-	bytesWritten := 1
 
 	if d.HasLanguageCode {
 		writeBytesN(&b, d.LanguageCode, 3, 0)
-		bytesWritten += 3
 	}
 
 	b.Write(d.PrivateData)
-	bytesWritten += len(d.PrivateData)
 
-	return bytesWritten, b.Err()
+	return b.Err()
 }
 
-func writeDescriptorExtension(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorExtension(w *astikit.BitsWriter, d *DescriptorExtension) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorExtensionLength(d)
-
 	b.Write(d.Tag)
-	b.Write(d.Length)
 
-	b.Write(d.Extension.Tag)
-
-	switch d.Extension.Tag {
+	switch d.Tag {
 	case DescriptorTagExtensionSupplementaryAudio:
-		n, err := writeDescriptorExtensionSupplementaryAudio(w, d.Extension.SupplementaryAudio)
+		err := writeDescriptorExtensionSupplementaryAudio(w, d.SupplementaryAudio)
 		if err != nil {
-			return n + DescriptorHeaderSizeBytes, err
+			return err
 		}
 	default:
-		if d.Extension.Unknown != nil {
-			b.Write(*d.Extension.Unknown)
+		if d.Unknown != nil {
+			b.Write(*d.Unknown)
 		}
 	}
 
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorISO639LanguageAndAudioTypeLength(d *Descriptor) uint8 {
+func calcDescriptorISO639LanguageAndAudioTypeLength(d *DescriptorISO639LanguageAndAudioType) uint8 {
 	return 3 + 1 // language code + type
 }
 
-func writeDescriptorISO639LanguageAndAudioType(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorISO639LanguageAndAudioType(w *astikit.BitsWriter, d *DescriptorISO639LanguageAndAudioType) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorISO639LanguageAndAudioTypeLength(d)
+	writeBytesN(&b, d.Language, 3, 0)
+	b.Write(d.Type)
 
-	b.Write(d.Tag)
-	b.Write(d.Length)
-
-	writeBytesN(&b, d.ISO639LanguageAndAudioType.Language, 3, 0)
-	b.Write(d.ISO639LanguageAndAudioType.Type)
-
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorLocalTimeOffsetLength(d *Descriptor) uint8 {
-	return uint8(13 * len(d.LocalTimeOffset.Items))
+func calcDescriptorLocalTimeOffsetLength(d *DescriptorLocalTimeOffset) uint8 {
+	return uint8(13 * len(d.Items))
 }
 
-func writeDescriptorLocalTimeOffset(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorLocalTimeOffset(w *astikit.BitsWriter, d *DescriptorLocalTimeOffset) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorLocalTimeOffsetLength(d)
-
-	b.Write(d.Tag)
-	b.Write(d.Length)
-
-	for _, item := range d.LocalTimeOffset.Items {
+	for _, item := range d.Items {
 		writeBytesN(&b, item.CountryCode, 3, 0)
 
 		b.WriteN(item.CountryRegionID, 6)
@@ -1845,227 +1790,173 @@ func writeDescriptorLocalTimeOffset(w *astikit.BitsWriter, d *Descriptor) (int, 
 		b.Write(item.LocalTimeOffsetPolarity)
 
 		if _, err := writeDVBDurationMinutes(w, item.LocalTimeOffset); err != nil {
-			return 0, err
+			return err
 		}
 		if _, err := writeDVBTime(w, item.TimeOfChange); err != nil {
-			return 0, err
+			return err
 		}
 		if _, err := writeDVBDurationMinutes(w, item.NextTimeOffset); err != nil {
-			return 0, err
+			return err
 		}
 	}
 
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorMaximumBitrateLength(d *Descriptor) uint8 {
+func calcDescriptorMaximumBitrateLength(d *DescriptorMaximumBitrate) uint8 {
 	return 3
 }
 
-func writeDescriptorMaximumBitrate(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorMaximumBitrate(w *astikit.BitsWriter, d *DescriptorMaximumBitrate) error {
 	b := astikit.NewBitsWriterBatch(w)
-
-	d.Length = calcDescriptorMaximumBitrateLength(d)
-
-	b.Write(d.Tag)
-	b.Write(d.Length)
 
 	b.WriteN(uint8(0xff), 2)
-	b.WriteN(uint32(d.MaximumBitrate.Bitrate/50), 22)
+	b.WriteN(uint32(d.Bitrate/50), 22)
 
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorNetworkNameLength(d *Descriptor) uint8 {
-	return uint8(len(d.NetworkName.Name))
+func calcDescriptorNetworkNameLength(d *DescriptorNetworkName) uint8 {
+	return uint8(len(d.Name))
 }
 
-func writeDescriptorNetworkName(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorNetworkName(w *astikit.BitsWriter, d *DescriptorNetworkName) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorNetworkNameLength(d)
+	b.Write(d.Name)
 
-	b.Write(d.Tag)
-	b.Write(d.Length)
-
-	b.Write(d.NetworkName.Name)
-
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorParentalRatingLength(d *Descriptor) uint8 {
-	return uint8(4 * len(d.ParentalRating.Items))
+func calcDescriptorParentalRatingLength(d *DescriptorParentalRating) uint8 {
+	return uint8(4 * len(d.Items))
 }
 
-func writeDescriptorParentalRating(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorParentalRating(w *astikit.BitsWriter, d *DescriptorParentalRating) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorParentalRatingLength(d)
-
-	b.Write(d.Tag)
-	b.Write(d.Length)
-
-	for _, item := range d.ParentalRating.Items {
+	for _, item := range d.Items {
 		writeBytesN(&b, item.CountryCode, 3, 0)
 		b.Write(item.Rating)
 	}
 
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorPrivateDataIndicatorLength(d *Descriptor) uint8 {
+func calcDescriptorPrivateDataIndicatorLength(d *DescriptorPrivateDataIndicator) uint8 {
 	return 4
 }
 
-func writeDescriptorPrivateDataIndicator(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorPrivateDataIndicator(w *astikit.BitsWriter, d *DescriptorPrivateDataIndicator) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorPrivateDataIndicatorLength(d)
+	b.Write(d.Indicator)
 
-	b.Write(d.Tag)
-	b.Write(d.Length)
-
-	b.Write(d.PrivateDataIndicator.Indicator)
-
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorPrivateDataSpecifierLength(d *Descriptor) uint8 {
+func calcDescriptorPrivateDataSpecifierLength(d *DescriptorPrivateDataSpecifier) uint8 {
 	return 4
 }
 
-func writeDescriptorPrivateDataSpecifier(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorPrivateDataSpecifier(w *astikit.BitsWriter, d *DescriptorPrivateDataSpecifier) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorPrivateDataSpecifierLength(d)
+	b.Write(d.Specifier)
 
-	b.Write(d.Tag)
-	b.Write(d.Length)
-
-	b.Write(d.PrivateDataSpecifier.Specifier)
-
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorRegistrationLength(d *Descriptor) uint8 {
-	return uint8(4 + len(d.Registration.AdditionalIdentificationInfo))
+func calcDescriptorRegistrationLength(d *DescriptorRegistration) uint8 {
+	return uint8(4 + len(d.AdditionalIdentificationInfo))
 }
 
-func writeDescriptorRegistration(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorRegistration(w *astikit.BitsWriter, d *DescriptorRegistration) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorRegistrationLength(d)
+	b.Write(d.FormatIdentifier)
+	b.Write(d.AdditionalIdentificationInfo)
 
-	b.Write(d.Tag)
-	b.Write(d.Length)
-	b.Write(d.Registration.FormatIdentifier)
-	b.Write(d.Registration.AdditionalIdentificationInfo)
-
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorServiceLength(d *Descriptor) uint8 {
+func calcDescriptorServiceLength(d *DescriptorService) uint8 {
 	ret := 3 // type and lengths
-	ret += len(d.Service.Name)
-	ret += len(d.Service.Provider)
+	ret += len(d.Name)
+	ret += len(d.Provider)
 	return uint8(ret)
 }
 
-func writeDescriptorService(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorService(w *astikit.BitsWriter, d *DescriptorService) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorServiceLength(d)
+	b.Write(d.Type)
+	b.Write(uint8(len(d.Provider)))
+	b.Write(d.Provider)
+	b.Write(uint8(len(d.Name)))
+	b.Write(d.Name)
 
-	b.Write(d.Tag)
-	b.Write(d.Length)
-
-	b.Write(d.Service.Type)
-	b.Write(uint8(len(d.Service.Provider)))
-	b.Write(d.Service.Provider)
-	b.Write(uint8(len(d.Service.Name)))
-	b.Write(d.Service.Name)
-
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorShortEventLength(d *Descriptor) uint8 {
+func calcDescriptorShortEventLength(d *DescriptorShortEvent) uint8 {
 	ret := 3 + 1 + 1 // language code and lengths
-	ret += len(d.ShortEvent.EventName)
-	ret += len(d.ShortEvent.Text)
+	ret += len(d.EventName)
+	ret += len(d.Text)
 	return uint8(ret)
 }
 
-func writeDescriptorShortEvent(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorShortEvent(w *astikit.BitsWriter, d *DescriptorShortEvent) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorShortEventLength(d)
+	writeBytesN(&b, d.Language, 3, 0)
 
-	b.Write(d.Tag)
-	b.Write(d.Length)
+	b.Write(uint8(len(d.EventName)))
+	b.Write(d.EventName)
 
-	writeBytesN(&b, d.ShortEvent.Language, 3, 0)
+	b.Write(uint8(len(d.Text)))
+	b.Write(d.Text)
 
-	b.Write(uint8(len(d.ShortEvent.EventName)))
-	b.Write(d.ShortEvent.EventName)
-
-	b.Write(uint8(len(d.ShortEvent.Text)))
-	b.Write(d.ShortEvent.Text)
-
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorStreamIdentifierLength(d *Descriptor) uint8 {
+func calcDescriptorStreamIdentifierLength(d *DescriptorStreamIdentifier) uint8 {
 	return 1
 }
 
-func writeDescriptorStreamIdentifier(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorStreamIdentifier(w *astikit.BitsWriter, d *DescriptorStreamIdentifier) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorStreamIdentifierLength(d)
+	b.Write(d.ComponentTag)
 
-	b.Write(d.Tag)
-	b.Write(d.Length)
-
-	b.Write(d.StreamIdentifier.ComponentTag)
-
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorSubtitlingLength(d *Descriptor) uint8 {
-	return uint8(8 * len(d.Subtitling.Items))
+func calcDescriptorSubtitlingLength(d *DescriptorSubtitling) uint8 {
+	return uint8(8 * len(d.Items))
 }
 
-func writeDescriptorSubtitling(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorSubtitling(w *astikit.BitsWriter, d *DescriptorSubtitling) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorSubtitlingLength(d)
-
-	b.Write(d.Tag)
-	b.Write(d.Length)
-
-	for _, item := range d.Subtitling.Items {
+	for _, item := range d.Items {
 		writeBytesN(&b, item.Language, 3, 0)
 		b.Write(item.Type)
 		b.Write(item.CompositionPageID)
 		b.Write(item.AncillaryPageID)
 	}
 
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorTeletextLength(d *Descriptor) uint8 {
-	return uint8(5 * len(d.Teletext.Items))
+func calcDescriptorTeletextLength(d *DescriptorTeletext) uint8 {
+	return uint8(5 * len(d.Items))
 }
 
-func writeDescriptorTeletext(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorTeletext(w *astikit.BitsWriter, d *DescriptorTeletext) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorTeletextLength(d)
-
-	b.Write(d.Tag)
-	b.Write(d.Length)
-
-	for _, item := range d.Teletext.Items {
+	for _, item := range d.Items {
 		writeBytesN(&b, item.Language, 3, 0)
 		b.WriteN(item.Type, 5)
 		b.WriteN(item.Magazine, 3)
@@ -2073,22 +1964,17 @@ func writeDescriptorTeletext(w *astikit.BitsWriter, d *Descriptor) (int, error) 
 		b.WriteN(item.Page%10, 4)
 	}
 
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorVBIDataLength(d *Descriptor) uint8 {
-	return uint8(3 * len(d.VBIData.Services))
+func calcDescriptorVBIDataLength(d *DescriptorVBIData) uint8 {
+	return uint8(3 * len(d.Services))
 }
 
-func writeDescriptorVBIData(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorVBIData(w *astikit.BitsWriter, d *DescriptorVBIData) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorVBIDataLength(d)
-
-	b.Write(d.Tag)
-	b.Write(d.Length)
-
-	for _, item := range d.VBIData.Services {
+	for _, item := range d.Services {
 		b.Write(item.DataServiceID)
 
 		if item.DataServiceID == VBIDataServiceIDClosedCaptioning ||
@@ -2111,150 +1997,146 @@ func writeDescriptorVBIData(w *astikit.BitsWriter, d *Descriptor) (int, error) {
 		}
 	}
 
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
-func calcDescriptorVBITeletextLength(d *Descriptor) uint8 {
-	return uint8(5 * len(d.VBITeletext.Items))
+func calcDescriptorUnknownLength(d *DescriptorUnknown) uint8 {
+	return uint8(len(d.Content))
 }
 
-func writeDescriptorVBITeletext(w *astikit.BitsWriter, d *Descriptor) (int, error) {
-	return writeDescriptorTeletext(w, &Descriptor{
-		Tag:      d.Tag,
-		Teletext: d.VBITeletext,
-	})
-}
-
-func calcDescriptorUnknownLength(d *Descriptor) uint8 {
-	return uint8(len(d.Unknown.Content))
-}
-
-func writeDescriptorUnknown(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+func writeDescriptorUnknown(w *astikit.BitsWriter, d *DescriptorUnknown) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	d.Length = calcDescriptorUnknownLength(d)
+	b.Write(d.Content)
 
-	b.Write(d.Tag)
-	b.Write(d.Length)
-
-	b.Write(d.Unknown.Content)
-
-	return int(d.Length) + DescriptorHeaderSizeBytes, b.Err()
+	return b.Err()
 }
 
 func calcDescriptorLength(d *Descriptor) uint8 {
 	if d.Tag >= 0x80 && d.Tag <= 0xfe {
-		return calcDescriptorUserDefinedLength(d)
+		return calcDescriptorUserDefinedLength(d.UserDefined)
 	}
 
 	switch d.Tag {
 	case DescriptorTagAC3:
-		return calcDescriptorAC3Length(d)
+		return calcDescriptorAC3Length(d.AC3)
 	case DescriptorTagAVCVideo:
-		return calcDescriptorAVCVideoLength(d)
+		return calcDescriptorAVCVideoLength(d.AVCVideo)
 	case DescriptorTagComponent:
-		return calcDescriptorComponentLength(d)
+		return calcDescriptorComponentLength(d.Component)
 	case DescriptorTagContent:
-		return calcDescriptorContentLength(d)
+		return calcDescriptorContentLength(d.Content)
 	case DescriptorTagDataStreamAlignment:
-		return calcDescriptorDataStreamAlignmentLength(d)
+		return calcDescriptorDataStreamAlignmentLength(d.DataStreamAlignment)
 	case DescriptorTagEnhancedAC3:
-		return calcDescriptorEnhancedAC3Length(d)
+		return calcDescriptorEnhancedAC3Length(d.EnhancedAC3)
 	case DescriptorTagExtendedEvent:
-		ret, _ := calcDescriptorExtendedEventLength(d)
+		ret, _ := calcDescriptorExtendedEventLength(d.ExtendedEvent)
 		return ret
 	case DescriptorTagExtension:
-		return calcDescriptorExtensionLength(d)
+		return calcDescriptorExtensionLength(d.Extension)
 	case DescriptorTagISO639LanguageAndAudioType:
-		return calcDescriptorISO639LanguageAndAudioTypeLength(d)
+		return calcDescriptorISO639LanguageAndAudioTypeLength(d.ISO639LanguageAndAudioType)
 	case DescriptorTagLocalTimeOffset:
-		return calcDescriptorLocalTimeOffsetLength(d)
+		return calcDescriptorLocalTimeOffsetLength(d.LocalTimeOffset)
 	case DescriptorTagMaximumBitrate:
-		return calcDescriptorMaximumBitrateLength(d)
+		return calcDescriptorMaximumBitrateLength(d.MaximumBitrate)
 	case DescriptorTagNetworkName:
-		return calcDescriptorNetworkNameLength(d)
+		return calcDescriptorNetworkNameLength(d.NetworkName)
 	case DescriptorTagParentalRating:
-		return calcDescriptorParentalRatingLength(d)
+		return calcDescriptorParentalRatingLength(d.ParentalRating)
 	case DescriptorTagPrivateDataIndicator:
-		return calcDescriptorPrivateDataIndicatorLength(d)
+		return calcDescriptorPrivateDataIndicatorLength(d.PrivateDataIndicator)
 	case DescriptorTagPrivateDataSpecifier:
-		return calcDescriptorPrivateDataSpecifierLength(d)
+		return calcDescriptorPrivateDataSpecifierLength(d.PrivateDataSpecifier)
 	case DescriptorTagRegistration:
-		return calcDescriptorRegistrationLength(d)
+		return calcDescriptorRegistrationLength(d.Registration)
 	case DescriptorTagService:
-		return calcDescriptorServiceLength(d)
+		return calcDescriptorServiceLength(d.Service)
 	case DescriptorTagShortEvent:
-		return calcDescriptorShortEventLength(d)
+		return calcDescriptorShortEventLength(d.ShortEvent)
 	case DescriptorTagStreamIdentifier:
-		return calcDescriptorStreamIdentifierLength(d)
+		return calcDescriptorStreamIdentifierLength(d.StreamIdentifier)
 	case DescriptorTagSubtitling:
-		return calcDescriptorSubtitlingLength(d)
+		return calcDescriptorSubtitlingLength(d.Subtitling)
 	case DescriptorTagTeletext:
-		return calcDescriptorTeletextLength(d)
+		return calcDescriptorTeletextLength(d.Teletext)
 	case DescriptorTagVBIData:
-		return calcDescriptorVBIDataLength(d)
+		return calcDescriptorVBIDataLength(d.VBIData)
 	case DescriptorTagVBITeletext:
-		return calcDescriptorVBITeletextLength(d)
+		return calcDescriptorTeletextLength(d.VBITeletext)
 	}
 
-	return calcDescriptorUnknownLength(d)
+	return calcDescriptorUnknownLength(d.Unknown)
 }
 
 func writeDescriptor(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+	b := astikit.NewBitsWriterBatch(w)
+	length := calcDescriptorLength(d)
+
+	b.Write(d.Tag)
+	b.Write(length)
+
+	if err := b.Err(); err != nil {
+		return 0, err
+	}
+
+	written := int(length) + 2
+
 	if d.Tag >= 0x80 && d.Tag <= 0xfe {
-		return writeDescriptorUserDefined(w, d)
+		return written, writeDescriptorUserDefined(w, d.UserDefined)
 	}
 
 	switch d.Tag {
 	case DescriptorTagAC3:
-		return writeDescriptorAC3(w, d)
+		return written, writeDescriptorAC3(w, d.AC3)
 	case DescriptorTagAVCVideo:
-		return writeDescriptorAVCVideo(w, d)
+		return written, writeDescriptorAVCVideo(w, d.AVCVideo)
 	case DescriptorTagComponent:
-		return writeDescriptorComponent(w, d)
+		return written, writeDescriptorComponent(w, d.Component)
 	case DescriptorTagContent:
-		return writeDescriptorContent(w, d)
+		return written, writeDescriptorContent(w, d.Content)
 	case DescriptorTagDataStreamAlignment:
-		return writeDescriptorDataStreamAlignment(w, d)
+		return written, writeDescriptorDataStreamAlignment(w, d.DataStreamAlignment)
 	case DescriptorTagEnhancedAC3:
-		return writeDescriptorEnhancedAC3(w, d)
+		return written, writeDescriptorEnhancedAC3(w, d.EnhancedAC3)
 	case DescriptorTagExtendedEvent:
-		return writeDescriptorExtendedEvent(w, d)
+		return written, writeDescriptorExtendedEvent(w, d.ExtendedEvent)
 	case DescriptorTagExtension:
-		return writeDescriptorExtension(w, d)
+		return written, writeDescriptorExtension(w, d.Extension)
 	case DescriptorTagISO639LanguageAndAudioType:
-		return writeDescriptorISO639LanguageAndAudioType(w, d)
+		return written, writeDescriptorISO639LanguageAndAudioType(w, d.ISO639LanguageAndAudioType)
 	case DescriptorTagLocalTimeOffset:
-		return writeDescriptorLocalTimeOffset(w, d)
+		return written, writeDescriptorLocalTimeOffset(w, d.LocalTimeOffset)
 	case DescriptorTagMaximumBitrate:
-		return writeDescriptorMaximumBitrate(w, d)
+		return written, writeDescriptorMaximumBitrate(w, d.MaximumBitrate)
 	case DescriptorTagNetworkName:
-		return writeDescriptorNetworkName(w, d)
+		return written, writeDescriptorNetworkName(w, d.NetworkName)
 	case DescriptorTagParentalRating:
-		return writeDescriptorParentalRating(w, d)
+		return written, writeDescriptorParentalRating(w, d.ParentalRating)
 	case DescriptorTagPrivateDataIndicator:
-		return writeDescriptorPrivateDataIndicator(w, d)
+		return written, writeDescriptorPrivateDataIndicator(w, d.PrivateDataIndicator)
 	case DescriptorTagPrivateDataSpecifier:
-		return writeDescriptorPrivateDataSpecifier(w, d)
+		return written, writeDescriptorPrivateDataSpecifier(w, d.PrivateDataSpecifier)
 	case DescriptorTagRegistration:
-		return writeDescriptorRegistration(w, d)
+		return written, writeDescriptorRegistration(w, d.Registration)
 	case DescriptorTagService:
-		return writeDescriptorService(w, d)
+		return written, writeDescriptorService(w, d.Service)
 	case DescriptorTagShortEvent:
-		return writeDescriptorShortEvent(w, d)
+		return written, writeDescriptorShortEvent(w, d.ShortEvent)
 	case DescriptorTagStreamIdentifier:
-		return writeDescriptorStreamIdentifier(w, d)
+		return written, writeDescriptorStreamIdentifier(w, d.StreamIdentifier)
 	case DescriptorTagSubtitling:
-		return writeDescriptorSubtitling(w, d)
+		return written, writeDescriptorSubtitling(w, d.Subtitling)
 	case DescriptorTagTeletext:
-		return writeDescriptorTeletext(w, d)
+		return written, writeDescriptorTeletext(w, d.Teletext)
 	case DescriptorTagVBIData:
-		return writeDescriptorVBIData(w, d)
+		return written, writeDescriptorVBIData(w, d.VBIData)
 	case DescriptorTagVBITeletext:
-		return writeDescriptorVBITeletext(w, d)
+		return written, writeDescriptorTeletext(w, d.VBITeletext)
 	}
 
-	return writeDescriptorUnknown(w, d)
+	return written, writeDescriptorUnknown(w, d.Unknown)
 }
 
 func calcDescriptorsLength(ds []*Descriptor) uint16 {
