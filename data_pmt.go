@@ -107,11 +107,9 @@ func writePMTSection(w *astikit.BitsWriter, d *PMTData) (int, error) {
 
 	b.WriteN(uint8(0xff), 3)
 	b.WriteN(d.PCRPID, 13)
-	b.WriteN(uint8(0xff), 4)
-	b.WriteN(calcPMTProgramInfoLength(d), 12)
-	bytesWritten := 4
+	bytesWritten := 2
 
-	n, err := writeDescriptors(w, d.ProgramDescriptors)
+	n, err := writeDescriptorsWithLength(w, d.ProgramDescriptors)
 	if err != nil {
 		return 0, err
 	}
@@ -121,6 +119,7 @@ func writePMTSection(w *astikit.BitsWriter, d *PMTData) (int, error) {
 		b.Write(es.StreamType)
 		b.WriteN(uint8(0xff), 3)
 		b.WriteN(es.ElementaryPID, 13)
+		bytesWritten += 3
 
 		n, err = writeDescriptorsWithLength(w, es.ElementaryStreamDescriptors)
 		if err != nil {
