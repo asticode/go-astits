@@ -46,6 +46,10 @@ func parsePATSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 	return
 }
 
+func calcPATSectionLength(d *PATData) uint16 {
+	return uint16(4 * len(d.Programs))
+}
+
 func writePATSection(w *astikit.BitsWriter, d *PATData) (int, error) {
 	b := astikit.NewBitsWriterBatch(w)
 

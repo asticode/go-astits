@@ -149,11 +149,7 @@ func parsePSISection(i *astikit.BytesIterator) (s *PSISection, stop bool, err er
 			}
 
 			// Compute CRC32
-			var crc32 uint32
-			if crc32, err = computeCRC32(crc32Data); err != nil {
-				err = fmt.Errorf("astits: computing CRC32 failed: %w", err)
-				return
-			}
+			crc32 := computeCRC32(crc32Data)
 
 			// Check CRC32
 			if crc32 != s.CRC32 {
@@ -176,23 +172,6 @@ func parseCRC32(i *astikit.BytesIterator) (c uint32, err error) {
 		return
 	}
 	c = uint32(bs[0])<<24 | uint32(bs[1])<<16 | uint32(bs[2])<<8 | uint32(bs[3])
-	return
-}
-
-// computeCRC32 computes a CRC32
-// https://stackoverflow.com/questions/35034042/how-to-calculate-crc32-in-psi-si-packet
-func computeCRC32(bs []byte) (o uint32, err error) {
-	o = uint32(0xffffffff)
-	for _, b := range bs {
-		for i := 0; i < 8; i++ {
-			if (o >= uint32(0x80000000)) != (b >= uint8(0x80)) {
-				o = (o << 1) ^ 0x04C11DB7
-			} else {
-				o = o << 1
-			}
-			b <<= 1
-		}
-	}
 	return
 }
 
@@ -449,4 +428,134 @@ func (d *PSIData) toData(firstPacket *Packet, pid uint16) (ds []*Data) {
 		}
 	}
 	return
+}
+
+func writePSIData(w *astikit.BitsWriter, d *PSIData) (int, error) {
+	b := astikit.NewBitsWriterBatch(w)
+	b.Write(uint8(d.PointerField))
+	for i := d.PointerField; i > 0; i-- {
+		b.Write(uint8(0x00))
+	}
+
+	bytesWritten := 1 + d.PointerField
+
+	if err := b.Err(); err != nil {
+		return 0, err
+	}
+
+	for _, s := range d.Sections {
+		s.Header.TableType = psiTableType(s.Header.TableID)
+		n, err := writePSISection(w, s)
+		if err != nil {
+			return 0, err
+		}
+		bytesWritten += n
+	}
+
+	return bytesWritten, nil
+}
+
+func calcPSISectionLength(s *PSISection) uint16 {
+	ret := uint16(0)
+	if hasPSISyntaxHeader(s.Header.TableType) {
+		ret += 5 // PSI syntax header length
+	}
+
+	switch s.Header.TableType {
+	case PSITableTypePAT:
+		ret += calcPATSectionLength(s.Syntax.Data.PAT)
+	case PSITableTypePMT:
+		ret += calcPMTSectionLength(s.Syntax.Data.PMT)
+	}
+
+	if hasCRC32(s.Header.TableType) {
+		ret += 4
+	}
+
+	return ret
+}
+
+func writePSISection(w *astikit.BitsWriter, s *PSISection) (int, error) {
+	if s.Header.TableType != PSITableTypePAT && s.Header.TableType != PSITableTypePMT {
+		return 0, fmt.Errorf("writePSISection: table %s is not implemented", s.Header.TableType)
+	}
+
+	b := astikit.NewBitsWriterBatch(w)
+
+	sectionLength := calcPSISectionLength(s)
+	sectionCRC32 := CRC32Polynomial
+
+	sectionbs := []byte{}
+	if hasCRC32(s.Header.TableType) {
+		w.SetWriteCallback(func(bs []byte) {
+			sectionCRC32 = updateCRC32(sectionCRC32, bs)
+			sectionbs = append(sectionbs, bs...)
+		})
+		defer w.SetWriteCallback(nil)
+	}
+
+	b.Write(uint8(s.Header.TableID))
+	b.Write(s.Header.SectionSyntaxIndicator)
+	b.Write(s.Header.PrivateBit)
+	b.WriteN(uint8(0xff), 2)
+	b.WriteN(sectionLength, 12)
+	bytesWritten := 3
+
+	if s.Header.SectionLength > 0 {
+		n, err := writePSISectionSyntax(w, s)
+		if err != nil {
+			return 0, err
+		}
+		bytesWritten += n
+
+		if hasCRC32(s.Header.TableType) {
+			b.Write(sectionCRC32)
+			bytesWritten += 4
+		}
+	}
+
+	return bytesWritten, b.Err()
+}
+
+func writePSISectionSyntax(w *astikit.BitsWriter, s *PSISection) (int, error) {
+	bytesWritten := 0
+	if hasPSISyntaxHeader(s.Header.TableType) {
+		n, err := writePSISectionSyntaxHeader(w, s.Syntax.Header)
+		if err != nil {
+			return 0, err
+		}
+		bytesWritten += n
+	}
+
+	n, err := writePSISectionSyntaxData(w, s.Syntax.Data, s.Header.TableType)
+	if err != nil {
+		return 0, err
+	}
+	bytesWritten += n
+
+	return bytesWritten, nil
+}
+
+func writePSISectionSyntaxHeader(w *astikit.BitsWriter, h *PSISectionSyntaxHeader) (int, error) {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.Write(h.TableIDExtension)
+	b.WriteN(uint8(0xff), 2)
+	b.WriteN(h.VersionNumber, 5)
+	b.Write(h.CurrentNextIndicator)
+	b.Write(h.SectionNumber)
+	b.Write(h.LastSectionNumber)
+
+	return 5, b.Err()
+}
+
+func writePSISectionSyntaxData(w *astikit.BitsWriter, d *PSISectionSyntaxData, tableType string) (int, error) {
+	switch tableType {
+	case PSITableTypePAT:
+		return writePATSection(w, d.PAT)
+	case PSITableTypePMT:
+		return writePMTSection(w, d.PMT)
+	}
+
+	return 0, nil
 }

@@ -90,10 +90,23 @@ func parsePMTSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 }
 
 func calcPMTProgramInfoLength(d *PMTData) uint16 {
-	ret := calcDescriptorsLength(d.ProgramDescriptors)
+	ret := uint16(2) // program_info_length
+	ret += calcDescriptorsLength(d.ProgramDescriptors)
 
 	for _, es := range d.ElementaryStreams {
 		ret += 5 // stream_type, elementary_pid, es_info_length
+		ret += calcDescriptorsLength(es.ElementaryStreamDescriptors)
+	}
+
+	return ret
+}
+
+func calcPMTSectionLength(d *PMTData) uint16 {
+	ret := uint16(4)
+	ret += calcDescriptorsLength(d.ProgramDescriptors)
+
+	for _, es := range d.ElementaryStreams {
+		ret += 5
 		ret += calcDescriptorsLength(es.ElementaryStreamDescriptors)
 	}
 
