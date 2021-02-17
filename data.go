@@ -14,8 +14,17 @@ const (
 	PIDNull = 0x1fff // Null Packet (used for fixed bandwidth padding)
 )
 
+type DataKind byte
+
+const (
+	DataKindCAT DataKind = iota
+	DataKindPSI
+	DataKindPES
+)
+
 // Data represents a data
 type Data struct {
+	Kind        DataKind
 	EIT         *EITData
 	FirstPacket *Packet
 	NIT         *NITData
@@ -83,6 +92,7 @@ func parseData(ps []*Packet, prs PacketsParser, pm programMap) (ds []*Data, err 
 
 		// Append data
 		ds = append(ds, &Data{
+			Kind:        DataKindPES,
 			FirstPacket: ps[0],
 			PES:         pesData,
 			PID:         pid,

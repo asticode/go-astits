@@ -31,33 +31,117 @@ func dsmTrickModeSlowBytes() []byte {
 	return buf.Bytes()
 }
 
+type dsmTrickModeTestCase struct {
+	name      string
+	bytesFunc func(w *astikit.BitsWriter)
+	trickMode *DSMTrickMode
+}
+
+var dsmTrickModeTestCases = []dsmTrickModeTestCase{
+	{
+		"fast_forward",
+		func(w *astikit.BitsWriter) {
+			w.Write("000") // Control
+			w.Write("10")  // Field ID
+			w.Write("1")   // Intra slice refresh
+			w.Write("11")  // Frequency truncation
+		},
+		&DSMTrickMode{
+			FieldID:             2,
+			FrequencyTruncation: 3,
+			IntraSliceRefresh:   1,
+			TrickModeControl:    TrickModeControlFastForward,
+		},
+	},
+	{
+		"slow_motion",
+		func(w *astikit.BitsWriter) {
+			w.Write("001")
+			w.Write("10101")
+		},
+		&DSMTrickMode{
+			RepeatControl:    0b10101,
+			TrickModeControl: TrickModeControlSlowMotion,
+		},
+	},
+	{
+		"freeze_frame",
+		func(w *astikit.BitsWriter) {
+			w.Write("010") // Control
+			w.Write("10")  // Field ID
+			w.Write("111") // Reserved
+		},
+		&DSMTrickMode{
+			FieldID:          2,
+			TrickModeControl: TrickModeControlFreezeFrame,
+		},
+	},
+	{
+		"fast_reverse",
+		func(w *astikit.BitsWriter) {
+			w.Write("011") // Control
+			w.Write("10")  // Field ID
+			w.Write("1")   // Intra slice refresh
+			w.Write("11")  // Frequency truncation
+		},
+		&DSMTrickMode{
+			FieldID:             2,
+			FrequencyTruncation: 3,
+			IntraSliceRefresh:   1,
+			TrickModeControl:    TrickModeControlFastReverse,
+		},
+	},
+	{
+		"slow_reverse",
+		func(w *astikit.BitsWriter) {
+			w.Write("100")
+			w.Write("01010")
+		},
+		&DSMTrickMode{
+			RepeatControl:    0b01010,
+			TrickModeControl: TrickModeControlSlowReverse,
+		},
+	},
+	{
+		"reserved",
+		func(w *astikit.BitsWriter) {
+			w.Write("101")
+			w.Write("11111")
+		},
+		&DSMTrickMode{
+			TrickModeControl: 5, // reserved
+		},
+	},
+}
+
 func TestParseDSMTrickMode(t *testing.T) {
-	// Fast
-	buf := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	w.Write("011") // Control
-	w.Write("10")  // Field ID
-	w.Write("1")   // Intra slice refresh
-	w.Write("11")  // Frequency truncation
-	assert.Equal(t, parseDSMTrickMode(buf.Bytes()[0]), &DSMTrickMode{
-		FieldID:             2,
-		FrequencyTruncation: 3,
-		IntraSliceRefresh:   1,
-		TrickModeControl:    TrickModeControlFastReverse,
-	})
+	for _, tc := range dsmTrickModeTestCases {
+		t.Run(tc.name, func(t *testing.T) {
+			buf := &bytes.Buffer{}
+			w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+			tc.bytesFunc(w)
+			assert.Equal(t, parseDSMTrickMode(buf.Bytes()[0]), tc.trickMode)
+		})
+	}
+}
 
-	// Freeze
-	buf.Reset()
-	w.Write("010") // Control
-	w.Write("10")  // Field ID
-	w.Write("000") // Reserved
-	assert.Equal(t, parseDSMTrickMode(buf.Bytes()[0]), &DSMTrickMode{
-		FieldID:          2,
-		TrickModeControl: TrickModeControlFreezeFrame,
-	})
+func TestWriteDSMTrickMode(t *testing.T) {
+	for _, tc := range dsmTrickModeTestCases {
+		t.Run(tc.name, func(t *testing.T) {
+			bufExpected := &bytes.Buffer{}
+			wExpected := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: bufExpected})
+			tc.bytesFunc(wExpected)
 
-	// Slow
-	assert.Equal(t, parseDSMTrickMode(dsmTrickModeSlowBytes()[0]), dsmTrickModeSlow)
+			bufActual := &bytes.Buffer{}
+			wActual := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: bufActual})
+
+			n, err := writeDSMTrickMode(wActual, tc.trickMode)
+			assert.NoError(t, err)
+			assert.Equal(t, 1, n)
+			assert.Equal(t, n, bufActual.Len())
+			assert.Equal(t, bufExpected.Bytes(), bufActual.Bytes())
+		})
+	}
 }
 
 var ptsClockReference = &ClockReference{Base: 5726623061}
@@ -67,11 +151,11 @@ func ptsBytes() []byte {
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write("0010")            // Flag
 	w.Write("101")             // 32...30
-	w.Write("0")               // Dummy
+	w.Write("1")               // Dummy
 	w.Write("010101010101010") // 29...15
-	w.Write("0")               // Dummy
+	w.Write("1")               // Dummy
 	w.Write("101010101010101") // 14...0
-	w.Write("0")               // Dummy
+	w.Write("1")               // Dummy
 	return buf.Bytes()
 }
 
@@ -82,11 +166,11 @@ func dtsBytes() []byte {
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write("0010")            // Flag
 	w.Write("101")             // 32...30
-	w.Write("0")               // Dummy
+	w.Write("1")               // Dummy
 	w.Write("010101010101010") // 29...15
-	w.Write("0")               // Dummy
+	w.Write("1")               // Dummy
 	w.Write("101010101010100") // 14...0
-	w.Write("0")               // Dummy
+	w.Write("1")               // Dummy
 	return buf.Bytes()
 }
 
@@ -109,7 +193,7 @@ func TestWritePTSOrDTS(t *testing.T) {
 func escrBytes() []byte {
 	buf := &bytes.Buffer{}
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	w.Write("00")              // Dummy
+	w.Write("11")              // Dummy
 	w.Write("011")             // 32...30
 	w.Write("1")               // Dummy
 	w.Write("000010111110000") // 29...15
@@ -125,6 +209,16 @@ func TestParseESCR(t *testing.T) {
 	v, err := parseESCR(astikit.NewBytesIterator(escrBytes()))
 	assert.Equal(t, v, clockReference)
 	assert.NoError(t, err)
+}
+
+func TestWriteESCR(t *testing.T) {
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+	n, err := writeESCR(w, clockReference)
+	assert.NoError(t, err)
+	assert.Equal(t, n, 6)
+	assert.Equal(t, n, buf.Len())
+	assert.Equal(t, escrBytes(), buf.Bytes())
 }
 
 var pesWithoutHeader = &PESData{
