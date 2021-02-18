@@ -50,6 +50,7 @@ type PacketAdaptationField struct {
 	HasTransportPrivateData           bool
 	HasSplicingCountdown              bool
 	Length                            int
+	StuffingLength                    int             // Only used in writePacketAdaptationField to request stuffing
 	OPCR                              *ClockReference // Original Program clock reference. Helps when one TS is copied into another
 	PCR                               *ClockReference // Program clock reference
 	RandomAccessIndicator             bool            // Set when the stream may be decoded without errors from this point
@@ -161,6 +162,8 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 
 	// Length
 	a.Length = int(b)
+
+	afStartOffset := i.Offset()
 
 	// Valid length
 	if a.Length > 0 {
@@ -292,6 +295,9 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 			}
 		}
 	}
+
+	a.StuffingLength = a.Length - (i.Offset() - afStartOffset)
+
 	return
 }
 
@@ -370,7 +376,7 @@ func writePCR(w *astikit.BitsWriter, cr *ClockReference) (int, error) {
 	return PCRBytesSize, b.Err()
 }
 
-func calcPacketAdaptationFieldLength(af *PacketAdaptationField) (length int) {
+func calcPacketAdaptationFieldLength(af *PacketAdaptationField) (length uint8) {
 	length++
 	if af.HasPCR {
 		length += PCRBytesSize
@@ -382,24 +388,20 @@ func calcPacketAdaptationFieldLength(af *PacketAdaptationField) (length int) {
 		length++
 	}
 	if af.HasTransportPrivateData {
-		length += 1 + len(af.TransportPrivateData)
+		length += 1 + uint8(len(af.TransportPrivateData))
 	}
 	if af.HasAdaptationExtensionField {
-		length += calcPacketAdaptationFieldExtensionLength(af.AdaptationExtensionField)
+		length += 1 + calcPacketAdaptationFieldExtensionLength(af.AdaptationExtensionField)
 	}
-	return length
+	length += uint8(af.StuffingLength)
+	return
 }
 
-// PacketAdaptationField.Length can be overridden in order to put stuffing to adaptation field
-// TODO maybe it's better to introduce new explicit Stuffing int field?
 func writePacketAdaptationField(w *astikit.BitsWriter, af *PacketAdaptationField) (writtenBytes int, retErr error) {
 	b := astikit.NewBitsWriterBatch(w)
 
-	if af.Length == 0 {
-		af.Length = calcPacketAdaptationFieldLength(af)
-	}
-
-	b.Write(uint8(af.Length))
+	length := calcPacketAdaptationFieldLength(af)
+	b.Write(length)
 	writtenBytes++
 
 	b.Write(af.DiscontinuityIndicator)
@@ -435,6 +437,7 @@ func writePacketAdaptationField(w *astikit.BitsWriter, af *PacketAdaptationField
 	}
 
 	if af.HasTransportPrivateData {
+		// we can get length from TransportPrivateData itself, why do we need separate field?
 		b.Write(uint8(af.TransportPrivateDataLength))
 		writtenBytes++
 		if af.TransportPrivateDataLength > 0 {
@@ -451,15 +454,8 @@ func writePacketAdaptationField(w *astikit.BitsWriter, af *PacketAdaptationField
 		writtenBytes += n
 	}
 
-	if writtenBytes-1 > af.Length {
-		return writtenBytes, fmt.Errorf(
-			"PacketAdaptationField provided Length %d is less than actually written %d",
-			af.Length, writtenBytes,
-		)
-	}
-
 	// stuffing
-	for writtenBytes-1 < af.Length {
+	for i := 0; i < af.StuffingLength; i++ {
 		b.Write(uint8(0xff))
 		writtenBytes++
 	}
@@ -468,7 +464,7 @@ func writePacketAdaptationField(w *astikit.BitsWriter, af *PacketAdaptationField
 	return
 }
 
-func calcPacketAdaptationFieldExtensionLength(afe *PacketAdaptationExtensionField) (length int) {
+func calcPacketAdaptationFieldExtensionLength(afe *PacketAdaptationExtensionField) (length uint8) {
 	length++
 	if afe.HasLegalTimeWindow {
 		length += 2
@@ -485,8 +481,8 @@ func calcPacketAdaptationFieldExtensionLength(afe *PacketAdaptationExtensionFiel
 func writePacketAdaptationFieldExtension(w *astikit.BitsWriter, afe *PacketAdaptationExtensionField) (writtenBytes int, retErr error) {
 	b := astikit.NewBitsWriterBatch(w)
 
-	afe.Length = calcPacketAdaptationFieldExtensionLength(afe)
-	b.Write(uint8(afe.Length))
+	length := calcPacketAdaptationFieldExtensionLength(afe)
+	b.Write(length)
 	writtenBytes++
 
 	b.Write(afe.HasLegalTimeWindow)
@@ -513,13 +509,6 @@ func writePacketAdaptationFieldExtension(w *astikit.BitsWriter, afe *PacketAdapt
 			return 0, err
 		}
 		writtenBytes += n
-	}
-
-	if writtenBytes-1 > afe.Length {
-		return writtenBytes, fmt.Errorf(
-			"PacketAdaptationFieldExtension provided Length %d is less than actually written %d",
-			afe.Length, writtenBytes,
-		)
 	}
 
 	retErr = b.Err()

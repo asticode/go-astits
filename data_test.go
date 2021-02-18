@@ -44,7 +44,7 @@ func TestParseData(t *testing.T) {
 	}
 	ds, err = parseData(ps, nil, pm)
 	assert.NoError(t, err)
-	assert.Equal(t, []*Data{{Kind: DataKindPES, FirstPacket: ps[0], PES: pesWithHeader, PID: uint16(256)}}, ds)
+	assert.Equal(t, []*Data{{Kind: DataKindPES, FirstPacket: ps[0], PES: pesWithHeader(), PID: uint16(256)}}, ds)
 
 	// PSI
 	pm.set(uint16(256), uint16(1))

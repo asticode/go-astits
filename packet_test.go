@@ -68,6 +68,7 @@ func TestWritePacket(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, MpegTsPacketSize, n)
 	assert.Equal(t, n, buf.Len())
+	assert.Equal(t, len(eb), buf.Len())
 	assert.Equal(t, eb, buf.Bytes())
 }
 
@@ -159,6 +160,7 @@ var packetAdaptationField = &PacketAdaptationField{
 	SpliceCountdown:                   2,
 	TransportPrivateDataLength:        4,
 	TransportPrivateData:              []byte("test"),
+	StuffingLength:                    5,
 }
 
 func packetAdaptationFieldBytes(a PacketAdaptationField) []byte {
@@ -201,10 +203,12 @@ func TestParsePacketAdaptationField(t *testing.T) {
 func TestWritePacketAdaptationField(t *testing.T) {
 	buf := &bytes.Buffer{}
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+	eb := packetAdaptationFieldBytes(*packetAdaptationField)
 	bytesWritten, err := writePacketAdaptationField(w, packetAdaptationField)
 	assert.NoError(t, err)
 	assert.Equal(t, bytesWritten, buf.Len())
-	assert.Equal(t, packetAdaptationFieldBytes(*packetAdaptationField), buf.Bytes())
+	assert.Equal(t, len(eb), buf.Len())
+	assert.Equal(t, eb, buf.Bytes())
 }
 
 var pcr = &ClockReference{

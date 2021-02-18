@@ -1448,7 +1448,6 @@ func parseDescriptors(i *astikit.BytesIterator) (o []*Descriptor, err error) {
 
 // TODO (barbashov) move it to BitsWriter?
 func writeBytesN(b *astikit.BitsWriterBatch, bs []byte, n int, padByte uint8) {
-	// dunno if that's even feasible but i wanna make sure that we write exactly 3 bytes
 	if len(bs) >= n {
 		b.Write(bs[:n])
 	} else {
