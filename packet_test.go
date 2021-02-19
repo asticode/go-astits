@@ -189,7 +189,7 @@ func packetAdaptationFieldBytes(a PacketAdaptationField) []byte {
 	w.Write("010101010101010")        // LTW offset
 	w.Write("11")                     // Piecewise rate reserved
 	w.Write("1010101010101010101010") // Piecewise rate
-	w.Write(dtsBytes())               // Splice type + DTS next access unit
+	w.Write(dtsBytes("0010"))         // Splice type + DTS next access unit
 	w.WriteN(^uint64(0), 40)          // Stuffing bytes
 	return buf.Bytes()
 }
