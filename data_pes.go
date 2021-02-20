@@ -439,11 +439,9 @@ func calcPESDataLength(h *PESHeader, payloadLeft []byte, isPayloadStart bool, by
 }
 
 // first packet will contain PES header with optional PES header and payload, if possible
-// all consequential packets will contain just PES header and payload
-// last packet will contain AF with stuffing
+// all consequential packets will contain just payload
+// for the last packet caller must add AF with stuffing, see calcPESDataLength
 func writePESData(w *astikit.BitsWriter, h *PESHeader, payloadLeft []byte, isPayloadStart bool, bytesAvailable int) (totalBytesWritten, payloadBytesWritten int, err error) {
-	var n int
-
 	//headerLength := PESHeaderLength
 	//if isPayloadStart {
 	//	headerLength += int(calcPESOptionalHeaderLength(h.OptionalHeader))
@@ -461,6 +459,7 @@ func writePESData(w *astikit.BitsWriter, h *PESHeader, payloadLeft []byte, isPay
 	//}
 
 	if isPayloadStart {
+		var n int
 		n, err = writePESHeader(w, h, uint16(len(payloadLeft)))
 		if err != nil {
 			return
