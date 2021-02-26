@@ -23,6 +23,25 @@ const (
 	PSITableTypeTOT     = "TOT"
 	PSITableTypeUnknown = "Unknown"
 )
+const (
+	PSITableTypeIdPAT  = 0x00
+	PSITableTypeIdPMT  = 0x02
+	PSITableTypeIdBAT  = 0x4a
+	PSITableTypeIdDIT  = 0x7e
+	PSITableTypeIdRST  = 0x71
+	PSITableTypeIdSIT  = 0x7f
+	PSITableTypeIdST   = 0x72
+	PSITableTypeIdTDT  = 0x70
+	PSITableTypeIdTOT  = 0x73
+	PSITableTypeIdNull = 0xff
+
+	PSITableTypeIdEITStart    = 0x4e
+	PSITableTypeIdEITEnd      = 0x6f
+	PSITableTypeIdSDTVariant1 = 0x42
+	PSITableTypeIdSDTVariant2 = 0x46
+	PSITableTypeIdNITVariant1 = 0x40
+	PSITableTypeIdNITVariant2 = 0x41
+)
 
 // PSIData represents a PSI data
 // https://en.wikipedia.org/wiki/Program-specific_information
@@ -70,6 +89,15 @@ type PSISectionSyntaxData struct {
 	PMT *PMTData
 	SDT *SDTData
 	TOT *TOTData
+}
+
+type psiVersionCounter uint8
+
+func (c *psiVersionCounter) increment() {
+	*c++
+	if *c >= 32 {
+		*c = 0
+	}
 }
 
 // parsePSIData parses a PSI data
@@ -245,31 +273,31 @@ func hasCRC32(tableType string) bool {
 // (barbashov) the link above can be broken, alternative: https://dvb.org/wp-content/uploads/2019/12/a038_tm1217r37_en300468v1_17_1_-_rev-134_-_si_specification.pdf
 func psiTableType(tableID int) string {
 	switch {
-	case tableID == 0x4a:
+	case tableID == PSITableTypeIdBAT:
 		return PSITableTypeBAT
-	case tableID >= 0x4e && tableID <= 0x6f:
+	case tableID >= PSITableTypeIdEITStart && tableID <= PSITableTypeIdEITEnd:
 		return PSITableTypeEIT
-	case tableID == 0x7e:
+	case tableID == PSITableTypeIdDIT:
 		return PSITableTypeDIT
-	case tableID == 0x40, tableID == 0x41:
+	case tableID == PSITableTypeIdNITVariant1, tableID == PSITableTypeIdNITVariant2:
 		return PSITableTypeNIT
-	case tableID == 0xff:
+	case tableID == PSITableTypeIdNull:
 		return PSITableTypeNull
-	case tableID == 0:
+	case tableID == PSITableTypeIdPAT:
 		return PSITableTypePAT
-	case tableID == 2:
+	case tableID == PSITableTypeIdPMT:
 		return PSITableTypePMT
-	case tableID == 0x71:
+	case tableID == PSITableTypeIdRST:
 		return PSITableTypeRST
-	case tableID == 0x42, tableID == 0x46:
+	case tableID == PSITableTypeIdSDTVariant1, tableID == PSITableTypeIdSDTVariant2:
 		return PSITableTypeSDT
-	case tableID == 0x7f:
+	case tableID == PSITableTypeIdSIT:
 		return PSITableTypeSIT
-	case tableID == 0x72:
+	case tableID == PSITableTypeIdST:
 		return PSITableTypeST
-	case tableID == 0x70:
+	case tableID == PSITableTypeIdTDT:
 		return PSITableTypeTDT
-	case tableID == 0x73:
+	case tableID == PSITableTypeIdTOT:
 		return PSITableTypeTOT
 	default:
 		return PSITableTypeUnknown
@@ -433,7 +461,7 @@ func (d *PSIData) toData(firstPacket *Packet, pid uint16) (ds []*Data) {
 func writePSIData(w *astikit.BitsWriter, d *PSIData) (int, error) {
 	b := astikit.NewBitsWriterBatch(w)
 	b.Write(uint8(d.PointerField))
-	for i := d.PointerField; i > 0; i-- {
+	for i := 0; i < d.PointerField; i++ {
 		b.Write(uint8(0x00))
 	}
 

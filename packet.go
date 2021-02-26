@@ -343,7 +343,7 @@ func writePacket(w *astikit.BitsWriter, p *Packet, targetPacketSize int) (writte
 	}
 
 	for written < targetPacketSize {
-		if retErr = w.Write(uint8(0)); retErr != nil {
+		if retErr = w.Write(uint8(0xff)); retErr != nil {
 			return
 		}
 		written++

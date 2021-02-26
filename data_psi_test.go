@@ -220,24 +220,24 @@ func TestParsePSISectionHeader(t *testing.T) {
 }
 
 func TestPSITableType(t *testing.T) {
-	assert.Equal(t, PSITableTypeBAT, psiTableType(74))
-	for i := 78; i <= 111; i++ {
+	for i := PSITableTypeIdEITStart; i <= PSITableTypeIdEITEnd; i++ {
 		assert.Equal(t, PSITableTypeEIT, psiTableType(i))
 	}
-	assert.Equal(t, PSITableTypeDIT, psiTableType(126))
-	for i := 64; i <= 65; i++ {
-		assert.Equal(t, PSITableTypeNIT, psiTableType(i))
-	}
-	assert.Equal(t, PSITableTypeNull, psiTableType(255))
-	assert.Equal(t, PSITableTypePAT, psiTableType(0))
-	assert.Equal(t, PSITableTypePMT, psiTableType(2))
-	assert.Equal(t, PSITableTypeRST, psiTableType(113))
-	assert.Equal(t, PSITableTypeSDT, psiTableType(66))
-	assert.Equal(t, PSITableTypeSDT, psiTableType(70))
-	assert.Equal(t, PSITableTypeSIT, psiTableType(127))
-	assert.Equal(t, PSITableTypeST, psiTableType(114))
-	assert.Equal(t, PSITableTypeTDT, psiTableType(112))
-	assert.Equal(t, PSITableTypeTOT, psiTableType(115))
+	assert.Equal(t, PSITableTypeDIT, psiTableType(PSITableTypeIdDIT))
+	assert.Equal(t, PSITableTypeNIT, psiTableType(PSITableTypeIdNITVariant1))
+	assert.Equal(t, PSITableTypeNIT, psiTableType(PSITableTypeIdNITVariant2))
+	assert.Equal(t, PSITableTypeSDT, psiTableType(PSITableTypeIdSDTVariant1))
+	assert.Equal(t, PSITableTypeSDT, psiTableType(PSITableTypeIdSDTVariant2))
+
+	assert.Equal(t, PSITableTypeBAT, psiTableType(PSITableTypeIdBAT))
+	assert.Equal(t, PSITableTypeNull, psiTableType(PSITableTypeIdNull))
+	assert.Equal(t, PSITableTypePAT, psiTableType(PSITableTypeIdPAT))
+	assert.Equal(t, PSITableTypePMT, psiTableType(PSITableTypeIdPMT))
+	assert.Equal(t, PSITableTypeRST, psiTableType(PSITableTypeIdRST))
+	assert.Equal(t, PSITableTypeSIT, psiTableType(PSITableTypeIdSIT))
+	assert.Equal(t, PSITableTypeST, psiTableType(PSITableTypeIdST))
+	assert.Equal(t, PSITableTypeTDT, psiTableType(PSITableTypeIdTDT))
+	assert.Equal(t, PSITableTypeTOT, psiTableType(PSITableTypeIdTOT))
 	assert.Equal(t, PSITableTypeUnknown, psiTableType(1))
 }
 
