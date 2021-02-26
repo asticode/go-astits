@@ -27,7 +27,7 @@ type Muxer struct {
 	packetSize int
 
 	pm             programMap // pid -> programNumber
-	pmt            PMTData    // pid -> PMTData
+	pmt            PMTData
 	nextPID        uint16
 	nextPATVersion psiVersionCounter
 	nextPMTVersion psiVersionCounter
