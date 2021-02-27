@@ -91,15 +91,6 @@ type PSISectionSyntaxData struct {
 	TOT *TOTData
 }
 
-type psiVersionCounter uint8
-
-func (c *psiVersionCounter) increment() {
-	*c++
-	if *c >= 32 {
-		*c = 0
-	}
-}
-
 // parsePSIData parses a PSI data
 func parsePSIData(i *astikit.BytesIterator) (d *PSIData, err error) {
 	// Init data

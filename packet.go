@@ -50,6 +50,7 @@ type PacketAdaptationField struct {
 	HasTransportPrivateData           bool
 	HasSplicingCountdown              bool
 	Length                            int
+	IsOneByteStuffing                 bool            // Only used for one byte stuffing - if true, adaptation field will be written as one uint8(0). Not part of TS format
 	StuffingLength                    int             // Only used in writePacketAdaptationField to request stuffing
 	OPCR                              *ClockReference // Original Program clock reference. Helps when one TS is copied into another
 	PCR                               *ClockReference // Program clock reference
@@ -400,6 +401,11 @@ func calcPacketAdaptationFieldLength(af *PacketAdaptationField) (length uint8) {
 func writePacketAdaptationField(w *astikit.BitsWriter, af *PacketAdaptationField) (writtenBytes int, retErr error) {
 	b := astikit.NewBitsWriterBatch(w)
 
+	if af.IsOneByteStuffing {
+		b.Write(uint8(0))
+		return 1, nil
+	}
+
 	length := calcPacketAdaptationFieldLength(af)
 	b.Write(length)
 	writtenBytes++
@@ -513,4 +519,17 @@ func writePacketAdaptationFieldExtension(w *astikit.BitsWriter, afe *PacketAdapt
 
 	retErr = b.Err()
 	return
+}
+
+func newStuffingAdaptationField(bytesToStuff int) *PacketAdaptationField {
+	if bytesToStuff == 1 {
+		return &PacketAdaptationField{
+			IsOneByteStuffing: true,
+		}
+	}
+
+	return &PacketAdaptationField{
+		// one byte for length and one for flags
+		StuffingLength: bytesToStuff - 2,
+	}
 }

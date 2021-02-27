@@ -8,12 +8,29 @@ import (
 
 // Stream types
 const (
+	StreamTypeMPEG1Video                 = 0x01
+	StreamTypeMPEG2Video                 = 0x02
 	StreamTypeMPEG1Audio                 = 0x03 // ISO/IEC 11172-3
 	StreamTypeMPEG2HalvedSampleRateAudio = 0x04 // ISO/IEC 13818-3
+	StreamTypeMPEG2Audio                 = 0x04
+	StreamTypePrivateSection             = 0x05
+	StreamTypePrivateData                = 0x06
 	StreamTypeMPEG2PacketizedData        = 0x06 // Rec. ITU-T H.222 | ISO/IEC 13818-1 i.e., DVB subtitles/VBI and AC-3
 	StreamTypeADTS                       = 0x0F // ISO/IEC 13818-7 Audio with ADTS transport syntax
+	StreamTypeAACAudio                   = 0x0f
+	StreamTypeMPEG4Video                 = 0x10
+	StreamTypeAACLATMAudio               = 0x11
+	StreamTypeMetadata                   = 0x15
 	StreamTypeH264Video                  = 0x1B // Rec. ITU-T H.264 | ISO/IEC 14496-10
 	StreamTypeH265Video                  = 0x24 // Rec. ITU-T H.265 | ISO/IEC 23008-2
+	StreamTypeHEVCVideo                  = 0x24
+	StreamTypeCAVSVideo                  = 0x42
+	StreamTypeVC1Video                   = 0xea
+	StreamTypeDIRACVideo                 = 0xd1
+	StreamTypeAC3Audio                   = 0x81
+	StreamTypeDTSAudio                   = 0x82
+	StreamTypeTRUEHDAudio                = 0x83
+	StreamTypeEAC3Audio                  = 0x87
 )
 
 // PMTData represents a PMT data

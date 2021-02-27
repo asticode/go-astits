@@ -5,6 +5,8 @@ import (
 	"context"
 	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
+	"os"
 	"testing"
 )
 
@@ -59,7 +61,7 @@ func TestMuxer_generatePAT(t *testing.T) {
 	assert.Equal(t, patExpectedBytes(1), muxer.patBytes.Bytes())
 }
 
-func pmtExpectedBytesVideoOnly() []byte {
+func pmtExpectedBytesVideoOnly(versionNumber uint8) []byte {
 	buf := bytes.Buffer{}
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &buf})
 	w.Write(uint8(syncByte))
@@ -73,11 +75,11 @@ func pmtExpectedBytesVideoOnly() []byte {
 	w.WriteN(uint16(18), 12)           // Section length
 
 	w.Write(ProgramNumberStart)
-	w.Write("11")     // Reserved bits
-	w.Write("00000")  // Version number
-	w.Write("1")      // Current/next indicator
-	w.Write(uint8(0)) // Section number
-	w.Write(uint8(0)) // Last section number
+	w.Write("11")              // Reserved bits
+	w.WriteN(versionNumber, 5) // Version number
+	w.Write("1")               // Current/next indicator
+	w.Write(uint8(0))          // Section number
+	w.Write(uint8(0))          // Last section number
 
 	w.Write("111")               // reserved
 	w.WriteN(uint16(0x1234), 13) // PCR PID
@@ -99,7 +101,7 @@ func pmtExpectedBytesVideoOnly() []byte {
 	return buf.Bytes()
 }
 
-func pmtExpectedBytesVideoAndAudio() []byte {
+func pmtExpectedBytesVideoAndAudio(versionNumber uint8) []byte {
 	buf := bytes.Buffer{}
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &buf})
 	w.Write(uint8(syncByte))
@@ -113,11 +115,11 @@ func pmtExpectedBytesVideoAndAudio() []byte {
 	w.WriteN(uint16(23), 12)           // Section length
 
 	w.Write(ProgramNumberStart)
-	w.Write("11")     // Reserved bits
-	w.Write("00001")  // Version number
-	w.Write("1")      // Current/next indicator
-	w.Write(uint8(0)) // Section number
-	w.Write(uint8(0)) // Last section number
+	w.Write("11")              // Reserved bits
+	w.WriteN(versionNumber, 5) // Version number
+	w.Write("1")               // Current/next indicator
+	w.Write(uint8(0))          // Section number
+	w.Write(uint8(0))          // Last section number
 
 	w.Write("111")               // reserved
 	w.WriteN(uint16(0x1234), 13) // PCR PID
@@ -137,7 +139,12 @@ func pmtExpectedBytesVideoAndAudio() []byte {
 	w.Write("1111")         // reserved
 	w.WriteN(uint16(0), 12) // es info length
 
-	w.Write([]byte{0x06, 0xf4, 0xa6, 0xea}) // CRC32
+	// CRC32
+	if versionNumber == 0 {
+		w.Write([]byte{0x29, 0x52, 0xc4, 0x50})
+	} else {
+		w.Write([]byte{0x06, 0xf4, 0xa6, 0xea})
+	}
 
 	w.Write(bytes.Repeat([]byte{0xff}, 157))
 
@@ -155,18 +162,18 @@ func TestMuxer_generatePMT(t *testing.T) {
 	err = muxer.generatePMT()
 	assert.NoError(t, err)
 	assert.Equal(t, MpegTsPacketSize, muxer.pmtBytes.Len())
-	assert.Equal(t, pmtExpectedBytesVideoOnly(), muxer.pmtBytes.Bytes())
+	assert.Equal(t, pmtExpectedBytesVideoOnly(0), muxer.pmtBytes.Bytes())
 
 	err = muxer.AddElementaryStream(PMTElementaryStream{
 		ElementaryPID: 0x0234,
-		StreamType:    StreamTypeADTS,
+		StreamType:    StreamTypeAACAudio,
 	}, false)
 	assert.NoError(t, err)
 
 	err = muxer.generatePMT()
 	assert.NoError(t, err)
 	assert.Equal(t, MpegTsPacketSize, muxer.pmtBytes.Len())
-	assert.Equal(t, pmtExpectedBytesVideoAndAudio(), muxer.pmtBytes.Bytes())
+	assert.Equal(t, pmtExpectedBytesVideoAndAudio(1), muxer.pmtBytes.Bytes())
 }
 
 func TestMuxer_WriteTables(t *testing.T) {
@@ -183,7 +190,7 @@ func TestMuxer_WriteTables(t *testing.T) {
 	assert.Equal(t, 2*MpegTsPacketSize, n)
 	assert.Equal(t, n, buf.Len())
 
-	expectedBytes := append(patExpectedBytes(0), pmtExpectedBytesVideoOnly()...)
+	expectedBytes := append(patExpectedBytes(0), pmtExpectedBytesVideoOnly(0)...)
 	assert.Equal(t, expectedBytes, buf.Bytes())
 }
 
@@ -227,4 +234,75 @@ func TestMuxer_RemoveElementaryStream(t *testing.T) {
 
 	err = muxer.RemoveElementaryStream(0x1234)
 	assert.Equal(t, MuxerErrorPIDNotFound, err)
+}
+
+func testPayload() []byte {
+	ret := make([]byte, 0xff+1)
+	for i := 0; i <= 0xff; i++ {
+		ret[i] = byte(i)
+	}
+	return ret
+}
+
+func TestMuxer_WritePayload(t *testing.T) {
+	buf := bytes.Buffer{}
+	muxer := NewMuxer(context.Background(), &buf)
+
+	err := muxer.AddElementaryStream(PMTElementaryStream{
+		ElementaryPID: 0x1234,
+		StreamType:    StreamTypeH264Video,
+	}, true)
+	assert.NoError(t, err)
+
+	err = muxer.AddElementaryStream(PMTElementaryStream{
+		ElementaryPID: 0x0234,
+		StreamType:    StreamTypeAACAudio,
+	}, false)
+	assert.NoError(t, err)
+
+	payload := testPayload()
+	pcr := ClockReference{
+		Base:      5726623061,
+		Extension: 341,
+	}
+	pts := ClockReference{Base: 5726623060}
+
+	n, err := muxer.WritePayload(0x1234, &PacketAdaptationField{
+		HasPCR:                true,
+		PCR:                   &pcr,
+		RandomAccessIndicator: true,
+	}, &PESHeader{
+		OptionalHeader: &PESOptionalHeader{
+			DTS:             &pts,
+			PTS:             &pts,
+			PTSDTSIndicator: PTSDTSIndicatorBothPresent,
+		},
+	}, payload)
+
+	assert.NoError(t, err)
+	assert.Equal(t, buf.Len(), n)
+
+	bytesTotal := n
+
+	n, err = muxer.WritePayload(0x0234, &PacketAdaptationField{
+		HasPCR:                true,
+		PCR:                   &pcr,
+		RandomAccessIndicator: true,
+	}, &PESHeader{
+		OptionalHeader: &PESOptionalHeader{
+			DTS:             &pts,
+			PTS:             &pts,
+			PTSDTSIndicator: PTSDTSIndicatorBothPresent,
+		},
+	}, payload)
+
+	assert.NoError(t, err)
+	assert.Equal(t, buf.Len(), bytesTotal+n)
+	assert.Equal(t, 0, buf.Len()%MpegTsPacketSize)
+
+	bs := buf.Bytes()
+	assert.Equal(t, patExpectedBytes(0), bs[:MpegTsPacketSize])
+	assert.Equal(t, pmtExpectedBytesVideoAndAudio(0), bs[MpegTsPacketSize:MpegTsPacketSize*2])
+
+	ioutil.WriteFile("/Users/barbashov/Desktop/pes-test.ts", bs, os.ModePerm)
 }
