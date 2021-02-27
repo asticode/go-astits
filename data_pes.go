@@ -460,7 +460,7 @@ func writePESData(w *astikit.BitsWriter, h *PESHeader, payloadLeft []byte, isPay
 
 	if isPayloadStart {
 		var n int
-		n, err = writePESHeader(w, h, uint16(len(payloadLeft)))
+		n, err = writePESHeader(w, h, len(payloadLeft))
 		if err != nil {
 			return
 		}
@@ -481,17 +481,25 @@ func writePESData(w *astikit.BitsWriter, h *PESHeader, payloadLeft []byte, isPay
 	return
 }
 
-func writePESHeader(w *astikit.BitsWriter, h *PESHeader, payloadSize uint16) (int, error) {
+func writePESHeader(w *astikit.BitsWriter, h *PESHeader, payloadSize int) (int, error) {
 	b := astikit.NewBitsWriterBatch(w)
 
 	b.WriteN(uint32(0x000001), 24) // packet_start_code_prefix
 	b.Write(h.StreamID)
 
-	pesPacketLength := payloadSize
-	if hasPESOptionalHeader(h.StreamID) {
-		pesPacketLength += uint16(calcPESOptionalHeaderLength(h.OptionalHeader))
+	pesPacketLength := 0
+
+	if !isVideoStreamId(h.StreamID) {
+		pesPacketLength = payloadSize
+		if hasPESOptionalHeader(h.StreamID) {
+			pesPacketLength += int(calcPESOptionalHeaderLength(h.OptionalHeader))
+		}
+		if pesPacketLength > 0xffff {
+			pesPacketLength = 0
+		}
 	}
-	b.Write(pesPacketLength)
+
+	b.Write(uint16(pesPacketLength))
 
 	bytesWritten := PESHeaderLength
 
@@ -746,4 +754,9 @@ func writePTSOrDTS(w *astikit.BitsWriter, flag uint8, cr *ClockReference) (bytes
 	b.Write(true)
 
 	return PTSorDTSByteLength, b.Err()
+}
+
+func isVideoStreamId(pesStreamId uint8) bool {
+	return pesStreamId == 0xe0 ||
+		pesStreamId == 0xfd
 }

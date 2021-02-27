@@ -93,6 +93,9 @@ func NewMuxer(ctx context.Context, w io.Writer, opts ...func(*Muxer)) *Muxer {
 		opt(m)
 	}
 
+	// to output tables at the very start
+	m.tablesRetransmitCounter = m.tablesRetransmitPeriod
+
 	return m
 }
 

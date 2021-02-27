@@ -160,3 +160,47 @@ func writePMTSection(w *astikit.BitsWriter, d *PMTData) (int, error) {
 
 	return bytesWritten, b.Err()
 }
+
+func StreamTypeString(streamType uint8) string {
+	switch streamType {
+	case StreamTypeMPEG1Video:
+		return "MPEG1 Video"
+	case StreamTypeMPEG2Video:
+		return "MPEG2 Video"
+	case StreamTypeMPEG1Audio:
+		return "MPEG1 Audio"
+	case StreamTypeMPEG2Audio:
+		return "MPEG2 Audio"
+	case StreamTypePrivateSection:
+		return "Private Section"
+	case StreamTypePrivateData:
+		return "Private Data"
+	case StreamTypeAACAudio:
+		return "AAC Audio"
+	case StreamTypeMPEG4Video:
+		return "MPEG4 Video"
+	case StreamTypeAACLATMAudio:
+		return "AAC LATM Audio"
+	case StreamTypeMetadata:
+		return "Metadata"
+	case StreamTypeH264Video:
+		return "H264 Video"
+	case StreamTypeH265Video:
+		return "H265 Video"
+	case StreamTypeCAVSVideo:
+		return "CAVS Video"
+	case StreamTypeVC1Video:
+		return "VC1 Video"
+	case StreamTypeDIRACVideo:
+		return "DIRAC Video"
+	case StreamTypeAC3Audio:
+		return "AC3 Audio"
+	case StreamTypeDTSAudio:
+		return "DTS Audio"
+	case StreamTypeTRUEHDAudio:
+		return "TRUEHD Audio"
+	case StreamTypeEAC3Audio:
+		return "EAC3 Audio"
+	}
+	return "Unknown"
+}
