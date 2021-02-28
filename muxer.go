@@ -40,7 +40,7 @@ type Muxer struct {
 	buf       bytes.Buffer
 	bufWriter *astikit.BitsWriter
 
-	esContexts              map[uint16]esContext
+	esContexts              map[uint16]*esContext
 	tablesRetransmitCounter int
 }
 
@@ -49,8 +49,8 @@ type esContext struct {
 	cc wrappingCounter
 }
 
-func newEsContext(es *PMTElementaryStream) esContext {
-	return esContext{
+func newEsContext(es *PMTElementaryStream) *esContext {
+	return &esContext{
 		es: es,
 		cc: newWrappingCounter(0b1111), // CC is 4 bits
 	}
@@ -80,7 +80,7 @@ func NewMuxer(ctx context.Context, w io.Writer, opts ...func(*Muxer)) *Muxer {
 		patVersion: newWrappingCounter(0b11111),
 		pmtVersion: newWrappingCounter(0b11111),
 
-		esContexts: map[uint16]esContext{},
+		esContexts: map[uint16]*esContext{},
 	}
 
 	m.bufWriter = astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &m.buf})
@@ -175,7 +175,8 @@ func (m *Muxer) WritePayload(pid uint16, af *PacketAdaptationField, ph *PESHeade
 
 		if writeAf {
 			pkt.AdaptationField = af
-			pktLen += int(calcPacketAdaptationFieldLength(af))
+			// one byte for adaptation field length field
+			pktLen += 1 + int(calcPacketAdaptationFieldLength(af))
 			writeAf = false
 		}
 
@@ -186,9 +187,9 @@ func (m *Muxer) WritePayload(pid uint16, af *PacketAdaptationField, ph *PESHeade
 			if bytesAvailable < pesHeaderLength {
 				af.StuffingLength = bytesAvailable
 			} else {
-				bytesAvailable -= pesHeaderLength
+				//bytesAvailable -= pesHeaderLength
 				pkt.Header.HasPayload = true
-				pkt.Header.PayloadUnitStartIndicator = payloadStart
+				pkt.Header.PayloadUnitStartIndicator = true
 			}
 		} else {
 			pkt.Header.HasPayload = true

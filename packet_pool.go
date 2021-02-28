@@ -7,15 +7,21 @@ import (
 
 // packetPool represents a pool of packets
 type packetPool struct {
-	b map[uint16][]*Packet // Indexed by PID
-	m *sync.Mutex
+	b                map[uint16][]*Packet // Indexed by PID
+	m                *sync.Mutex
+	flushOnPIDChange bool
+	lastPID          int
 }
 
 // newPacketPool creates a new packet pool
-func newPacketPool() *packetPool {
+// flushOnPIDChange controls whether add() will return packets to parse on PID change.
+//   this allows not to skip tables which fit in one packet
+func newPacketPool(flushOnPIDChange bool) *packetPool {
 	return &packetPool{
-		b: make(map[uint16][]*Packet),
-		m: &sync.Mutex{},
+		b:                make(map[uint16][]*Packet),
+		m:                &sync.Mutex{},
+		flushOnPIDChange: flushOnPIDChange,
+		lastPID:          -1,
 	}
 }
 
@@ -62,6 +68,14 @@ func (b *packetPool) add(p *Packet) (ps []*Packet) {
 	if p.Header.PayloadUnitStartIndicator && len(mps) > 1 {
 		ps = mps[:len(mps)-1]
 		mps = []*Packet{p}
+	}
+
+	if b.flushOnPIDChange && len(mps) > 0 {
+		if b.lastPID != -1 && b.lastPID != int(p.Header.PID) {
+			ps = b.b[uint16(b.lastPID)]
+			b.b[uint16(b.lastPID)] = b.b[uint16(b.lastPID)][:0]
+		}
+		b.lastPID = int(p.Header.PID)
 	}
 
 	// Assign

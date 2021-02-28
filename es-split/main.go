@@ -17,6 +17,11 @@ const (
 	ioBufSize = 10 * 1024 * 1024
 )
 
+type muxerOut struct {
+	f *os.File
+	w *bufio.Writer
+}
+
 func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Split TS file into multiple files each holding one elementary stream")
@@ -42,7 +47,11 @@ func main() {
 		log.Fatalf("%v", err)
 	}
 
-	d := astits.New(context.Background(), bufio.NewReaderSize(infile, ioBufSize))
+	demux := astits.New(
+		context.Background(),
+		bufio.NewReaderSize(infile, ioBufSize),
+		astits.OptFlushPacketPoolOnPIDChange(true),
+	)
 
 	var pat *astits.PATData
 	// key is program number
@@ -50,7 +59,7 @@ func main() {
 	gotAllPMTs := false
 	// key is pid
 	muxers := map[uint16]*astits.Muxer{}
-	outfiles := map[uint16]*os.File{}
+	outfiles := map[uint16]muxerOut{}
 
 	pmtsPrinted := false
 
@@ -58,7 +67,7 @@ func main() {
 	bytesWritten := 0
 
 	for {
-		d, err := d.NextData()
+		d, err := demux.NextData()
 		if err != nil {
 			if err == astits.ErrNoMorePackets {
 				break
@@ -106,15 +115,18 @@ func main() {
 					if err != nil {
 						log.Fatalf("%v", err)
 					}
-					defer outfile.Close() // ouch!
 
-					mux := astits.NewMuxer(context.Background(), bufio.NewWriterSize(outfile, ioBufSize))
+					bufWriter := bufio.NewWriterSize(outfile, ioBufSize)
+					mux := astits.NewMuxer(context.Background(), bufWriter)
 					err = mux.AddElementaryStream(*es, true)
 					if err != nil {
 						log.Fatalf("%v", err)
 					}
 
-					outfiles[es.ElementaryPID] = outfile
+					outfiles[es.ElementaryPID] = muxerOut{
+						f: outfile,
+						w: bufWriter,
+					}
 					muxers[es.ElementaryPID] = mux
 
 					if !pmtsPrinted {
@@ -157,6 +169,15 @@ func main() {
 			lastRateOutput = time.Now()
 			log.Printf("%.02f mb/s", (float64(bytesWritten)/1024.0/1024.0)/timeDiff.Seconds())
 			bytesWritten = 0
+		}
+	}
+
+	for _, f := range outfiles {
+		if err = f.w.Flush(); err != nil {
+			log.Printf("Error flushing %s: %v", f.f.Name(), err)
+		}
+		if err = f.f.Close(); err != nil {
+			log.Printf("Error closing %s: %v", f.f.Name(), err)
 		}
 	}
 

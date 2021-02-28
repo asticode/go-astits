@@ -335,6 +335,14 @@ func writePacket(w *astikit.BitsWriter, p *Packet, targetPacketSize int) (writte
 		written += n
 	}
 
+	if targetPacketSize-written < len(p.Payload) {
+		return 0, fmt.Errorf(
+			"writePacket: can't write %d bytes of payload: only %d is available",
+			len(p.Payload),
+			targetPacketSize-written,
+		)
+	}
+
 	if p.Header.HasPayload {
 		retErr = w.Write(p.Payload)
 		if retErr != nil {
