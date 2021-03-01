@@ -1299,10 +1299,14 @@ func parseDescriptors(i *astikit.BytesIterator) (o []*Descriptor, err error) {
 				// <Hack>: assign the original bytes to an internal byte slice for use when reserialising later
 				// TODO fix this to actually serialise the struct
 				origOffset := i.Offset()
-				if d.originalBytes, err = i.NextBytes(int(d.Length)); err != nil {
+				var origBytes []byte
+				if origBytes, err = i.NextBytes(int(d.Length)); err != nil {
 					err = fmt.Errorf("astits: fetching original bytes failed: %w", err)
 					return
 				}
+				// Can't count on the original byte array persisting, so create a copy
+				d.originalBytes = make([]byte, len(origBytes))
+				copy(d.originalBytes, origBytes)
 				// Reset iterator so parsing can continue
 				i.Seek(origOffset)
 				// </Hack>
