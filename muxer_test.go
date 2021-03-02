@@ -5,8 +5,6 @@ import (
 	"context"
 	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
-	"io/ioutil"
-	"os"
 	"testing"
 )
 
@@ -303,6 +301,4 @@ func TestMuxer_WritePayload(t *testing.T) {
 	bs := buf.Bytes()
 	assert.Equal(t, patExpectedBytes(0), bs[:MpegTsPacketSize])
 	assert.Equal(t, pmtExpectedBytesVideoAndAudio(0), bs[MpegTsPacketSize:MpegTsPacketSize*2])
-
-	ioutil.WriteFile("/Users/barbashov/Desktop/pes-test.ts", bs, os.ModePerm)
 }
