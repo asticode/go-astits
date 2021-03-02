@@ -433,17 +433,17 @@ func (d *PSIData) toData(firstPacket *Packet, pid uint16) (ds []*Data) {
 		// Switch on table type
 		switch s.Header.TableType {
 		case PSITableTypeEIT:
-			ds = append(ds, &Data{Kind: DataKindPSI, EIT: s.Syntax.Data.EIT, FirstPacket: firstPacket, PID: pid})
+			ds = append(ds, &Data{EIT: s.Syntax.Data.EIT, FirstPacket: firstPacket, PID: pid})
 		case PSITableTypeNIT:
-			ds = append(ds, &Data{Kind: DataKindPSI, FirstPacket: firstPacket, NIT: s.Syntax.Data.NIT, PID: pid})
+			ds = append(ds, &Data{FirstPacket: firstPacket, NIT: s.Syntax.Data.NIT, PID: pid})
 		case PSITableTypePAT:
-			ds = append(ds, &Data{Kind: DataKindPSI, FirstPacket: firstPacket, PAT: s.Syntax.Data.PAT, PID: pid})
+			ds = append(ds, &Data{FirstPacket: firstPacket, PAT: s.Syntax.Data.PAT, PID: pid})
 		case PSITableTypePMT:
-			ds = append(ds, &Data{Kind: DataKindPSI, FirstPacket: firstPacket, PID: pid, PMT: s.Syntax.Data.PMT})
+			ds = append(ds, &Data{FirstPacket: firstPacket, PID: pid, PMT: s.Syntax.Data.PMT})
 		case PSITableTypeSDT:
-			ds = append(ds, &Data{Kind: DataKindPSI, FirstPacket: firstPacket, PID: pid, SDT: s.Syntax.Data.SDT})
+			ds = append(ds, &Data{FirstPacket: firstPacket, PID: pid, SDT: s.Syntax.Data.SDT})
 		case PSITableTypeTOT:
-			ds = append(ds, &Data{Kind: DataKindPSI, FirstPacket: firstPacket, PID: pid, TOT: s.Syntax.Data.TOT})
+			ds = append(ds, &Data{FirstPacket: firstPacket, PID: pid, TOT: s.Syntax.Data.TOT})
 		}
 	}
 	return
@@ -570,6 +570,7 @@ func writePSISectionSyntaxHeader(w *astikit.BitsWriter, h *PSISectionSyntaxHeade
 
 func writePSISectionSyntaxData(w *astikit.BitsWriter, d *PSISectionSyntaxData, tableType string) (int, error) {
 	switch tableType {
+	// TODO write other table types
 	case PSITableTypePAT:
 		return writePATSection(w, d.PAT)
 	case PSITableTypePMT:

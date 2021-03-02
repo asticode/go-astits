@@ -379,7 +379,7 @@ func (m *Muxer) generatePMT() error {
 		Header: &PacketHeader{
 			HasPayload:                true,
 			PayloadUnitStartIndicator: true,
-			PID:                       PMTStartPID, // FIXME
+			PID:                       PMTStartPID, // FIXME multiple programs support
 		},
 		Payload: m.buf.Bytes(),
 	}

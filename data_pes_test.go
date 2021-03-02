@@ -458,7 +458,7 @@ func TestWritePESHeader(t *testing.T) {
 			bufActual := bytes.Buffer{}
 			wActual := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &bufActual})
 
-			n, err := writePESHeader(wActual, tc.pesData.Header, uint16(len(tc.pesData.Data)))
+			n, err := writePESHeader(wActual, tc.pesData.Header, len(tc.pesData.Data))
 			assert.NoError(t, err)
 			assert.Equal(t, n, bufActual.Len())
 			assert.Equal(t, bufExpected.Len(), bufActual.Len())
