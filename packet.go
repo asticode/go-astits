@@ -406,7 +406,7 @@ func calcPacketAdaptationFieldLength(af *PacketAdaptationField) (length uint8) {
 	return
 }
 
-func writePacketAdaptationField(w *astikit.BitsWriter, af *PacketAdaptationField) (writtenBytes int, retErr error) {
+func writePacketAdaptationField(w *astikit.BitsWriter, af *PacketAdaptationField) (bytesWritten int, retErr error) {
 	b := astikit.NewBitsWriterBatch(w)
 
 	if af.IsOneByteStuffing {
@@ -416,7 +416,7 @@ func writePacketAdaptationField(w *astikit.BitsWriter, af *PacketAdaptationField
 
 	length := calcPacketAdaptationFieldLength(af)
 	b.Write(length)
-	writtenBytes++
+	bytesWritten++
 
 	b.Write(af.DiscontinuityIndicator)
 	b.Write(af.RandomAccessIndicator)
@@ -427,14 +427,14 @@ func writePacketAdaptationField(w *astikit.BitsWriter, af *PacketAdaptationField
 	b.Write(af.HasTransportPrivateData)
 	b.Write(af.HasAdaptationExtensionField)
 
-	writtenBytes++
+	bytesWritten++
 
 	if af.HasPCR {
 		n, err := writePCR(w, af.PCR)
 		if err != nil {
 			return 0, err
 		}
-		writtenBytes += n
+		bytesWritten += n
 	}
 
 	if af.HasOPCR {
@@ -442,22 +442,22 @@ func writePacketAdaptationField(w *astikit.BitsWriter, af *PacketAdaptationField
 		if err != nil {
 			return 0, err
 		}
-		writtenBytes += n
+		bytesWritten += n
 	}
 
 	if af.HasSplicingCountdown {
 		b.Write(uint8(af.SpliceCountdown))
-		writtenBytes++
+		bytesWritten++
 	}
 
 	if af.HasTransportPrivateData {
 		// we can get length from TransportPrivateData itself, why do we need separate field?
 		b.Write(uint8(af.TransportPrivateDataLength))
-		writtenBytes++
+		bytesWritten++
 		if af.TransportPrivateDataLength > 0 {
 			b.Write(af.TransportPrivateData)
 		}
-		writtenBytes += len(af.TransportPrivateData)
+		bytesWritten += len(af.TransportPrivateData)
 	}
 
 	if af.HasAdaptationExtensionField {
@@ -465,13 +465,13 @@ func writePacketAdaptationField(w *astikit.BitsWriter, af *PacketAdaptationField
 		if err != nil {
 			return 0, err
 		}
-		writtenBytes += n
+		bytesWritten += n
 	}
 
 	// stuffing
 	for i := 0; i < af.StuffingLength; i++ {
 		b.Write(uint8(0xff))
-		writtenBytes++
+		bytesWritten++
 	}
 
 	retErr = b.Err()
@@ -492,29 +492,29 @@ func calcPacketAdaptationFieldExtensionLength(afe *PacketAdaptationExtensionFiel
 	return length
 }
 
-func writePacketAdaptationFieldExtension(w *astikit.BitsWriter, afe *PacketAdaptationExtensionField) (writtenBytes int, retErr error) {
+func writePacketAdaptationFieldExtension(w *astikit.BitsWriter, afe *PacketAdaptationExtensionField) (bytesWritten int, retErr error) {
 	b := astikit.NewBitsWriterBatch(w)
 
 	length := calcPacketAdaptationFieldExtensionLength(afe)
 	b.Write(length)
-	writtenBytes++
+	bytesWritten++
 
 	b.Write(afe.HasLegalTimeWindow)
 	b.Write(afe.HasPiecewiseRate)
 	b.Write(afe.HasSeamlessSplice)
 	b.WriteN(uint8(0xff), 5) // reserved
-	writtenBytes++
+	bytesWritten++
 
 	if afe.HasLegalTimeWindow {
 		b.Write(afe.LegalTimeWindowIsValid)
 		b.WriteN(afe.LegalTimeWindowOffset, 15)
-		writtenBytes += 2
+		bytesWritten += 2
 	}
 
 	if afe.HasPiecewiseRate {
 		b.WriteN(uint8(0xff), 2)
 		b.WriteN(afe.PiecewiseRate, 22)
-		writtenBytes += 3
+		bytesWritten += 3
 	}
 
 	if afe.HasSeamlessSplice {
@@ -522,7 +522,7 @@ func writePacketAdaptationFieldExtension(w *astikit.BitsWriter, afe *PacketAdapt
 		if err != nil {
 			return 0, err
 		}
-		writtenBytes += n
+		bytesWritten += n
 	}
 
 	retErr = b.Err()

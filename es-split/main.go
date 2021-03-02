@@ -158,7 +158,28 @@ func main() {
 
 		//log.Printf("PID %d Payload start, bytes %s", pid, hex.EncodeToString(d.PES.Data[:32]))
 
-		n, err := mux.WritePayload(pid, d.FirstPacket.AdaptationField, d.PES.Header, d.PES.Data)
+		af := d.FirstPacket.AdaptationField
+
+		if af != nil && af.HasPCR {
+			af.HasPCR = false
+		}
+
+		var pcr *astits.ClockReference
+		if d.PES.Header.OptionalHeader.PTSDTSIndicator == astits.PTSDTSIndicatorBothPresent {
+			pcr = d.PES.Header.OptionalHeader.DTS
+		} else if d.PES.Header.OptionalHeader.PTSDTSIndicator == astits.PTSDTSIndicatorOnlyPTS {
+			pcr = d.PES.Header.OptionalHeader.PTS
+		}
+
+		if pcr != nil {
+			if af == nil {
+				af = &astits.PacketAdaptationField{}
+			}
+			af.HasPCR = true
+			af.PCR = pcr
+		}
+
+		n, err := mux.WritePayload(pid, af, d.PES.Header, d.PES.Data)
 		if err != nil {
 			log.Fatalf("%v", err)
 		}
