@@ -504,11 +504,9 @@ func writePSISection(w *astikit.BitsWriter, s *PSISection) (int, error) {
 	sectionLength := calcPSISectionLength(s)
 	sectionCRC32 := CRC32Polynomial
 
-	sectionbs := []byte{}
 	if hasCRC32(s.Header.TableType) {
 		w.SetWriteCallback(func(bs []byte) {
 			sectionCRC32 = updateCRC32(sectionCRC32, bs)
-			sectionbs = append(sectionbs, bs...)
 		})
 		defer w.SetWriteCallback(nil)
 	}
