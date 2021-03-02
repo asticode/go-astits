@@ -422,6 +422,7 @@ func parseESCR(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 
 // will count how many total bytes and payload bytes will be written when writePESData is called with the same arguments
 // should be used by the caller of writePESData to determine AF stuffing size needed to be applied
+// since the length of video PES packets are often zero, we can't just stuff it with 0xff-s at the end
 func calcPESDataLength(h *PESHeader, payloadLeft []byte, isPayloadStart bool, bytesAvailable int) (totalBytes, payloadBytes int) {
 	totalBytes += PESHeaderLength
 	if isPayloadStart {
@@ -442,22 +443,6 @@ func calcPESDataLength(h *PESHeader, payloadLeft []byte, isPayloadStart bool, by
 // all consequential packets will contain just payload
 // for the last packet caller must add AF with stuffing, see calcPESDataLength
 func writePESData(w *astikit.BitsWriter, h *PESHeader, payloadLeft []byte, isPayloadStart bool, bytesAvailable int) (totalBytesWritten, payloadBytesWritten int, err error) {
-	//headerLength := PESHeaderLength
-	//if isPayloadStart {
-	//	headerLength += int(calcPESOptionalHeaderLength(h.OptionalHeader))
-	//}
-	//if bytesAvailable-headerLength > len(payloadLeft) {
-	//	// XXX i don't like this, it doesn't belong here
-	//	af := &PacketAdaptationField{}
-	//	afLength := 1+int(calcPacketAdaptationFieldLength(af)) // additional 1 byte is for the AF length field
-	//	af.StuffingLength = bytesAvailable - len(payloadLeft) - headerLength - afLength
-	//	n, err = writePacketAdaptationField(w, af)
-	//	if err != nil {
-	//		return
-	//	}
-	//	totalBytesWritten += n
-	//}
-
 	if isPayloadStart {
 		var n int
 		n, err = writePESHeader(w, h, len(payloadLeft))
