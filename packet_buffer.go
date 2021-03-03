@@ -82,7 +82,8 @@ func autoDetectPacketSize(r io.Reader) (packetSize int, err error) {
 	return
 }
 
-// bufio.Reader can't be rewinded, but it has handy Peek() method, which leads to packet loss on packet size autodetection
+// bufio.Reader can't be rewinded, which leads to packet loss on packet size autodetection
+// but it has handy Peek() method
 // so what we do here is peeking bytes for bufio.Reader and falling back to rewinding/syncing for all other readers
 func read(r io.Reader, b []byte) (shouldRewind bool, err error) {
 	if br, ok := r.(*bufio.Reader); ok {
