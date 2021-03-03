@@ -50,7 +50,6 @@ func main() {
 	demux := astits.New(
 		context.Background(),
 		bufio.NewReaderSize(infile, ioBufSize),
-		astits.OptFlushPacketPoolOnPIDChange(true),
 	)
 
 	var pat *astits.PATData
@@ -185,13 +184,11 @@ func main() {
 		}
 
 		bytesWritten += n
-		timeDiff := time.Since(lastRateOutput)
-		if timeDiff > 5*time.Second {
-			lastRateOutput = time.Now()
-			log.Printf("%.02f mb/s", (float64(bytesWritten)/1024.0/1024.0)/timeDiff.Seconds())
-			bytesWritten = 0
-		}
 	}
+
+	timeDiff := time.Since(lastRateOutput)
+	lastRateOutput = time.Now()
+	log.Printf("%d bytes written at rate %.02f mb/s", bytesWritten, (float64(bytesWritten)/1024.0/1024.0)/timeDiff.Seconds())
 
 	for _, f := range outfiles {
 		if err = f.w.Flush(); err != nil {
