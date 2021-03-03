@@ -21,15 +21,14 @@ var (
 // http://seidl.cs.vsb.cz/download/dvb/DVB_Poster.pdf
 // http://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.13.01_40/en_300468v011301o.pdf
 type Demuxer struct {
-	ctx                           context.Context
-	dataBuffer                    []*Data
-	optPacketSize                 int
-	optPacketsParser              PacketsParser
-	packetBuffer                  *packetBuffer
-	packetPool                    *packetPool
-	programMap                    programMap
-	r                             io.Reader
-	optFlushPacketPoolOnPIDChange bool
+	ctx              context.Context
+	dataBuffer       []*Data
+	optPacketSize    int
+	optPacketsParser PacketsParser
+	packetBuffer     *packetBuffer
+	packetPool       *packetPool
+	programMap       programMap
+	r                io.Reader
 }
 
 // PacketsParser represents an object capable of parsing a set of packets containing a unique payload spanning over those packets
@@ -41,6 +40,7 @@ func New(ctx context.Context, r io.Reader, opts ...func(*Demuxer)) (d *Demuxer) 
 	// Init
 	d = &Demuxer{
 		ctx:        ctx,
+		packetPool: newPacketPool(),
 		programMap: newProgramMap(),
 		r:          r,
 	}
@@ -50,8 +50,6 @@ func New(ctx context.Context, r io.Reader, opts ...func(*Demuxer)) (d *Demuxer) 
 		opt(d)
 	}
 
-	d.packetPool = newPacketPool(d.optFlushPacketPoolOnPIDChange)
-
 	return
 }
 
@@ -59,12 +57,6 @@ func New(ctx context.Context, r io.Reader, opts ...func(*Demuxer)) (d *Demuxer) 
 func OptPacketSize(packetSize int) func(*Demuxer) {
 	return func(d *Demuxer) {
 		d.optPacketSize = packetSize
-	}
-}
-
-func OptFlushPacketPoolOnPIDChange(flag bool) func(*Demuxer) {
-	return func(d *Demuxer) {
-		d.optFlushPacketPoolOnPIDChange = flag
 	}
 }
 
@@ -188,7 +180,7 @@ func (dmx *Demuxer) updateData(ds []*Data) (d *Data) {
 func (dmx *Demuxer) Rewind() (n int64, err error) {
 	dmx.dataBuffer = []*Data{}
 	dmx.packetBuffer = nil
-	dmx.packetPool = newPacketPool(dmx.optFlushPacketPoolOnPIDChange)
+	dmx.packetPool = newPacketPool()
 	if n, err = rewind(dmx.r); err != nil {
 		err = fmt.Errorf("astits: rewinding reader failed: %w", err)
 		return
