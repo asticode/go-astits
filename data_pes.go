@@ -474,7 +474,7 @@ func writePESHeader(w *astikit.BitsWriter, h *PESHeader, payloadSize int) (int, 
 
 	pesPacketLength := 0
 
-	if !isVideoStreamId(h.StreamID) {
+	if !PESIsVideoStreamId(h.StreamID) {
 		pesPacketLength = payloadSize
 		if hasPESOptionalHeader(h.StreamID) {
 			pesPacketLength += int(calcPESOptionalHeaderLength(h.OptionalHeader))
@@ -741,7 +741,7 @@ func writePTSOrDTS(w *astikit.BitsWriter, flag uint8, cr *ClockReference) (bytes
 	return PTSorDTSByteLength, b.Err()
 }
 
-func isVideoStreamId(pesStreamId uint8) bool {
+func PESIsVideoStreamId(pesStreamId uint8) bool {
 	return pesStreamId == 0xe0 ||
 		pesStreamId == 0xfd
 }
