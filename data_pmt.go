@@ -6,31 +6,33 @@ import (
 	"github.com/asticode/go-astikit"
 )
 
+type StreamType uint8
+
 // Stream types
 const (
-	StreamTypeMPEG1Video                 = 0x01
-	StreamTypeMPEG2Video                 = 0x02
-	StreamTypeMPEG1Audio                 = 0x03 // ISO/IEC 11172-3
-	StreamTypeMPEG2HalvedSampleRateAudio = 0x04 // ISO/IEC 13818-3
-	StreamTypeMPEG2Audio                 = 0x04
-	StreamTypePrivateSection             = 0x05
-	StreamTypePrivateData                = 0x06
-	StreamTypeMPEG2PacketizedData        = 0x06 // Rec. ITU-T H.222 | ISO/IEC 13818-1 i.e., DVB subtitles/VBI and AC-3
-	StreamTypeADTS                       = 0x0F // ISO/IEC 13818-7 Audio with ADTS transport syntax
-	StreamTypeAACAudio                   = 0x0f
-	StreamTypeMPEG4Video                 = 0x10
-	StreamTypeAACLATMAudio               = 0x11
-	StreamTypeMetadata                   = 0x15
-	StreamTypeH264Video                  = 0x1B // Rec. ITU-T H.264 | ISO/IEC 14496-10
-	StreamTypeH265Video                  = 0x24 // Rec. ITU-T H.265 | ISO/IEC 23008-2
-	StreamTypeHEVCVideo                  = 0x24
-	StreamTypeCAVSVideo                  = 0x42
-	StreamTypeVC1Video                   = 0xea
-	StreamTypeDIRACVideo                 = 0xd1
-	StreamTypeAC3Audio                   = 0x81
-	StreamTypeDTSAudio                   = 0x82
-	StreamTypeTRUEHDAudio                = 0x83
-	StreamTypeEAC3Audio                  = 0x87
+	StreamTypeMPEG1Video                 StreamType = 0x01
+	StreamTypeMPEG2Video                 StreamType = 0x02
+	StreamTypeMPEG1Audio                 StreamType = 0x03 // ISO/IEC 11172-3
+	StreamTypeMPEG2HalvedSampleRateAudio StreamType = 0x04 // ISO/IEC 13818-3
+	StreamTypeMPEG2Audio                 StreamType = 0x04
+	StreamTypePrivateSection             StreamType = 0x05
+	StreamTypePrivateData                StreamType = 0x06
+	StreamTypeMPEG2PacketizedData        StreamType = 0x06 // Rec. ITU-T H.222 | ISO/IEC 13818-1 i.e., DVB subtitles/VBI and AC-3
+	StreamTypeADTS                       StreamType = 0x0F // ISO/IEC 13818-7 Audio with ADTS transport syntax
+	StreamTypeAACAudio                   StreamType = 0x0f
+	StreamTypeMPEG4Video                 StreamType = 0x10
+	StreamTypeAACLATMAudio               StreamType = 0x11
+	StreamTypeMetadata                   StreamType = 0x15
+	StreamTypeH264Video                  StreamType = 0x1B // Rec. ITU-T H.264 | ISO/IEC 14496-10
+	StreamTypeH265Video                  StreamType = 0x24 // Rec. ITU-T H.265 | ISO/IEC 23008-2
+	StreamTypeHEVCVideo                  StreamType = 0x24
+	StreamTypeCAVSVideo                  StreamType = 0x42
+	StreamTypeVC1Video                   StreamType = 0xea
+	StreamTypeDIRACVideo                 StreamType = 0xd1
+	StreamTypeAC3Audio                   StreamType = 0x81
+	StreamTypeDTSAudio                   StreamType = 0x82
+	StreamTypeTRUEHDAudio                StreamType = 0x83
+	StreamTypeEAC3Audio                  StreamType = 0x87
 )
 
 // PMTData represents a PMT data
@@ -46,7 +48,7 @@ type PMTData struct {
 type PMTElementaryStream struct {
 	ElementaryPID               uint16        // The packet identifier that contains the stream type data.
 	ElementaryStreamDescriptors []*Descriptor // Elementary stream descriptors
-	StreamType                  uint8         // This defines the structure of the data contained within the elementary packet identifier.
+	StreamType                  StreamType    // This defines the structure of the data contained within the elementary packet identifier.
 }
 
 // parsePMTSection parses a PMT section
@@ -83,7 +85,7 @@ func parsePMTSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 		}
 
 		// Stream type
-		e.StreamType = uint8(b)
+		e.StreamType = StreamType(b)
 
 		// Get next bytes
 		if bs, err = i.NextBytes(2); err != nil {
@@ -146,7 +148,7 @@ func writePMTSection(w *astikit.BitsWriter, d *PMTData) (int, error) {
 	bytesWritten += n
 
 	for _, es := range d.ElementaryStreams {
-		b.Write(es.StreamType)
+		b.Write(uint8(es.StreamType))
 		b.WriteN(uint8(0xff), 3)
 		b.WriteN(es.ElementaryPID, 13)
 		bytesWritten += 3
@@ -161,8 +163,8 @@ func writePMTSection(w *astikit.BitsWriter, d *PMTData) (int, error) {
 	return bytesWritten, b.Err()
 }
 
-func StreamTypeIsVideo(streamType uint8) bool {
-	switch streamType {
+func (t StreamType) IsVideo() bool {
+	switch t {
 	case StreamTypeMPEG1Video,
 		StreamTypeMPEG2Video,
 		StreamTypeMPEG4Video,
@@ -176,8 +178,8 @@ func StreamTypeIsVideo(streamType uint8) bool {
 	return false
 }
 
-func StreamTypeIsAudio(streamType uint8) bool {
-	switch streamType {
+func (t StreamType) IsAudio() bool {
+	switch t {
 	case StreamTypeMPEG1Audio,
 		StreamTypeMPEG2Audio,
 		StreamTypeAACAudio,
@@ -191,8 +193,8 @@ func StreamTypeIsAudio(streamType uint8) bool {
 	return false
 }
 
-func StreamTypeString(streamType uint8) string {
-	switch streamType {
+func (t StreamType) String() string {
+	switch t {
 	case StreamTypeMPEG1Video:
 		return "MPEG1 Video"
 	case StreamTypeMPEG2Video:

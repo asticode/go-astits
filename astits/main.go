@@ -347,9 +347,9 @@ type Program struct {
 
 // Stream represents a stream
 type Stream struct {
-	Descriptors []string `json:"descriptors,omitempty"`
-	ID          uint16   `json:"id,omitempty"`
-	Type        uint8    `json:"type,omitempty"`
+	Descriptors []string          `json:"descriptors,omitempty"`
+	ID          uint16            `json:"id,omitempty"`
+	Type        astits.StreamType `json:"type,omitempty"`
 }
 
 func newProgram(id, mapID uint16) *Program {
@@ -359,7 +359,7 @@ func newProgram(id, mapID uint16) *Program {
 	}
 }
 
-func newStream(id uint16, _type uint8) *Stream {
+func newStream(id uint16, _type astits.StreamType) *Stream {
 	return &Stream{
 		ID:   id,
 		Type: _type,

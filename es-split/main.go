@@ -130,7 +130,7 @@ func main() {
 
 					if !pmtsPrinted {
 						log.Printf("\t\tES PID %d type %s",
-							es.ElementaryPID, astits.StreamTypeString(es.StreamType),
+							es.ElementaryPID, es.StreamType.String(),
 						)
 					}
 				}

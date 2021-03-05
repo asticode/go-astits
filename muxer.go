@@ -298,7 +298,7 @@ func (m *Muxer) generatePAT() error {
 		Header: &PSISectionHeader{
 			SectionLength:          calcPATSectionLength(d),
 			SectionSyntaxIndicator: true,
-			TableID:                int(d.TransportStreamID),
+			TableID:                PSITableTypeId(d.TransportStreamID),
 		},
 		Syntax: syntax,
 	}
@@ -392,7 +392,7 @@ func (m *Muxer) generatePMT() error {
 }
 
 // TODO move it somewhere
-func pmtStreamTypeToPESStreamID(pmtStreamType uint8) uint8 {
+func pmtStreamTypeToPESStreamID(pmtStreamType StreamType) uint8 {
 	switch pmtStreamType {
 	case StreamTypeMPEG1Video, StreamTypeMPEG2Video, StreamTypeMPEG4Video, StreamTypeH264Video,
 		StreamTypeH265Video, StreamTypeCAVSVideo, StreamTypeVC1Video:
