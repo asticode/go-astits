@@ -69,7 +69,7 @@ func TestDemuxerNextData(t *testing.T) {
 	// Next data
 	var ds []*Data
 	for _, s := range psi.Sections {
-		if s.Header.TableType != PSITableTypeUnknown {
+		if !s.Header.TableID.isUnknown() {
 			d, err := dmx.NextData()
 			assert.NoError(t, err)
 			ds = append(ds, d)
