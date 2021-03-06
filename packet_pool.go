@@ -12,8 +12,6 @@ type packetPool struct {
 }
 
 // newPacketPool creates a new packet pool
-// flushOnPIDChange controls whether add() will return packets to parse on PID change.
-//   this allows not to skip tables which fit in one packet
 func newPacketPool() *packetPool {
 	return &packetPool{
 		b: make(map[uint16][]*Packet),
