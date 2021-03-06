@@ -155,8 +155,6 @@ func main() {
 			continue
 		}
 
-		//log.Printf("PID %d Payload start, bytes %s", pid, hex.EncodeToString(d.PES.Data[:32]))
-
 		af := d.FirstPacket.AdaptationField
 
 		if af != nil && af.HasPCR {
