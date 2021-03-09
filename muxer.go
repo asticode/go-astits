@@ -298,7 +298,7 @@ func (m *Muxer) generatePAT() error {
 		Header: &PSISectionHeader{
 			SectionLength:          calcPATSectionLength(d),
 			SectionSyntaxIndicator: true,
-			TableID:                PSITableTypeId(d.TransportStreamID),
+			TableID:                PSITableTypeID(d.TransportStreamID),
 		},
 		Syntax: syntax,
 	}
@@ -358,7 +358,7 @@ func (m *Muxer) generatePMT() error {
 		Header: &PSISectionHeader{
 			SectionLength:          calcPMTSectionLength(&m.pmt),
 			SectionSyntaxIndicator: true,
-			TableID:                PSITableTypeIdPMT,
+			TableID:                PSITableTypeIDPMT,
 		},
 		Syntax: syntax,
 	}

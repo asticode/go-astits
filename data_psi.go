@@ -24,26 +24,26 @@ const (
 	PSITableTypeUnknown = "Unknown"
 )
 
-type PSITableTypeId uint16
+type PSITableTypeID uint16
 
 const (
-	PSITableTypeIdPAT  PSITableTypeId = 0x00
-	PSITableTypeIdPMT  PSITableTypeId = 0x02
-	PSITableTypeIdBAT  PSITableTypeId = 0x4a
-	PSITableTypeIdDIT  PSITableTypeId = 0x7e
-	PSITableTypeIdRST  PSITableTypeId = 0x71
-	PSITableTypeIdSIT  PSITableTypeId = 0x7f
-	PSITableTypeIdST   PSITableTypeId = 0x72
-	PSITableTypeIdTDT  PSITableTypeId = 0x70
-	PSITableTypeIdTOT  PSITableTypeId = 0x73
-	PSITableTypeIdNull PSITableTypeId = 0xff
+	PSITableTypeIDPAT  PSITableTypeID = 0x00
+	PSITableTypeIDPMT  PSITableTypeID = 0x02
+	PSITableTypeIDBAT  PSITableTypeID = 0x4a
+	PSITableTypeIDDIT  PSITableTypeID = 0x7e
+	PSITableTypeIDRST  PSITableTypeID = 0x71
+	PSITableTypeIDSIT  PSITableTypeID = 0x7f
+	PSITableTypeIDST   PSITableTypeID = 0x72
+	PSITableTypeIDTDT  PSITableTypeID = 0x70
+	PSITableTypeIDTOT  PSITableTypeID = 0x73
+	PSITableTypeIDNull PSITableTypeID = 0xff
 
-	PSITableTypeIdEITStart    PSITableTypeId = 0x4e
-	PSITableTypeIdEITEnd      PSITableTypeId = 0x6f
-	PSITableTypeIdSDTVariant1 PSITableTypeId = 0x42
-	PSITableTypeIdSDTVariant2 PSITableTypeId = 0x46
-	PSITableTypeIdNITVariant1 PSITableTypeId = 0x40
-	PSITableTypeIdNITVariant2 PSITableTypeId = 0x41
+	PSITableTypeIDEITStart    PSITableTypeID = 0x4e
+	PSITableTypeIDEITEnd      PSITableTypeID = 0x6f
+	PSITableTypeIDSDTVariant1 PSITableTypeID = 0x42
+	PSITableTypeIDSDTVariant2 PSITableTypeID = 0x46
+	PSITableTypeIDNITVariant1 PSITableTypeID = 0x40
+	PSITableTypeIDNITVariant2 PSITableTypeID = 0x41
 )
 
 // PSIData represents a PSI data
@@ -65,7 +65,7 @@ type PSISectionHeader struct {
 	PrivateBit             bool           // The PAT, PMT, and CAT all set this to 0. Other tables set this to 1.
 	SectionLength          uint16         // The number of bytes that follow for the syntax section (with CRC value) and/or table data. These bytes must not exceed a value of 1021.
 	SectionSyntaxIndicator bool           // A flag that indicates if the syntax section follows the section length. The PAT, PMT, and CAT all set this to 1.
-	TableID                PSITableTypeId // Table Identifier, that defines the structure of the syntax section and other contained data. As an exception, if this is the byte that immediately follow previous table section and is set to 0xFF, then it indicates that the repeat of table section end here and the rest of TS data payload shall be stuffed with 0xFF. Consequently the value 0xFF shall not be used for the Table Identifier.
+	TableID                PSITableTypeID // Table Identifier, that defines the structure of the syntax section and other contained data. As an exception, if this is the byte that immediately follow previous table section and is set to 0xFF, then it indicates that the repeat of table section end here and the rest of TS data payload shall be stuffed with 0xFF. Consequently the value 0xFF shall not be used for the Table Identifier.
 	TableType              string
 }
 
@@ -198,8 +198,8 @@ func parseCRC32(i *astikit.BytesIterator) (c uint32, err error) {
 }
 
 // shouldStopPSIParsing checks whether the PSI parsing should be stopped
-func shouldStopPSIParsing(tableID PSITableTypeId) bool {
-	return tableID == PSITableTypeIdNull ||
+func shouldStopPSIParsing(tableID PSITableTypeID) bool {
+	return tableID == PSITableTypeIDNull ||
 		tableID.isUnknown()
 }
 
@@ -217,7 +217,7 @@ func parsePSISectionHeader(i *astikit.BytesIterator) (h *PSISectionHeader, offse
 	}
 
 	// Table ID
-	h.TableID = PSITableTypeId(b)
+	h.TableID = PSITableTypeID(b)
 
 	// Table type
 	h.TableType = h.TableID.String()
@@ -256,33 +256,33 @@ func parsePSISectionHeader(i *astikit.BytesIterator) (h *PSISectionHeader, offse
 // psiTableType returns the psi table type based on the table id
 // Page: 28 | https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
 // (barbashov) the link above can be broken, alternative: https://dvb.org/wp-content/uploads/2019/12/a038_tm1217r37_en300468v1_17_1_-_rev-134_-_si_specification.pdf
-func (t PSITableTypeId) String() string {
+func (t PSITableTypeID) String() string {
 	switch {
-	case t == PSITableTypeIdBAT:
+	case t == PSITableTypeIDBAT:
 		return PSITableTypeBAT
-	case t >= PSITableTypeIdEITStart && t <= PSITableTypeIdEITEnd:
+	case t >= PSITableTypeIDEITStart && t <= PSITableTypeIDEITEnd:
 		return PSITableTypeEIT
-	case t == PSITableTypeIdDIT:
+	case t == PSITableTypeIDDIT:
 		return PSITableTypeDIT
-	case t == PSITableTypeIdNITVariant1, t == PSITableTypeIdNITVariant2:
+	case t == PSITableTypeIDNITVariant1, t == PSITableTypeIDNITVariant2:
 		return PSITableTypeNIT
-	case t == PSITableTypeIdNull:
+	case t == PSITableTypeIDNull:
 		return PSITableTypeNull
-	case t == PSITableTypeIdPAT:
+	case t == PSITableTypeIDPAT:
 		return PSITableTypePAT
-	case t == PSITableTypeIdPMT:
+	case t == PSITableTypeIDPMT:
 		return PSITableTypePMT
-	case t == PSITableTypeIdRST:
+	case t == PSITableTypeIDRST:
 		return PSITableTypeRST
-	case t == PSITableTypeIdSDTVariant1, t == PSITableTypeIdSDTVariant2:
+	case t == PSITableTypeIDSDTVariant1, t == PSITableTypeIDSDTVariant2:
 		return PSITableTypeSDT
-	case t == PSITableTypeIdSIT:
+	case t == PSITableTypeIDSIT:
 		return PSITableTypeSIT
-	case t == PSITableTypeIdST:
+	case t == PSITableTypeIDST:
 		return PSITableTypeST
-	case t == PSITableTypeIdTDT:
+	case t == PSITableTypeIDTDT:
 		return PSITableTypeTDT
-	case t == PSITableTypeIdTOT:
+	case t == PSITableTypeIDTOT:
 		return PSITableTypeTOT
 	default:
 		return PSITableTypeUnknown
@@ -290,41 +290,41 @@ func (t PSITableTypeId) String() string {
 }
 
 // hasPSISyntaxHeader checks whether the section has a syntax header
-func (t PSITableTypeId) hasPSISyntaxHeader() bool {
-	return t == PSITableTypeIdPAT ||
-		t == PSITableTypeIdPMT ||
-		t == PSITableTypeIdNITVariant1 || t == PSITableTypeIdNITVariant2 ||
-		t == PSITableTypeIdSDTVariant1 || t == PSITableTypeIdSDTVariant2 ||
-		(t >= PSITableTypeIdEITStart && t <= PSITableTypeIdEITEnd)
+func (t PSITableTypeID) hasPSISyntaxHeader() bool {
+	return t == PSITableTypeIDPAT ||
+		t == PSITableTypeIDPMT ||
+		t == PSITableTypeIDNITVariant1 || t == PSITableTypeIDNITVariant2 ||
+		t == PSITableTypeIDSDTVariant1 || t == PSITableTypeIDSDTVariant2 ||
+		(t >= PSITableTypeIDEITStart && t <= PSITableTypeIDEITEnd)
 }
 
 // hasCRC32 checks whether the table has a CRC32
-func (t PSITableTypeId) hasCRC32() bool {
-	return t == PSITableTypeIdPAT ||
-		t == PSITableTypeIdPMT ||
-		t == PSITableTypeIdTOT ||
-		t == PSITableTypeIdNITVariant1 || t == PSITableTypeIdNITVariant2 ||
-		t == PSITableTypeIdSDTVariant1 || t == PSITableTypeIdSDTVariant2 ||
-		(t >= PSITableTypeIdEITStart && t <= PSITableTypeIdEITEnd)
+func (t PSITableTypeID) hasCRC32() bool {
+	return t == PSITableTypeIDPAT ||
+		t == PSITableTypeIDPMT ||
+		t == PSITableTypeIDTOT ||
+		t == PSITableTypeIDNITVariant1 || t == PSITableTypeIDNITVariant2 ||
+		t == PSITableTypeIDSDTVariant1 || t == PSITableTypeIDSDTVariant2 ||
+		(t >= PSITableTypeIDEITStart && t <= PSITableTypeIDEITEnd)
 }
 
-func (t PSITableTypeId) isUnknown() bool {
+func (t PSITableTypeID) isUnknown() bool {
 	switch t {
-	case PSITableTypeIdBAT,
-		PSITableTypeIdDIT,
-		PSITableTypeIdNITVariant1, PSITableTypeIdNITVariant2,
-		PSITableTypeIdNull,
-		PSITableTypeIdPAT,
-		PSITableTypeIdPMT,
-		PSITableTypeIdRST,
-		PSITableTypeIdSDTVariant1, PSITableTypeIdSDTVariant2,
-		PSITableTypeIdSIT,
-		PSITableTypeIdST,
-		PSITableTypeIdTDT,
-		PSITableTypeIdTOT:
+	case PSITableTypeIDBAT,
+		PSITableTypeIDDIT,
+		PSITableTypeIDNITVariant1, PSITableTypeIDNITVariant2,
+		PSITableTypeIDNull,
+		PSITableTypeIDPAT,
+		PSITableTypeIDPMT,
+		PSITableTypeIDRST,
+		PSITableTypeIDSDTVariant1, PSITableTypeIDSDTVariant2,
+		PSITableTypeIDSIT,
+		PSITableTypeIDST,
+		PSITableTypeIDTDT,
+		PSITableTypeIDTOT:
 		return false
 	}
-	if t >= PSITableTypeIdEITStart && t <= PSITableTypeIdEITEnd {
+	if t >= PSITableTypeIDEITStart && t <= PSITableTypeIDEITEnd {
 		return false
 	}
 	return true
@@ -406,46 +406,46 @@ func parsePSISectionSyntaxData(i *astikit.BytesIterator, h *PSISectionHeader, sh
 
 	// Switch on table type
 	switch h.TableID {
-	case PSITableTypeIdBAT:
+	case PSITableTypeIDBAT:
 		// TODO Parse BAT
-	case PSITableTypeIdDIT:
+	case PSITableTypeIDDIT:
 		// TODO Parse DIT
-	case PSITableTypeIdNITVariant1, PSITableTypeIdNITVariant2:
+	case PSITableTypeIDNITVariant1, PSITableTypeIDNITVariant2:
 		if d.NIT, err = parseNITSection(i, sh.TableIDExtension); err != nil {
 			err = fmt.Errorf("astits: parsing NIT section failed: %w", err)
 			return
 		}
-	case PSITableTypeIdPAT:
+	case PSITableTypeIDPAT:
 		if d.PAT, err = parsePATSection(i, offsetSectionsEnd, sh.TableIDExtension); err != nil {
 			err = fmt.Errorf("astits: parsing PAT section failed: %w", err)
 			return
 		}
-	case PSITableTypeIdPMT:
+	case PSITableTypeIDPMT:
 		if d.PMT, err = parsePMTSection(i, offsetSectionsEnd, sh.TableIDExtension); err != nil {
 			err = fmt.Errorf("astits: parsing PMT section failed: %w", err)
 			return
 		}
-	case PSITableTypeIdRST:
+	case PSITableTypeIDRST:
 		// TODO Parse RST
-	case PSITableTypeIdSDTVariant1, PSITableTypeIdSDTVariant2:
+	case PSITableTypeIDSDTVariant1, PSITableTypeIDSDTVariant2:
 		if d.SDT, err = parseSDTSection(i, offsetSectionsEnd, sh.TableIDExtension); err != nil {
 			err = fmt.Errorf("astits: parsing PMT section failed: %w", err)
 			return
 		}
-	case PSITableTypeIdSIT:
+	case PSITableTypeIDSIT:
 		// TODO Parse SIT
-	case PSITableTypeIdST:
+	case PSITableTypeIDST:
 		// TODO Parse ST
-	case PSITableTypeIdTOT:
+	case PSITableTypeIDTOT:
 		if d.TOT, err = parseTOTSection(i); err != nil {
 			err = fmt.Errorf("astits: parsing TOT section failed: %w", err)
 			return
 		}
-	case PSITableTypeIdTDT:
+	case PSITableTypeIDTDT:
 		// TODO Parse TDT
 	}
 
-	if h.TableID >= PSITableTypeIdEITStart && h.TableID <= PSITableTypeIdEITEnd {
+	if h.TableID >= PSITableTypeIDEITStart && h.TableID <= PSITableTypeIDEITEnd {
 		if d.EIT, err = parseEITSection(i, offsetSectionsEnd, sh.TableIDExtension); err != nil {
 			err = fmt.Errorf("astits: parsing EIT section failed: %w", err)
 			return
@@ -461,18 +461,18 @@ func (d *PSIData) toData(firstPacket *Packet, pid uint16) (ds []*Data) {
 	for _, s := range d.Sections {
 		// Switch on table type
 		switch s.Header.TableID {
-		case PSITableTypeIdNITVariant1, PSITableTypeIdNITVariant2:
+		case PSITableTypeIDNITVariant1, PSITableTypeIDNITVariant2:
 			ds = append(ds, &Data{FirstPacket: firstPacket, NIT: s.Syntax.Data.NIT, PID: pid})
-		case PSITableTypeIdPAT:
+		case PSITableTypeIDPAT:
 			ds = append(ds, &Data{FirstPacket: firstPacket, PAT: s.Syntax.Data.PAT, PID: pid})
-		case PSITableTypeIdPMT:
+		case PSITableTypeIDPMT:
 			ds = append(ds, &Data{FirstPacket: firstPacket, PID: pid, PMT: s.Syntax.Data.PMT})
-		case PSITableTypeIdSDTVariant1, PSITableTypeIdSDTVariant2:
+		case PSITableTypeIDSDTVariant1, PSITableTypeIDSDTVariant2:
 			ds = append(ds, &Data{FirstPacket: firstPacket, PID: pid, SDT: s.Syntax.Data.SDT})
-		case PSITableTypeIdTOT:
+		case PSITableTypeIDTOT:
 			ds = append(ds, &Data{FirstPacket: firstPacket, PID: pid, TOT: s.Syntax.Data.TOT})
 		}
-		if s.Header.TableID >= PSITableTypeIdEITStart && s.Header.TableID <= PSITableTypeIdEITEnd {
+		if s.Header.TableID >= PSITableTypeIDEITStart && s.Header.TableID <= PSITableTypeIDEITEnd {
 			ds = append(ds, &Data{EIT: s.Syntax.Data.EIT, FirstPacket: firstPacket, PID: pid})
 		}
 	}
@@ -510,9 +510,9 @@ func calcPSISectionLength(s *PSISection) uint16 {
 	}
 
 	switch s.Header.TableID {
-	case PSITableTypeIdPAT:
+	case PSITableTypeIDPAT:
 		ret += calcPATSectionLength(s.Syntax.Data.PAT)
-	case PSITableTypeIdPMT:
+	case PSITableTypeIDPMT:
 		ret += calcPMTSectionLength(s.Syntax.Data.PMT)
 	}
 
@@ -524,7 +524,7 @@ func calcPSISectionLength(s *PSISection) uint16 {
 }
 
 func writePSISection(w *astikit.BitsWriter, s *PSISection) (int, error) {
-	if s.Header.TableID != PSITableTypeIdPAT && s.Header.TableID != PSITableTypeIdPMT {
+	if s.Header.TableID != PSITableTypeIDPAT && s.Header.TableID != PSITableTypeIDPMT {
 		return 0, fmt.Errorf("writePSISection: table %s is not implemented", s.Header.TableID.String())
 	}
 
@@ -595,12 +595,12 @@ func writePSISectionSyntaxHeader(w *astikit.BitsWriter, h *PSISectionSyntaxHeade
 	return 5, b.Err()
 }
 
-func writePSISectionSyntaxData(w *astikit.BitsWriter, d *PSISectionSyntaxData, tableID PSITableTypeId) (int, error) {
+func writePSISectionSyntaxData(w *astikit.BitsWriter, d *PSISectionSyntaxData, tableID PSITableTypeID) (int, error) {
 	switch tableID {
 	// TODO write other table types
-	case PSITableTypeIdPAT:
+	case PSITableTypeIDPAT:
 		return writePATSection(w, d.PAT)
-	case PSITableTypeIdPMT:
+	case PSITableTypeIDPMT:
 		return writePMTSection(w, d.PMT)
 	}
 

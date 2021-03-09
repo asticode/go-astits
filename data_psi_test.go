@@ -220,25 +220,25 @@ func TestParsePSISectionHeader(t *testing.T) {
 }
 
 func TestPSITableType(t *testing.T) {
-	for i := PSITableTypeIdEITStart; i <= PSITableTypeIdEITEnd; i++ {
+	for i := PSITableTypeIDEITStart; i <= PSITableTypeIDEITEnd; i++ {
 		assert.Equal(t, PSITableTypeEIT, i.String())
 	}
-	assert.Equal(t, PSITableTypeDIT, PSITableTypeIdDIT.String())
-	assert.Equal(t, PSITableTypeNIT, PSITableTypeIdNITVariant1.String())
-	assert.Equal(t, PSITableTypeNIT, PSITableTypeIdNITVariant2.String())
-	assert.Equal(t, PSITableTypeSDT, PSITableTypeIdSDTVariant1.String())
-	assert.Equal(t, PSITableTypeSDT, PSITableTypeIdSDTVariant2.String())
+	assert.Equal(t, PSITableTypeDIT, PSITableTypeIDDIT.String())
+	assert.Equal(t, PSITableTypeNIT, PSITableTypeIDNITVariant1.String())
+	assert.Equal(t, PSITableTypeNIT, PSITableTypeIDNITVariant2.String())
+	assert.Equal(t, PSITableTypeSDT, PSITableTypeIDSDTVariant1.String())
+	assert.Equal(t, PSITableTypeSDT, PSITableTypeIDSDTVariant2.String())
 
-	assert.Equal(t, PSITableTypeBAT, PSITableTypeIdBAT.String())
-	assert.Equal(t, PSITableTypeNull, PSITableTypeIdNull.String())
-	assert.Equal(t, PSITableTypePAT, PSITableTypeIdPAT.String())
-	assert.Equal(t, PSITableTypePMT, PSITableTypeIdPMT.String())
-	assert.Equal(t, PSITableTypeRST, PSITableTypeIdRST.String())
-	assert.Equal(t, PSITableTypeSIT, PSITableTypeIdSIT.String())
-	assert.Equal(t, PSITableTypeST, PSITableTypeIdST.String())
-	assert.Equal(t, PSITableTypeTDT, PSITableTypeIdTDT.String())
-	assert.Equal(t, PSITableTypeTOT, PSITableTypeIdTOT.String())
-	assert.Equal(t, PSITableTypeUnknown, PSITableTypeId(1).String())
+	assert.Equal(t, PSITableTypeBAT, PSITableTypeIDBAT.String())
+	assert.Equal(t, PSITableTypeNull, PSITableTypeIDNull.String())
+	assert.Equal(t, PSITableTypePAT, PSITableTypeIDPAT.String())
+	assert.Equal(t, PSITableTypePMT, PSITableTypeIDPMT.String())
+	assert.Equal(t, PSITableTypeRST, PSITableTypeIDRST.String())
+	assert.Equal(t, PSITableTypeSIT, PSITableTypeIDSIT.String())
+	assert.Equal(t, PSITableTypeST, PSITableTypeIDST.String())
+	assert.Equal(t, PSITableTypeTDT, PSITableTypeIDTDT.String())
+	assert.Equal(t, PSITableTypeTOT, PSITableTypeIDTOT.String())
+	assert.Equal(t, PSITableTypeUnknown, PSITableTypeID(1).String())
 }
 
 var psiSectionSyntaxHeader = &PSISectionSyntaxHeader{

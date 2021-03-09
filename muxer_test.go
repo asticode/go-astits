@@ -21,7 +21,7 @@ func patExpectedBytes(versionNumber uint8) []byte {
 	w.Write("1011")          // Syntax section indicator, private bit, reserved
 	w.WriteN(uint16(13), 12) // Section length
 
-	w.Write(uint16(PSITableTypeIdPAT))
+	w.Write(uint16(PSITableTypeIDPAT))
 	w.Write("11")              // Reserved bits
 	w.WriteN(versionNumber, 5) // Version number
 	w.Write("1")               // Current/next indicator
@@ -68,7 +68,7 @@ func pmtExpectedBytesVideoOnly(versionNumber uint8) []byte {
 	w.Write("0001") // no scrambling, no AF, payload present
 	w.Write("0000") // CC
 
-	w.Write(uint16(PSITableTypeIdPMT)) // Table ID
+	w.Write(uint16(PSITableTypeIDPMT)) // Table ID
 	w.Write("1011")                    // Syntax section indicator, private bit, reserved
 	w.WriteN(uint16(18), 12)           // Section length
 
@@ -108,7 +108,7 @@ func pmtExpectedBytesVideoAndAudio(versionNumber uint8) []byte {
 	w.Write("0001") // no scrambling, no AF, payload present
 	w.Write("0000") // CC
 
-	w.Write(uint16(PSITableTypeIdPMT)) // Table ID
+	w.Write(uint16(PSITableTypeIDPMT)) // Table ID
 	w.Write("1011")                    // Syntax section indicator, private bit, reserved
 	w.WriteN(uint16(23), 12)           // Section length
 
