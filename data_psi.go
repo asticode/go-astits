@@ -220,7 +220,7 @@ func parsePSISectionHeader(i *astikit.BytesIterator) (h *PSISectionHeader, offse
 	h.TableID = PSITableTypeID(b)
 
 	// Table type
-	h.TableType = h.TableID.String()
+	h.TableType = h.TableID.Type()
 
 	// Check whether we need to stop the parsing
 	if shouldStopPSIParsing(h.TableID) {
@@ -253,10 +253,10 @@ func parsePSISectionHeader(i *astikit.BytesIterator) (h *PSISectionHeader, offse
 	return
 }
 
-// psiTableType returns the psi table type based on the table id
+// PSITableTypeID.Type() returns the psi table type based on the table id
 // Page: 28 | https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
 // (barbashov) the link above can be broken, alternative: https://dvb.org/wp-content/uploads/2019/12/a038_tm1217r37_en300468v1_17_1_-_rev-134_-_si_specification.pdf
-func (t PSITableTypeID) String() string {
+func (t PSITableTypeID) Type() string {
 	switch {
 	case t == PSITableTypeIDBAT:
 		return PSITableTypeBAT
@@ -525,7 +525,7 @@ func calcPSISectionLength(s *PSISection) uint16 {
 
 func writePSISection(w *astikit.BitsWriter, s *PSISection) (int, error) {
 	if s.Header.TableID != PSITableTypeIDPAT && s.Header.TableID != PSITableTypeIDPMT {
-		return 0, fmt.Errorf("writePSISection: table %s is not implemented", s.Header.TableID.String())
+		return 0, fmt.Errorf("writePSISection: table %s is not implemented", s.Header.TableID.Type())
 	}
 
 	b := astikit.NewBitsWriterBatch(w)
