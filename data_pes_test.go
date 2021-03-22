@@ -431,7 +431,7 @@ func TestWritePESData(t *testing.T) {
 					tc.pesData.Header,
 					tc.pesData.Data[payloadPos:],
 					start,
-					MpegTsPacketSize-MpegTsPacketHeaderSize,
+					MpegTsPacketSize-mpegTsPacketHeaderSize,
 				)
 				assert.NoError(t, err)
 				start = false

@@ -1,13 +1,13 @@
 package astits
 
 const (
-	CRC32Polynomial = uint32(0xffffffff)
+	crc32Polynomial = uint32(0xffffffff)
 )
 
 // computeCRC32 computes a CRC32
 // https://stackoverflow.com/questions/35034042/how-to-calculate-crc32-in-psi-si-packet
 func computeCRC32(bs []byte) uint32 {
-	return updateCRC32(CRC32Polynomial, bs)
+	return updateCRC32(crc32Polynomial, bs)
 }
 
 func updateCRC32(crc32 uint32, bs []byte) uint32 {

@@ -43,7 +43,7 @@ func (m programMap) toPATData() *PATData {
 
 	d := &PATData{
 		Programs:          []*PATProgram{},
-		TransportStreamID: uint16(PSITableTypeIDPAT),
+		TransportStreamID: uint16(PSITableIDPAT),
 	}
 
 	for pid, pnr := range m.p {

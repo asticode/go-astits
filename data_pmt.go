@@ -236,3 +236,21 @@ func (t StreamType) String() string {
 	}
 	return "Unknown"
 }
+
+func (t StreamType) ToPESStreamID() uint8 {
+	switch t {
+	case StreamTypeMPEG1Video, StreamTypeMPEG2Video, StreamTypeMPEG4Video, StreamTypeH264Video,
+		StreamTypeH265Video, StreamTypeCAVSVideo, StreamTypeVC1Video:
+		return 0xe0
+	case StreamTypeDIRACVideo:
+		return 0xfd
+	case StreamTypeMPEG2Audio, StreamTypeAACAudio, StreamTypeAACLATMAudio:
+		return 0xc0
+	case StreamTypeAC3Audio, StreamTypeEAC3Audio: // m2ts_mode???
+		return 0xfd
+	case StreamTypePrivateSection, StreamTypePrivateData, StreamTypeMetadata:
+		return 0xfc
+	default:
+		return 0xbd
+	}
+}

@@ -21,16 +21,16 @@ func patExpectedBytes(versionNumber uint8) []byte {
 	w.Write("1011")          // Syntax section indicator, private bit, reserved
 	w.WriteN(uint16(13), 12) // Section length
 
-	w.Write(uint16(PSITableTypeIDPAT))
+	w.Write(uint16(PSITableIDPAT))
 	w.Write("11")              // Reserved bits
 	w.WriteN(versionNumber, 5) // Version number
 	w.Write("1")               // Current/next indicator
 	w.Write(uint8(0))          // Section number
 	w.Write(uint8(0))          // Last section number
 
-	w.Write(ProgramNumberStart)
+	w.Write(programNumberStart)
 	w.Write("111") // reserved
-	w.WriteN(PMTStartPID, 13)
+	w.WriteN(pmtStartPID, 13)
 
 	// CRC32
 	if versionNumber == 0 {
@@ -64,15 +64,15 @@ func pmtExpectedBytesVideoOnly(versionNumber uint8) []byte {
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &buf})
 	w.Write(uint8(syncByte))
 	w.Write("010") // no transport error, payload start, no priority
-	w.WriteN(PMTStartPID, 13)
+	w.WriteN(pmtStartPID, 13)
 	w.Write("0001") // no scrambling, no AF, payload present
 	w.Write("0000") // CC
 
-	w.Write(uint16(PSITableTypeIDPMT)) // Table ID
-	w.Write("1011")                    // Syntax section indicator, private bit, reserved
-	w.WriteN(uint16(18), 12)           // Section length
+	w.Write(uint16(PSITableIDPMT)) // Table ID
+	w.Write("1011")                // Syntax section indicator, private bit, reserved
+	w.WriteN(uint16(18), 12)       // Section length
 
-	w.Write(ProgramNumberStart)
+	w.Write(programNumberStart)
 	w.Write("11")              // Reserved bits
 	w.WriteN(versionNumber, 5) // Version number
 	w.Write("1")               // Current/next indicator
@@ -104,15 +104,15 @@ func pmtExpectedBytesVideoAndAudio(versionNumber uint8) []byte {
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &buf})
 	w.Write(uint8(syncByte))
 	w.Write("010") // no transport error, payload start, no priority
-	w.WriteN(PMTStartPID, 13)
+	w.WriteN(pmtStartPID, 13)
 	w.Write("0001") // no scrambling, no AF, payload present
 	w.Write("0000") // CC
 
-	w.Write(uint16(PSITableTypeIDPMT)) // Table ID
-	w.Write("1011")                    // Syntax section indicator, private bit, reserved
-	w.WriteN(uint16(23), 12)           // Section length
+	w.Write(uint16(PSITableIDPMT)) // Table ID
+	w.Write("1011")                // Syntax section indicator, private bit, reserved
+	w.WriteN(uint16(23), 12)       // Section length
 
-	w.Write(ProgramNumberStart)
+	w.Write(programNumberStart)
 	w.Write("11")              // Reserved bits
 	w.WriteN(versionNumber, 5) // Version number
 	w.Write("1")               // Current/next indicator
@@ -201,7 +201,7 @@ func TestMuxer_WriteTables_Error(t *testing.T) {
 	assert.NoError(t, err)
 
 	_, err = muxer.WriteTables()
-	assert.Equal(t, MuxerErrorPCRPIDInvalid, err)
+	assert.Equal(t, ErrPCRPIDInvalid, err)
 }
 
 func TestMuxer_AddElementaryStream(t *testing.T) {
@@ -216,7 +216,7 @@ func TestMuxer_AddElementaryStream(t *testing.T) {
 		ElementaryPID: 0x1234,
 		StreamType:    StreamTypeH264Video,
 	}, true)
-	assert.Equal(t, MuxerErrorPIDAlreadyExists, err)
+	assert.Equal(t, ErrPIDAlreadyExists, err)
 }
 
 func TestMuxer_RemoveElementaryStream(t *testing.T) {
@@ -231,7 +231,7 @@ func TestMuxer_RemoveElementaryStream(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = muxer.RemoveElementaryStream(0x1234)
-	assert.Equal(t, MuxerErrorPIDNotFound, err)
+	assert.Equal(t, ErrPIDNotFound, err)
 }
 
 func testPayload() []byte {

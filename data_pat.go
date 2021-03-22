@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	PATSectionEntryBytesSize = 4 // 16 bits + 3 reserved + 13 bits = 32 bits
+	patSectionEntryBytesSize = 4 // 16 bits + 3 reserved + 13 bits = 32 bits
 )
 
 // PATData represents a PAT data
@@ -59,5 +59,5 @@ func writePATSection(w *astikit.BitsWriter, d *PATData) (int, error) {
 		b.WriteN(p.ProgramMapID, 13)
 	}
 
-	return len(d.Programs) * PATSectionEntryBytesSize, b.Err()
+	return len(d.Programs) * patSectionEntryBytesSize, b.Err()
 }

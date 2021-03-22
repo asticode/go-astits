@@ -37,10 +37,10 @@ const (
 )
 
 const (
-	PESHeaderLength    = 6
-	PTSorDTSByteLength = 5
-	ESCRLength         = 6
-	DSMTrickModeLength = 1
+	pesHeaderLength    = 6
+	ptsOrDTSByteLength = 5
+	escrLength         = 6
+	dsmTrickModeLength = 1
 )
 
 // PESData represents a PES data
@@ -107,6 +107,11 @@ type DSMTrickMode struct {
 	IntraSliceRefresh   uint8
 	RepeatControl       uint8
 	TrickModeControl    uint8
+}
+
+func (h *PESHeader) IsVideoStream() bool {
+	return h.StreamID == 0xe0 ||
+		h.StreamID == 0xfd
 }
 
 // parsePESData parses a PES data
@@ -424,7 +429,7 @@ func parseESCR(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 // should be used by the caller of writePESData to determine AF stuffing size needed to be applied
 // since the length of video PES packets are often zero, we can't just stuff it with 0xff-s at the end
 func calcPESDataLength(h *PESHeader, payloadLeft []byte, isPayloadStart bool, bytesAvailable int) (totalBytes, payloadBytes int) {
-	totalBytes += PESHeaderLength
+	totalBytes += pesHeaderLength
 	if isPayloadStart {
 		totalBytes += int(calcPESOptionalHeaderLength(h.OptionalHeader))
 	}
@@ -474,7 +479,7 @@ func writePESHeader(w *astikit.BitsWriter, h *PESHeader, payloadSize int) (int, 
 
 	pesPacketLength := 0
 
-	if !PESIsVideoStreamID(h.StreamID) {
+	if !h.IsVideoStream() {
 		pesPacketLength = payloadSize
 		if hasPESOptionalHeader(h.StreamID) {
 			pesPacketLength += int(calcPESOptionalHeaderLength(h.OptionalHeader))
@@ -486,7 +491,7 @@ func writePESHeader(w *astikit.BitsWriter, h *PESHeader, payloadSize int) (int, 
 
 	b.Write(uint16(pesPacketLength))
 
-	bytesWritten := PESHeaderLength
+	bytesWritten := pesHeaderLength
 
 	if hasPESOptionalHeader(h.StreamID) {
 		n, err := writePESOptionalHeader(w, h.OptionalHeader)
@@ -508,13 +513,13 @@ func calcPESOptionalHeaderLength(h *PESOptionalHeader) uint8 {
 
 func calcPESOptionalHeaderDataLength(h *PESOptionalHeader) (length uint8) {
 	if h.PTSDTSIndicator == PTSDTSIndicatorOnlyPTS {
-		length += PTSorDTSByteLength
+		length += ptsOrDTSByteLength
 	} else if h.PTSDTSIndicator == PTSDTSIndicatorBothPresent {
-		length += 2 * PTSorDTSByteLength
+		length += 2 * ptsOrDTSByteLength
 	}
 
 	if h.HasESCR {
-		length += ESCRLength
+		length += escrLength
 	}
 
 	if h.HasESRate {
@@ -522,7 +527,7 @@ func calcPESOptionalHeaderDataLength(h *PESOptionalHeader) (length uint8) {
 	}
 
 	if h.HasDSMTrickMode {
-		length += DSMTrickModeLength
+		length += dsmTrickModeLength
 	}
 
 	if h.HasAdditionalCopyInfo {
@@ -708,7 +713,7 @@ func writeDSMTrickMode(w *astikit.BitsWriter, m *DSMTrickMode) (int, error) {
 		b.WriteN(uint8(0xff), 5) // reserved
 	}
 
-	return DSMTrickModeLength, b.Err()
+	return dsmTrickModeLength, b.Err()
 }
 
 func writeESCR(w *astikit.BitsWriter, cr *ClockReference) (int, error) {
@@ -724,7 +729,7 @@ func writeESCR(w *astikit.BitsWriter, cr *ClockReference) (int, error) {
 	b.WriteN(uint64(cr.Extension), 9)
 	b.Write(true)
 
-	return ESCRLength, b.Err()
+	return escrLength, b.Err()
 }
 
 func writePTSOrDTS(w *astikit.BitsWriter, flag uint8, cr *ClockReference) (bytesWritten int, retErr error) {
@@ -738,10 +743,5 @@ func writePTSOrDTS(w *astikit.BitsWriter, flag uint8, cr *ClockReference) (bytes
 	b.WriteN(uint64(cr.Base), 15)
 	b.Write(true)
 
-	return PTSorDTSByteLength, b.Err()
-}
-
-func PESIsVideoStreamID(pesStreamID uint8) bool {
-	return pesStreamID == 0xe0 ||
-		pesStreamID == 0xfd
+	return ptsOrDTSByteLength, b.Err()
 }

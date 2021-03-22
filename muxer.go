@@ -9,15 +9,15 @@ import (
 )
 
 const (
-	StartPID           uint16 = 0x0100
-	PMTStartPID        uint16 = 0x1000
-	ProgramNumberStart uint16 = 1
+	startPID           uint16 = 0x0100
+	pmtStartPID        uint16 = 0x1000
+	programNumberStart uint16 = 1
 )
 
 var (
-	MuxerErrorPIDNotFound      = errors.New("PID not found")
-	MuxerErrorPIDAlreadyExists = errors.New("PID already exists")
-	MuxerErrorPCRPIDInvalid    = errors.New("PCR PID invalid")
+	ErrPIDNotFound      = errors.New("astits: PID not found")
+	ErrPIDAlreadyExists = errors.New("astits: PID already exists")
+	ErrPCRPIDInvalid    = errors.New("astits: PCR PID invalid")
 )
 
 type Muxer struct {
@@ -73,7 +73,7 @@ func NewMuxer(ctx context.Context, w io.Writer, opts ...func(*Muxer)) *Muxer {
 		pm: newProgramMap(),
 		pmt: PMTData{
 			ElementaryStreams: []*PMTElementaryStream{},
-			ProgramNumber:     ProgramNumberStart,
+			ProgramNumber:     programNumberStart,
 		},
 
 		// table version is 5-bit field
@@ -87,7 +87,7 @@ func NewMuxer(ctx context.Context, w io.Writer, opts ...func(*Muxer)) *Muxer {
 	m.bitsWriter = astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: m.w})
 
 	// TODO multiple programs support
-	m.pm.set(PMTStartPID, ProgramNumberStart)
+	m.pm.set(pmtStartPID, programNumberStart)
 
 	for _, opt := range opts {
 		opt(m)
@@ -104,7 +104,7 @@ func (m *Muxer) AddElementaryStream(es PMTElementaryStream, isPCRPid bool) error
 	if es.ElementaryPID != 0 {
 		for _, oes := range m.pmt.ElementaryStreams {
 			if oes.ElementaryPID == es.ElementaryPID {
-				return MuxerErrorPIDAlreadyExists
+				return ErrPIDAlreadyExists
 			}
 		}
 	} else {
@@ -133,7 +133,7 @@ func (m *Muxer) RemoveElementaryStream(pid uint16) error {
 	}
 
 	if foundIdx == -1 {
-		return MuxerErrorPIDNotFound
+		return ErrPIDNotFound
 	}
 
 	m.pmt.ElementaryStreams = append(m.pmt.ElementaryStreams[:foundIdx], m.pmt.ElementaryStreams[foundIdx+1:]...)
@@ -145,7 +145,7 @@ func (m *Muxer) RemoveElementaryStream(pid uint16) error {
 func (m *Muxer) WritePayload(pid uint16, af *PacketAdaptationField, ph *PESHeader, payload []byte) (int, error) {
 	ctx, ok := m.esContexts[pid]
 	if !ok {
-		return 0, MuxerErrorPIDNotFound
+		return 0, ErrPIDNotFound
 	}
 
 	bytesWritten := 0
@@ -162,7 +162,7 @@ func (m *Muxer) WritePayload(pid uint16, af *PacketAdaptationField, ph *PESHeade
 	writeAf := af != nil
 	payloadBytesWritten := 0
 	for payloadBytesWritten < len(payload) {
-		pktLen := 1 + MpegTsPacketHeaderSize // sync byte + header
+		pktLen := 1 + mpegTsPacketHeaderSize // sync byte + header
 		pkt := Packet{
 			Header: &PacketHeader{
 				ContinuityCounter:         uint8(ctx.cc.get()),
@@ -182,7 +182,7 @@ func (m *Muxer) WritePayload(pid uint16, af *PacketAdaptationField, ph *PESHeade
 
 		bytesAvailable := m.packetSize - pktLen
 		if payloadStart {
-			pesHeaderLength := PESHeaderLength + int(calcPESOptionalHeaderLength(ph.OptionalHeader))
+			pesHeaderLength := pesHeaderLength + int(calcPESOptionalHeaderLength(ph.OptionalHeader))
 			// af with pes header are too big, we don't have space to write pes header
 			if bytesAvailable < pesHeaderLength {
 				af.StuffingLength = bytesAvailable
@@ -198,7 +198,7 @@ func (m *Muxer) WritePayload(pid uint16, af *PacketAdaptationField, ph *PESHeade
 		if pkt.Header.HasPayload {
 			m.buf.Reset()
 			if ph.StreamID == 0 {
-				ph.StreamID = pmtStreamTypeToPESStreamID(ctx.es.StreamType)
+				ph.StreamID = ctx.es.StreamType.ToPESStreamID()
 			}
 
 			ntot, npayload, err := writePESData(m.bufWriter, ph, payload[payloadBytesWritten:], payloadStart, bytesAvailable)
@@ -298,7 +298,7 @@ func (m *Muxer) generatePAT() error {
 		Header: &PSISectionHeader{
 			SectionLength:          calcPATSectionLength(d),
 			SectionSyntaxIndicator: true,
-			TableID:                PSITableTypeID(d.TransportStreamID),
+			TableID:                PSITableID(d.TransportStreamID),
 		},
 		Syntax: syntax,
 	}
@@ -340,7 +340,7 @@ func (m *Muxer) generatePMT() error {
 		}
 	}
 	if !hasPCRPID {
-		return MuxerErrorPCRPIDInvalid
+		return ErrPCRPIDInvalid
 	}
 
 	syntax := &PSISectionSyntax{
@@ -358,7 +358,7 @@ func (m *Muxer) generatePMT() error {
 		Header: &PSISectionHeader{
 			SectionLength:          calcPMTSectionLength(&m.pmt),
 			SectionSyntaxIndicator: true,
-			TableID:                PSITableTypeIDPMT,
+			TableID:                PSITableIDPMT,
 		},
 		Syntax: syntax,
 	}
@@ -379,7 +379,7 @@ func (m *Muxer) generatePMT() error {
 		Header: &PacketHeader{
 			HasPayload:                true,
 			PayloadUnitStartIndicator: true,
-			PID:                       PMTStartPID, // FIXME multiple programs support
+			PID:                       pmtStartPID, // FIXME multiple programs support
 		},
 		Payload: m.buf.Bytes(),
 	}
@@ -389,23 +389,4 @@ func (m *Muxer) generatePMT() error {
 	}
 
 	return nil
-}
-
-// TODO move it somewhere
-func pmtStreamTypeToPESStreamID(pmtStreamType StreamType) uint8 {
-	switch pmtStreamType {
-	case StreamTypeMPEG1Video, StreamTypeMPEG2Video, StreamTypeMPEG4Video, StreamTypeH264Video,
-		StreamTypeH265Video, StreamTypeCAVSVideo, StreamTypeVC1Video:
-		return 0xe0
-	case StreamTypeDIRACVideo:
-		return 0xfd
-	case StreamTypeMPEG2Audio, StreamTypeAACAudio, StreamTypeAACLATMAudio:
-		return 0xc0
-	case StreamTypeAC3Audio, StreamTypeEAC3Audio: // m2ts_mode???
-		return 0xfd
-	case StreamTypePrivateSection, StreamTypePrivateData, StreamTypeMetadata:
-		return 0xfc
-	default:
-		return 0xbd
-	}
 }

@@ -15,8 +15,8 @@ const (
 
 const (
 	MpegTsPacketSize       = 188
-	MpegTsPacketHeaderSize = 3
-	PCRBytesSize           = 6
+	mpegTsPacketHeaderSize = 3
+	pcrBytesSize           = 6
 )
 
 // Packet represents a packet
@@ -373,7 +373,7 @@ func writePacketHeader(w *astikit.BitsWriter, h *PacketHeader) (written int, ret
 	b.Write(h.HasPayload)         // adaptation_field_control lower bit
 	b.WriteN(h.ContinuityCounter, 4)
 
-	return MpegTsPacketHeaderSize, b.Err()
+	return mpegTsPacketHeaderSize, b.Err()
 }
 
 func writePCR(w *astikit.BitsWriter, cr *ClockReference) (int, error) {
@@ -382,16 +382,16 @@ func writePCR(w *astikit.BitsWriter, cr *ClockReference) (int, error) {
 	b.WriteN(uint64(cr.Base), 33)
 	b.WriteN(uint8(0xff), 6)
 	b.WriteN(uint64(cr.Extension), 9)
-	return PCRBytesSize, b.Err()
+	return pcrBytesSize, b.Err()
 }
 
 func calcPacketAdaptationFieldLength(af *PacketAdaptationField) (length uint8) {
 	length++
 	if af.HasPCR {
-		length += PCRBytesSize
+		length += pcrBytesSize
 	}
 	if af.HasOPCR {
-		length += PCRBytesSize
+		length += pcrBytesSize
 	}
 	if af.HasSplicingCountdown {
 		length++
@@ -487,7 +487,7 @@ func calcPacketAdaptationFieldExtensionLength(afe *PacketAdaptationExtensionFiel
 		length += 3
 	}
 	if afe.HasSeamlessSplice {
-		length += PTSorDTSByteLength
+		length += ptsOrDTSByteLength
 	}
 	return length
 }

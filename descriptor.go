@@ -87,10 +87,6 @@ const (
 	VBIDataServiceIDWSS                  = 0x5
 )
 
-const (
-	DescriptorHeaderSizeBytes = 2
-)
-
 // Descriptor represents a descriptor
 // TODO Handle UTF8
 type Descriptor struct {
