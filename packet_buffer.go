@@ -41,7 +41,7 @@ func autoDetectPacketSize(r io.Reader) (packetSize int, err error) {
 	// Read first bytes
 	const l = 193
 	var b = make([]byte, l)
-	shouldRewind, rerr := read(r, b)
+	shouldRewind, rerr := peek(r, b)
 	if rerr != nil {
 		err = fmt.Errorf("astits: reading first %d bytes failed: %w", l, rerr)
 		return
@@ -85,7 +85,7 @@ func autoDetectPacketSize(r io.Reader) (packetSize int, err error) {
 // bufio.Reader can't be rewinded, which leads to packet loss on packet size autodetection
 // but it has handy Peek() method
 // so what we do here is peeking bytes for bufio.Reader and falling back to rewinding/syncing for all other readers
-func read(r io.Reader, b []byte) (shouldRewind bool, err error) {
+func peek(r io.Reader, b []byte) (shouldRewind bool, err error) {
 	if br, ok := r.(*bufio.Reader); ok {
 		var bs []byte
 		bs, err = br.Peek(len(b))
