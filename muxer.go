@@ -240,6 +240,12 @@ func (m *Muxer) WritePayload(pid uint16, af *PacketAdaptationField, ph *PESHeade
 	return bytesWritten, nil
 }
 
+// Writes given packet to MPEG-TS stream
+// Stuffs with 0xffs if packet turns out to be shorter than target packet length
+func (m *Muxer) WritePacket(p *Packet) (int, error) {
+	return writePacket(m.bitsWriter, p, m.packetSize)
+}
+
 func (m *Muxer) retransmitTables(force bool) (int, error) {
 	m.tablesRetransmitCounter++
 	if !force && m.tablesRetransmitCounter < m.tablesRetransmitPeriod {
