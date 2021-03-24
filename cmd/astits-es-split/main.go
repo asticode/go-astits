@@ -47,7 +47,7 @@ func main() {
 		log.Fatalf("%v", err)
 	}
 
-	demux := astits.New(
+	demux := astits.NewDemuxer(
 		context.Background(),
 		bufio.NewReaderSize(infile, ioBufSize),
 	)

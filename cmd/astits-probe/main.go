@@ -63,7 +63,7 @@ func main() {
 	}
 
 	// Create the demuxer
-	var dmx = astits.New(ctx, r)
+	var dmx = astits.NewDemuxer(ctx, r)
 
 	// Switch on command
 	switch cmd {

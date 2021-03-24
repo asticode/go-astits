@@ -35,8 +35,8 @@ type Demuxer struct {
 // Use the skip returned argument to indicate whether the default process should still be executed on the set of packets
 type PacketsParser func(ps []*Packet) (ds []*Data, skip bool, err error)
 
-// New creates a new transport stream based on a reader
-func New(ctx context.Context, r io.Reader, opts ...func(*Demuxer)) (d *Demuxer) {
+// NewDemuxer creates a new transport stream based on a reader
+func NewDemuxer(ctx context.Context, r io.Reader, opts ...func(*Demuxer)) (d *Demuxer) {
 	// Init
 	d = &Demuxer{
 		ctx:        ctx,

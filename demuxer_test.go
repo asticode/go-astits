@@ -13,7 +13,7 @@ import (
 func TestDemuxerNew(t *testing.T) {
 	ps := 1
 	pp := func(ps []*Packet) (ds []*Data, skip bool, err error) { return }
-	dmx := New(context.Background(), nil, DemuxerOptPacketSize(ps), DemuxerOptPacketsParser(pp))
+	dmx := NewDemuxer(context.Background(), nil, DemuxerOptPacketSize(ps), DemuxerOptPacketsParser(pp))
 	assert.Equal(t, ps, dmx.optPacketSize)
 	assert.Equal(t, fmt.Sprintf("%p", pp), fmt.Sprintf("%p", dmx.optPacketsParser))
 }
@@ -21,7 +21,7 @@ func TestDemuxerNew(t *testing.T) {
 func TestDemuxerNextPacket(t *testing.T) {
 	// Ctx error
 	ctx, cancel := context.WithCancel(context.Background())
-	dmx := New(ctx, bytes.NewReader([]byte{}))
+	dmx := NewDemuxer(ctx, bytes.NewReader([]byte{}))
 	cancel()
 	_, err := dmx.NextPacket()
 	assert.Error(t, err)
@@ -33,7 +33,7 @@ func TestDemuxerNextPacket(t *testing.T) {
 	w.Write(b1)
 	b2, p2 := packet(*packetHeader, *packetAdaptationField, []byte("2"), true)
 	w.Write(b2)
-	dmx = New(context.Background(), bytes.NewReader(buf.Bytes()))
+	dmx = NewDemuxer(context.Background(), bytes.NewReader(buf.Bytes()))
 
 	// First packet
 	p, err := dmx.NextPacket()
@@ -60,7 +60,7 @@ func TestDemuxerNextData(t *testing.T) {
 	w.Write(b1)
 	b2, _ := packet(PacketHeader{ContinuityCounter: uint8(1), PID: PIDPAT}, PacketAdaptationField{}, b[147:], true)
 	w.Write(b2)
-	dmx := New(context.Background(), bytes.NewReader(buf.Bytes()))
+	dmx := NewDemuxer(context.Background(), bytes.NewReader(buf.Bytes()))
 	p, err := dmx.NextPacket()
 	assert.NoError(t, err)
 	_, err = dmx.Rewind()
@@ -85,7 +85,7 @@ func TestDemuxerNextData(t *testing.T) {
 
 func TestDemuxerRewind(t *testing.T) {
 	r := bytes.NewReader([]byte("content"))
-	dmx := New(context.Background(), r)
+	dmx := NewDemuxer(context.Background(), r)
 	dmx.packetPool.add(&Packet{Header: &PacketHeader{PID: 1}})
 	dmx.dataBuffer = append(dmx.dataBuffer, &Data{})
 	b := make([]byte, 2)
