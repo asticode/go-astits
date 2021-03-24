@@ -155,6 +155,7 @@ func TestMuxer_generatePMT(t *testing.T) {
 		ElementaryPID: 0x1234,
 		StreamType:    StreamTypeH264Video,
 	})
+	muxer.SetPCRPID(0x1234)
 	assert.NoError(t, err)
 
 	err = muxer.generatePMT()
@@ -181,6 +182,7 @@ func TestMuxer_WriteTables(t *testing.T) {
 		ElementaryPID: 0x1234,
 		StreamType:    StreamTypeH264Video,
 	})
+	muxer.SetPCRPID(0x1234)
 	assert.NoError(t, err)
 
 	n, err := muxer.WriteTables()
@@ -250,6 +252,7 @@ func TestMuxer_WritePayload(t *testing.T) {
 		ElementaryPID: 0x1234,
 		StreamType:    StreamTypeH264Video,
 	})
+	muxer.SetPCRPID(0x1234)
 	assert.NoError(t, err)
 
 	err = muxer.AddElementaryStream(PMTElementaryStream{

@@ -62,6 +62,8 @@ func MuxerOptTablesRetransmitPeriod(newPeriod int) func(*Muxer) {
 	}
 }
 
+// TODO MuxerOptAutodetectPCRPID selecting first video PID for each PMT, falling back to first audio, falling back to any other
+
 func NewMuxer(ctx context.Context, w io.Writer, opts ...func(*Muxer)) *Muxer {
 	m := &Muxer{
 		ctx: ctx,
@@ -139,6 +141,7 @@ func (m *Muxer) RemoveElementaryStream(pid uint16) error {
 	return nil
 }
 
+// SetPCRPID marks pid as one to look PCRs in
 func (m *Muxer) SetPCRPID(pid uint16) {
 	m.pmt.PCRPID = pid
 }
