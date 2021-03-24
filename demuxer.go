@@ -53,15 +53,15 @@ func New(ctx context.Context, r io.Reader, opts ...func(*Demuxer)) (d *Demuxer) 
 	return
 }
 
-// OptPacketSize returns the option to set the packet size
-func OptPacketSize(packetSize int) func(*Demuxer) {
+// DemuxerOptPacketSize returns the option to set the packet size
+func DemuxerOptPacketSize(packetSize int) func(*Demuxer) {
 	return func(d *Demuxer) {
 		d.optPacketSize = packetSize
 	}
 }
 
-// OptPacketsParser returns the option to set the packets parser
-func OptPacketsParser(p PacketsParser) func(*Demuxer) {
+// DemuxerOptPacketsParser returns the option to set the packets parser
+func DemuxerOptPacketsParser(p PacketsParser) func(*Demuxer) {
 	return func(d *Demuxer) {
 		d.optPacketsParser = p
 	}

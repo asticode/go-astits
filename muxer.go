@@ -56,7 +56,7 @@ func newEsContext(es *PMTElementaryStream) *esContext {
 	}
 }
 
-func MuxerOptionTablesRetransmitPeriod(newPeriod int) func(*Muxer) {
+func MuxerOptTablesRetransmitPeriod(newPeriod int) func(*Muxer) {
 	return func(m *Muxer) {
 		m.tablesRetransmitPeriod = newPeriod
 	}

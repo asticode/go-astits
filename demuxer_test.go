@@ -13,7 +13,7 @@ import (
 func TestDemuxerNew(t *testing.T) {
 	ps := 1
 	pp := func(ps []*Packet) (ds []*Data, skip bool, err error) { return }
-	dmx := New(context.Background(), nil, OptPacketSize(ps), OptPacketsParser(pp))
+	dmx := New(context.Background(), nil, DemuxerOptPacketSize(ps), DemuxerOptPacketsParser(pp))
 	assert.Equal(t, ps, dmx.optPacketSize)
 	assert.Equal(t, fmt.Sprintf("%p", pp), fmt.Sprintf("%p", dmx.optPacketsParser))
 }
