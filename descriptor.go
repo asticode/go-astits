@@ -1,7 +1,6 @@
 package astits
 
 import (
-	"bytes"
 	"fmt"
 	"time"
 
@@ -1442,16 +1441,6 @@ func parseDescriptors(i *astikit.BytesIterator) (o []*Descriptor, err error) {
 	return
 }
 
-// TODO (barbashov) move it to BitsWriter?
-func writeBytesN(b *astikit.BitsWriterBatch, bs []byte, n int, padByte uint8) {
-	if len(bs) >= n {
-		b.Write(bs[:n])
-	} else {
-		b.Write(bs)
-		b.Write(bytes.Repeat([]byte{padByte}, n-len(bs)))
-	}
-}
-
 func calcDescriptorUserDefinedLength(d []byte) uint8 {
 	return uint8(len(d))
 }
@@ -1547,7 +1536,7 @@ func writeDescriptorComponent(w *astikit.BitsWriter, d *DescriptorComponent) err
 	b.Write(d.ComponentType)
 	b.Write(d.ComponentTag)
 
-	writeBytesN(&b, d.ISO639LanguageCode, 3, 0)
+	b.WriteBytesN(d.ISO639LanguageCode, 3, 0)
 
 	b.Write(d.Text)
 
@@ -1680,7 +1669,7 @@ func writeDescriptorExtendedEvent(w *astikit.BitsWriter, d *DescriptorExtendedEv
 	b.WriteN(d.Number, 4)
 	b.WriteN(d.LastDescriptorNumber, 4)
 
-	writeBytesN(&b, d.ISO639LanguageCode, 3, 0)
+	b.WriteBytesN(d.ISO639LanguageCode, 3, 0)
 
 	b.Write(lengthOfItems)
 	for _, item := range d.Items {
@@ -1729,7 +1718,7 @@ func writeDescriptorExtensionSupplementaryAudio(w *astikit.BitsWriter, d *Descri
 	b.Write(d.HasLanguageCode)
 
 	if d.HasLanguageCode {
-		writeBytesN(&b, d.LanguageCode, 3, 0)
+		b.WriteBytesN(d.LanguageCode, 3, 0)
 	}
 
 	b.Write(d.PrivateData)
@@ -1764,7 +1753,7 @@ func calcDescriptorISO639LanguageAndAudioTypeLength(d *DescriptorISO639LanguageA
 func writeDescriptorISO639LanguageAndAudioType(w *astikit.BitsWriter, d *DescriptorISO639LanguageAndAudioType) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	writeBytesN(&b, d.Language, 3, 0)
+	b.WriteBytesN(d.Language, 3, 0)
 	b.Write(d.Type)
 
 	return b.Err()
@@ -1778,7 +1767,7 @@ func writeDescriptorLocalTimeOffset(w *astikit.BitsWriter, d *DescriptorLocalTim
 	b := astikit.NewBitsWriterBatch(w)
 
 	for _, item := range d.Items {
-		writeBytesN(&b, item.CountryCode, 3, 0)
+		b.WriteBytesN(item.CountryCode, 3, 0)
 
 		b.WriteN(item.CountryRegionID, 6)
 		b.WriteN(uint8(0xff), 1)
@@ -1831,7 +1820,7 @@ func writeDescriptorParentalRating(w *astikit.BitsWriter, d *DescriptorParentalR
 	b := astikit.NewBitsWriterBatch(w)
 
 	for _, item := range d.Items {
-		writeBytesN(&b, item.CountryCode, 3, 0)
+		b.WriteBytesN(item.CountryCode, 3, 0)
 		b.Write(item.Rating)
 	}
 
@@ -1904,7 +1893,7 @@ func calcDescriptorShortEventLength(d *DescriptorShortEvent) uint8 {
 func writeDescriptorShortEvent(w *astikit.BitsWriter, d *DescriptorShortEvent) error {
 	b := astikit.NewBitsWriterBatch(w)
 
-	writeBytesN(&b, d.Language, 3, 0)
+	b.WriteBytesN(d.Language, 3, 0)
 
 	b.Write(uint8(len(d.EventName)))
 	b.Write(d.EventName)
@@ -1935,7 +1924,7 @@ func writeDescriptorSubtitling(w *astikit.BitsWriter, d *DescriptorSubtitling) e
 	b := astikit.NewBitsWriterBatch(w)
 
 	for _, item := range d.Items {
-		writeBytesN(&b, item.Language, 3, 0)
+		b.WriteBytesN(item.Language, 3, 0)
 		b.Write(item.Type)
 		b.Write(item.CompositionPageID)
 		b.Write(item.AncillaryPageID)
@@ -1952,7 +1941,7 @@ func writeDescriptorTeletext(w *astikit.BitsWriter, d *DescriptorTeletext) error
 	b := astikit.NewBitsWriterBatch(w)
 
 	for _, item := range d.Items {
-		writeBytesN(&b, item.Language, 3, 0)
+		b.WriteBytesN(item.Language, 3, 0)
 		b.WriteN(item.Type, 5)
 		b.WriteN(item.Magazine, 3)
 		b.WriteN(item.Page/10, 4)

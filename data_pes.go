@@ -661,7 +661,7 @@ func writePESOptionalHeader(w *astikit.BitsWriter, h *PESOptionalHeader) (int, e
 		bytesWritten++
 
 		if h.HasPrivateData {
-			writeBytesN(&b, h.PrivateData, 16, 0)
+			b.WriteBytesN(h.PrivateData, 16, 0)
 			bytesWritten += 16
 		}
 
