@@ -36,6 +36,13 @@ const (
 	TrickModeControlSlowReverse = 4
 )
 
+const (
+	pesHeaderLength    = 6
+	ptsOrDTSByteLength = 5
+	escrLength         = 6
+	dsmTrickModeLength = 1
+)
+
 // PESData represents a PES data
 // https://en.wikipedia.org/wiki/Packetized_elementary_stream
 // http://dvd.sourceforge.net/dvdinfo/pes-hdr.html
@@ -100,6 +107,11 @@ type DSMTrickMode struct {
 	IntraSliceRefresh   uint8
 	RepeatControl       uint8
 	TrickModeControl    uint8
+}
+
+func (h *PESHeader) IsVideoStream() bool {
+	return h.StreamID == 0xe0 ||
+		h.StreamID == 0xfd
 }
 
 // parsePESData parses a PES data
@@ -328,6 +340,7 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 				err = fmt.Errorf("astits: fetching next byte failed: %w", err)
 				return
 			}
+			// TODO it's only a length of pack_header, should read it all. now it's wrong
 			h.PackField = uint8(b)
 		}
 
@@ -357,12 +370,11 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 		// Extension 2
 		if h.HasExtension2 {
 			// Length
-			var bs []byte
-			if bs, err = i.NextBytes(2); err != nil {
+			if b, err = i.NextByte(); err != nil {
 				err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 				return
 			}
-			h.Extension2Length = uint8(bs[0]) & 0x7f
+			h.Extension2Length = uint8(b) & 0x7f
 
 			// Data
 			if h.Extension2Data, err = i.NextBytes(int(h.Extension2Length)); err != nil {
@@ -411,4 +423,325 @@ func parseESCR(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 	escr := uint64(bs[0])>>3&0x7<<39 | uint64(bs[0])&0x3<<37 | uint64(bs[1])<<29 | uint64(bs[2])>>3<<24 | uint64(bs[2])&0x3<<22 | uint64(bs[3])<<14 | uint64(bs[4])>>3<<9 | uint64(bs[4])&0x3<<7 | uint64(bs[5])>>1
 	cr = newClockReference(int64(escr>>9), int64(escr&0x1ff))
 	return
+}
+
+// will count how many total bytes and payload bytes will be written when writePESData is called with the same arguments
+// should be used by the caller of writePESData to determine AF stuffing size needed to be applied
+// since the length of video PES packets are often zero, we can't just stuff it with 0xff-s at the end
+func calcPESDataLength(h *PESHeader, payloadLeft []byte, isPayloadStart bool, bytesAvailable int) (totalBytes, payloadBytes int) {
+	totalBytes += pesHeaderLength
+	if isPayloadStart {
+		totalBytes += int(calcPESOptionalHeaderLength(h.OptionalHeader))
+	}
+	bytesAvailable -= totalBytes
+
+	if len(payloadLeft) < bytesAvailable {
+		payloadBytes = len(payloadLeft)
+	} else {
+		payloadBytes = bytesAvailable
+	}
+
+	return
+}
+
+// first packet will contain PES header with optional PES header and payload, if possible
+// all consequential packets will contain just payload
+// for the last packet caller must add AF with stuffing, see calcPESDataLength
+func writePESData(w *astikit.BitsWriter, h *PESHeader, payloadLeft []byte, isPayloadStart bool, bytesAvailable int) (totalBytesWritten, payloadBytesWritten int, err error) {
+	if isPayloadStart {
+		var n int
+		n, err = writePESHeader(w, h, len(payloadLeft))
+		if err != nil {
+			return
+		}
+		totalBytesWritten += n
+	}
+
+	payloadBytesWritten = bytesAvailable - totalBytesWritten
+	if payloadBytesWritten > len(payloadLeft) {
+		payloadBytesWritten = len(payloadLeft)
+	}
+
+	err = w.Write(payloadLeft[:payloadBytesWritten])
+	if err != nil {
+		return
+	}
+
+	totalBytesWritten += payloadBytesWritten
+	return
+}
+
+func writePESHeader(w *astikit.BitsWriter, h *PESHeader, payloadSize int) (int, error) {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.WriteN(uint32(0x000001), 24) // packet_start_code_prefix
+	b.Write(h.StreamID)
+
+	pesPacketLength := 0
+
+	if !h.IsVideoStream() {
+		pesPacketLength = payloadSize
+		if hasPESOptionalHeader(h.StreamID) {
+			pesPacketLength += int(calcPESOptionalHeaderLength(h.OptionalHeader))
+		}
+		if pesPacketLength > 0xffff {
+			pesPacketLength = 0
+		}
+	}
+
+	b.Write(uint16(pesPacketLength))
+
+	bytesWritten := pesHeaderLength
+
+	if hasPESOptionalHeader(h.StreamID) {
+		n, err := writePESOptionalHeader(w, h.OptionalHeader)
+		if err != nil {
+			return 0, err
+		}
+		bytesWritten += n
+	}
+
+	return bytesWritten, b.Err()
+}
+
+func calcPESOptionalHeaderLength(h *PESOptionalHeader) uint8 {
+	if h == nil {
+		return 0
+	}
+	return 3 + calcPESOptionalHeaderDataLength(h)
+}
+
+func calcPESOptionalHeaderDataLength(h *PESOptionalHeader) (length uint8) {
+	if h.PTSDTSIndicator == PTSDTSIndicatorOnlyPTS {
+		length += ptsOrDTSByteLength
+	} else if h.PTSDTSIndicator == PTSDTSIndicatorBothPresent {
+		length += 2 * ptsOrDTSByteLength
+	}
+
+	if h.HasESCR {
+		length += escrLength
+	}
+
+	if h.HasESRate {
+		length += 3
+	}
+
+	if h.HasDSMTrickMode {
+		length += dsmTrickModeLength
+	}
+
+	if h.HasAdditionalCopyInfo {
+		length++
+	}
+
+	if h.HasCRC {
+		//length += 4 // TODO
+	}
+
+	if h.HasExtension {
+		length++
+
+		if h.HasPrivateData {
+			length += 16
+		}
+
+		if h.HasPackHeaderField {
+			// TODO
+		}
+
+		if h.HasProgramPacketSequenceCounter {
+			length += 2
+		}
+
+		if h.HasPSTDBuffer {
+			length += 2
+		}
+
+		if h.HasExtension2 {
+			length += 1 + uint8(len(h.Extension2Data))
+		}
+	}
+
+	return
+}
+
+func writePESOptionalHeader(w *astikit.BitsWriter, h *PESOptionalHeader) (int, error) {
+	if h == nil {
+		return 0, nil
+	}
+
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.WriteN(uint8(0b10), 2) // marker bits
+	b.WriteN(h.ScramblingControl, 2)
+	b.Write(h.Priority)
+	b.Write(h.DataAlignmentIndicator)
+	b.Write(h.IsCopyrighted)
+	b.Write(h.IsOriginal)
+
+	b.WriteN(h.PTSDTSIndicator, 2)
+	b.Write(h.HasESCR)
+	b.Write(h.HasESRate)
+	b.Write(h.HasDSMTrickMode)
+	b.Write(h.HasAdditionalCopyInfo)
+	b.Write(false) // CRC of previous PES packet. not supported yet
+	//b.Write(h.HasCRC)
+	b.Write(h.HasExtension)
+
+	pesOptionalHeaderDataLength := calcPESOptionalHeaderDataLength(h)
+	b.Write(pesOptionalHeaderDataLength)
+
+	bytesWritten := 3
+
+	if h.PTSDTSIndicator == PTSDTSIndicatorOnlyPTS {
+		n, err := writePTSOrDTS(w, 0b0010, h.PTS)
+		if err != nil {
+			return 0, err
+		}
+		bytesWritten += n
+	}
+
+	if h.PTSDTSIndicator == PTSDTSIndicatorBothPresent {
+		n, err := writePTSOrDTS(w, 0b0011, h.PTS)
+		if err != nil {
+			return 0, err
+		}
+		bytesWritten += n
+
+		n, err = writePTSOrDTS(w, 0b0001, h.DTS)
+		if err != nil {
+			return 0, err
+		}
+		bytesWritten += n
+	}
+
+	if h.HasESCR {
+		n, err := writeESCR(w, h.ESCR)
+		if err != nil {
+			return 0, err
+		}
+		bytesWritten += n
+	}
+
+	if h.HasESRate {
+		b.Write(true)
+		b.WriteN(h.ESRate, 22)
+		b.Write(true)
+		bytesWritten += 3
+	}
+
+	if h.HasDSMTrickMode {
+		n, err := writeDSMTrickMode(w, h.DSMTrickMode)
+		if err != nil {
+			return 0, err
+		}
+		bytesWritten += n
+	}
+
+	if h.HasAdditionalCopyInfo {
+		b.Write(true) // marker_bit
+		b.WriteN(h.AdditionalCopyInfo, 7)
+		bytesWritten++
+	}
+
+	if h.HasCRC {
+		// TODO, not supported
+	}
+
+	if h.HasExtension {
+		// exp 10110001
+		// act 10111111
+		b.Write(h.HasPrivateData)
+		b.Write(false) // TODO pack_header_field_flag, not implemented
+		//b.Write(h.HasPackHeaderField)
+		b.Write(h.HasProgramPacketSequenceCounter)
+		b.Write(h.HasPSTDBuffer)
+		b.WriteN(uint8(0xff), 3) // reserved
+		b.Write(h.HasExtension2)
+		bytesWritten++
+
+		if h.HasPrivateData {
+			b.WriteBytesN(h.PrivateData, 16, 0)
+			bytesWritten += 16
+		}
+
+		if h.HasPackHeaderField {
+			// TODO (see parsePESOptionalHeader)
+		}
+
+		if h.HasProgramPacketSequenceCounter {
+			b.Write(true) // marker_bit
+			b.WriteN(h.PacketSequenceCounter, 7)
+			b.Write(true) // marker_bit
+			b.WriteN(h.MPEG1OrMPEG2ID, 1)
+			b.WriteN(h.OriginalStuffingLength, 6)
+			bytesWritten += 2
+		}
+
+		if h.HasPSTDBuffer {
+			b.WriteN(uint8(0b01), 2)
+			b.WriteN(h.PSTDBufferScale, 1)
+			b.WriteN(h.PSTDBufferSize, 13)
+			bytesWritten += 2
+		}
+
+		if h.HasExtension2 {
+			b.Write(true) // marker_bit
+			b.WriteN(uint8(len(h.Extension2Data)), 7)
+			b.Write(h.Extension2Data)
+			bytesWritten += 1 + len(h.Extension2Data)
+		}
+	}
+
+	return bytesWritten, b.Err()
+}
+
+func writeDSMTrickMode(w *astikit.BitsWriter, m *DSMTrickMode) (int, error) {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.WriteN(m.TrickModeControl, 3)
+	if m.TrickModeControl == TrickModeControlFastForward || m.TrickModeControl == TrickModeControlFastReverse {
+		b.WriteN(m.FieldID, 2)
+		b.Write(m.IntraSliceRefresh == 1) // it should be boolean
+		b.WriteN(m.FrequencyTruncation, 2)
+	} else if m.TrickModeControl == TrickModeControlFreezeFrame {
+		b.WriteN(m.FieldID, 2)
+		b.WriteN(uint8(0xff), 3) // reserved
+	} else if m.TrickModeControl == TrickModeControlSlowMotion || m.TrickModeControl == TrickModeControlSlowReverse {
+		b.WriteN(m.RepeatControl, 5)
+	} else {
+		b.WriteN(uint8(0xff), 5) // reserved
+	}
+
+	return dsmTrickModeLength, b.Err()
+}
+
+func writeESCR(w *astikit.BitsWriter, cr *ClockReference) (int, error) {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.WriteN(uint8(0xff), 2)
+	b.WriteN(uint64(cr.Base>>30), 3)
+	b.Write(true)
+	b.WriteN(uint64(cr.Base>>15), 15)
+	b.Write(true)
+	b.WriteN(uint64(cr.Base), 15)
+	b.Write(true)
+	b.WriteN(uint64(cr.Extension), 9)
+	b.Write(true)
+
+	return escrLength, b.Err()
+}
+
+func writePTSOrDTS(w *astikit.BitsWriter, flag uint8, cr *ClockReference) (bytesWritten int, retErr error) {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.WriteN(flag, 4)
+	b.WriteN(uint64(cr.Base>>30), 3)
+	b.Write(true)
+	b.WriteN(uint64(cr.Base>>15), 15)
+	b.Write(true)
+	b.WriteN(uint64(cr.Base), 15)
+	b.Write(true)
+
+	return ptsOrDTSByteLength, b.Err()
 }

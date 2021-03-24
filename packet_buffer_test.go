@@ -29,6 +29,6 @@ func TestAutoDetectPacketSize(t *testing.T) {
 	r := bytes.NewReader(buf.Bytes())
 	p, err := autoDetectPacketSize(r)
 	assert.NoError(t, err)
-	assert.Equal(t, 188, p)
+	assert.Equal(t, MpegTsPacketSize, p)
 	assert.Equal(t, 380, r.Len())
 }

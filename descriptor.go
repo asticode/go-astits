@@ -693,6 +693,7 @@ func newDescriptorExtensionSupplementaryAudio(i *astikit.BytesIterator, offsetEn
 
 // DescriptorISO639LanguageAndAudioType represents an ISO639 language descriptor
 // https://github.com/gfto/bitstream/blob/master/mpeg/psi/desc_0a.h
+// FIXME (barbashov) according to Chapter 2.6.18 ISO/IEC 13818-1:2015 there could be not one, but multiple such descriptors
 type DescriptorISO639LanguageAndAudioType struct {
 	Language []byte
 	Type     uint8
@@ -1032,7 +1033,9 @@ func newDescriptorShortEvent(i *astikit.BytesIterator) (d *DescriptorShortEvent,
 
 // DescriptorStreamIdentifier represents a stream identifier descriptor
 // Chapter: 6.2.39 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
-type DescriptorStreamIdentifier struct{ ComponentTag uint8 }
+type DescriptorStreamIdentifier struct {
+	ComponentTag uint8
+}
 
 func newDescriptorStreamIdentifier(i *astikit.BytesIterator) (d *DescriptorStreamIdentifier, err error) {
 	var b byte
@@ -1436,4 +1439,724 @@ func parseDescriptors(i *astikit.BytesIterator) (o []*Descriptor, err error) {
 		}
 	}
 	return
+}
+
+func calcDescriptorUserDefinedLength(d []byte) uint8 {
+	return uint8(len(d))
+}
+
+func writeDescriptorUserDefined(w *astikit.BitsWriter, d []byte) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.Write(d)
+
+	return b.Err()
+}
+
+func calcDescriptorAC3Length(d *DescriptorAC3) uint8 {
+	ret := 1 // flags
+
+	if d.HasComponentType {
+		ret++
+	}
+	if d.HasBSID {
+		ret++
+	}
+	if d.HasMainID {
+		ret++
+	}
+	if d.HasASVC {
+		ret++
+	}
+
+	ret += len(d.AdditionalInfo)
+
+	return uint8(ret)
+}
+
+func writeDescriptorAC3(w *astikit.BitsWriter, d *DescriptorAC3) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.Write(d.HasComponentType)
+	b.Write(d.HasBSID)
+	b.Write(d.HasMainID)
+	b.Write(d.HasASVC)
+	b.WriteN(uint8(0xff), 4)
+
+	if d.HasComponentType {
+		b.Write(d.ComponentType)
+	}
+	if d.HasBSID {
+		b.Write(d.BSID)
+	}
+	if d.HasMainID {
+		b.Write(d.MainID)
+	}
+	if d.HasASVC {
+		b.Write(d.ASVC)
+	}
+	b.Write(d.AdditionalInfo)
+
+	return b.Err()
+}
+
+func calcDescriptorAVCVideoLength(d *DescriptorAVCVideo) uint8 {
+	return 4
+}
+
+func writeDescriptorAVCVideo(w *astikit.BitsWriter, d *DescriptorAVCVideo) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.Write(d.ProfileIDC)
+
+	b.Write(d.ConstraintSet0Flag)
+	b.Write(d.ConstraintSet1Flag)
+	b.Write(d.ConstraintSet2Flag)
+	b.WriteN(d.CompatibleFlags, 5)
+
+	b.Write(d.LevelIDC)
+
+	b.Write(d.AVCStillPresent)
+	b.Write(d.AVC24HourPictureFlag)
+	b.WriteN(uint8(0xff), 6)
+
+	return b.Err()
+}
+
+func calcDescriptorComponentLength(d *DescriptorComponent) uint8 {
+	return uint8(6 + len(d.Text))
+}
+
+func writeDescriptorComponent(w *astikit.BitsWriter, d *DescriptorComponent) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.WriteN(d.StreamContentExt, 4)
+	b.WriteN(d.StreamContent, 4)
+
+	b.Write(d.ComponentType)
+	b.Write(d.ComponentTag)
+
+	b.WriteBytesN(d.ISO639LanguageCode, 3, 0)
+
+	b.Write(d.Text)
+
+	return b.Err()
+}
+
+func calcDescriptorContentLength(d *DescriptorContent) uint8 {
+	return uint8(2 * len(d.Items))
+}
+
+func writeDescriptorContent(w *astikit.BitsWriter, d *DescriptorContent) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	for _, item := range d.Items {
+		b.WriteN(item.ContentNibbleLevel1, 4)
+		b.WriteN(item.ContentNibbleLevel2, 4)
+		b.Write(item.UserByte)
+	}
+
+	return b.Err()
+}
+
+func calcDescriptorDataStreamAlignmentLength(d *DescriptorDataStreamAlignment) uint8 {
+	return 1
+}
+
+func writeDescriptorDataStreamAlignment(w *astikit.BitsWriter, d *DescriptorDataStreamAlignment) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.Write(d.Type)
+
+	return b.Err()
+}
+
+func calcDescriptorEnhancedAC3Length(d *DescriptorEnhancedAC3) uint8 {
+	ret := 1 // flags
+
+	if d.HasComponentType {
+		ret++
+	}
+	if d.HasBSID {
+		ret++
+	}
+	if d.HasMainID {
+		ret++
+	}
+	if d.HasASVC {
+		ret++
+	}
+	if d.HasSubStream1 {
+		ret++
+	}
+	if d.HasSubStream2 {
+		ret++
+	}
+	if d.HasSubStream3 {
+		ret++
+	}
+
+	ret += len(d.AdditionalInfo)
+
+	return uint8(ret)
+}
+
+func writeDescriptorEnhancedAC3(w *astikit.BitsWriter, d *DescriptorEnhancedAC3) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.Write(d.HasComponentType)
+	b.Write(d.HasBSID)
+	b.Write(d.HasMainID)
+	b.Write(d.HasASVC)
+	b.Write(d.MixInfoExists)
+	b.Write(d.HasSubStream1)
+	b.Write(d.HasSubStream2)
+	b.Write(d.HasSubStream3)
+
+	if d.HasComponentType {
+		b.Write(d.ComponentType)
+	}
+	if d.HasBSID {
+		b.Write(d.BSID)
+	}
+	if d.HasMainID {
+		b.Write(d.MainID)
+	}
+	if d.HasASVC {
+		b.Write(d.ASVC)
+	}
+	if d.HasSubStream1 {
+		b.Write(d.SubStream1)
+	}
+	if d.HasSubStream2 {
+		b.Write(d.SubStream2)
+	}
+	if d.HasSubStream3 {
+		b.Write(d.SubStream3)
+	}
+
+	b.Write(d.AdditionalInfo)
+
+	return b.Err()
+}
+
+func calcDescriptorExtendedEventLength(d *DescriptorExtendedEvent) (descriptorLength, lengthOfItems uint8) {
+	ret := 1 + 3 + 1 // numbers, language and items length
+
+	itemsRet := 0
+	for _, item := range d.Items {
+		itemsRet += 1 // description length
+		itemsRet += len(item.Description)
+		itemsRet += 1 // content length
+		itemsRet += len(item.Content)
+	}
+
+	ret += itemsRet
+
+	ret += 1 // text length
+	ret += len(d.Text)
+
+	return uint8(ret), uint8(itemsRet)
+}
+
+func writeDescriptorExtendedEvent(w *astikit.BitsWriter, d *DescriptorExtendedEvent) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	var lengthOfItems uint8
+
+	_, lengthOfItems = calcDescriptorExtendedEventLength(d)
+
+	b.WriteN(d.Number, 4)
+	b.WriteN(d.LastDescriptorNumber, 4)
+
+	b.WriteBytesN(d.ISO639LanguageCode, 3, 0)
+
+	b.Write(lengthOfItems)
+	for _, item := range d.Items {
+		b.Write(uint8(len(item.Description)))
+		b.Write(item.Description)
+		b.Write(uint8(len(item.Content)))
+		b.Write(item.Content)
+	}
+
+	b.Write(uint8(len(d.Text)))
+	b.Write(d.Text)
+
+	return b.Err()
+}
+
+func calcDescriptorExtensionSupplementaryAudioLength(d *DescriptorExtensionSupplementaryAudio) int {
+	ret := 1
+	if d.HasLanguageCode {
+		ret += 3
+	}
+	ret += len(d.PrivateData)
+	return ret
+}
+
+func calcDescriptorExtensionLength(d *DescriptorExtension) uint8 {
+	ret := 1 // tag
+
+	switch d.Tag {
+	case DescriptorTagExtensionSupplementaryAudio:
+		ret += calcDescriptorExtensionSupplementaryAudioLength(d.SupplementaryAudio)
+	default:
+		if d.Unknown != nil {
+			ret += len(*d.Unknown)
+		}
+	}
+
+	return uint8(ret)
+}
+
+func writeDescriptorExtensionSupplementaryAudio(w *astikit.BitsWriter, d *DescriptorExtensionSupplementaryAudio) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.Write(d.MixType)
+	b.WriteN(d.EditorialClassification, 5)
+	b.Write(true) // reserved
+	b.Write(d.HasLanguageCode)
+
+	if d.HasLanguageCode {
+		b.WriteBytesN(d.LanguageCode, 3, 0)
+	}
+
+	b.Write(d.PrivateData)
+
+	return b.Err()
+}
+
+func writeDescriptorExtension(w *astikit.BitsWriter, d *DescriptorExtension) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.Write(d.Tag)
+
+	switch d.Tag {
+	case DescriptorTagExtensionSupplementaryAudio:
+		err := writeDescriptorExtensionSupplementaryAudio(w, d.SupplementaryAudio)
+		if err != nil {
+			return err
+		}
+	default:
+		if d.Unknown != nil {
+			b.Write(*d.Unknown)
+		}
+	}
+
+	return b.Err()
+}
+
+func calcDescriptorISO639LanguageAndAudioTypeLength(d *DescriptorISO639LanguageAndAudioType) uint8 {
+	return 3 + 1 // language code + type
+}
+
+func writeDescriptorISO639LanguageAndAudioType(w *astikit.BitsWriter, d *DescriptorISO639LanguageAndAudioType) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.WriteBytesN(d.Language, 3, 0)
+	b.Write(d.Type)
+
+	return b.Err()
+}
+
+func calcDescriptorLocalTimeOffsetLength(d *DescriptorLocalTimeOffset) uint8 {
+	return uint8(13 * len(d.Items))
+}
+
+func writeDescriptorLocalTimeOffset(w *astikit.BitsWriter, d *DescriptorLocalTimeOffset) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	for _, item := range d.Items {
+		b.WriteBytesN(item.CountryCode, 3, 0)
+
+		b.WriteN(item.CountryRegionID, 6)
+		b.WriteN(uint8(0xff), 1)
+		b.Write(item.LocalTimeOffsetPolarity)
+
+		if _, err := writeDVBDurationMinutes(w, item.LocalTimeOffset); err != nil {
+			return err
+		}
+		if _, err := writeDVBTime(w, item.TimeOfChange); err != nil {
+			return err
+		}
+		if _, err := writeDVBDurationMinutes(w, item.NextTimeOffset); err != nil {
+			return err
+		}
+	}
+
+	return b.Err()
+}
+
+func calcDescriptorMaximumBitrateLength(d *DescriptorMaximumBitrate) uint8 {
+	return 3
+}
+
+func writeDescriptorMaximumBitrate(w *astikit.BitsWriter, d *DescriptorMaximumBitrate) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.WriteN(uint8(0xff), 2)
+	b.WriteN(uint32(d.Bitrate/50), 22)
+
+	return b.Err()
+}
+
+func calcDescriptorNetworkNameLength(d *DescriptorNetworkName) uint8 {
+	return uint8(len(d.Name))
+}
+
+func writeDescriptorNetworkName(w *astikit.BitsWriter, d *DescriptorNetworkName) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.Write(d.Name)
+
+	return b.Err()
+}
+
+func calcDescriptorParentalRatingLength(d *DescriptorParentalRating) uint8 {
+	return uint8(4 * len(d.Items))
+}
+
+func writeDescriptorParentalRating(w *astikit.BitsWriter, d *DescriptorParentalRating) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	for _, item := range d.Items {
+		b.WriteBytesN(item.CountryCode, 3, 0)
+		b.Write(item.Rating)
+	}
+
+	return b.Err()
+}
+
+func calcDescriptorPrivateDataIndicatorLength(d *DescriptorPrivateDataIndicator) uint8 {
+	return 4
+}
+
+func writeDescriptorPrivateDataIndicator(w *astikit.BitsWriter, d *DescriptorPrivateDataIndicator) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.Write(d.Indicator)
+
+	return b.Err()
+}
+
+func calcDescriptorPrivateDataSpecifierLength(d *DescriptorPrivateDataSpecifier) uint8 {
+	return 4
+}
+
+func writeDescriptorPrivateDataSpecifier(w *astikit.BitsWriter, d *DescriptorPrivateDataSpecifier) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.Write(d.Specifier)
+
+	return b.Err()
+}
+
+func calcDescriptorRegistrationLength(d *DescriptorRegistration) uint8 {
+	return uint8(4 + len(d.AdditionalIdentificationInfo))
+}
+
+func writeDescriptorRegistration(w *astikit.BitsWriter, d *DescriptorRegistration) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.Write(d.FormatIdentifier)
+	b.Write(d.AdditionalIdentificationInfo)
+
+	return b.Err()
+}
+
+func calcDescriptorServiceLength(d *DescriptorService) uint8 {
+	ret := 3 // type and lengths
+	ret += len(d.Name)
+	ret += len(d.Provider)
+	return uint8(ret)
+}
+
+func writeDescriptorService(w *astikit.BitsWriter, d *DescriptorService) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.Write(d.Type)
+	b.Write(uint8(len(d.Provider)))
+	b.Write(d.Provider)
+	b.Write(uint8(len(d.Name)))
+	b.Write(d.Name)
+
+	return b.Err()
+}
+
+func calcDescriptorShortEventLength(d *DescriptorShortEvent) uint8 {
+	ret := 3 + 1 + 1 // language code and lengths
+	ret += len(d.EventName)
+	ret += len(d.Text)
+	return uint8(ret)
+}
+
+func writeDescriptorShortEvent(w *astikit.BitsWriter, d *DescriptorShortEvent) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.WriteBytesN(d.Language, 3, 0)
+
+	b.Write(uint8(len(d.EventName)))
+	b.Write(d.EventName)
+
+	b.Write(uint8(len(d.Text)))
+	b.Write(d.Text)
+
+	return b.Err()
+}
+
+func calcDescriptorStreamIdentifierLength(d *DescriptorStreamIdentifier) uint8 {
+	return 1
+}
+
+func writeDescriptorStreamIdentifier(w *astikit.BitsWriter, d *DescriptorStreamIdentifier) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.Write(d.ComponentTag)
+
+	return b.Err()
+}
+
+func calcDescriptorSubtitlingLength(d *DescriptorSubtitling) uint8 {
+	return uint8(8 * len(d.Items))
+}
+
+func writeDescriptorSubtitling(w *astikit.BitsWriter, d *DescriptorSubtitling) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	for _, item := range d.Items {
+		b.WriteBytesN(item.Language, 3, 0)
+		b.Write(item.Type)
+		b.Write(item.CompositionPageID)
+		b.Write(item.AncillaryPageID)
+	}
+
+	return b.Err()
+}
+
+func calcDescriptorTeletextLength(d *DescriptorTeletext) uint8 {
+	return uint8(5 * len(d.Items))
+}
+
+func writeDescriptorTeletext(w *astikit.BitsWriter, d *DescriptorTeletext) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	for _, item := range d.Items {
+		b.WriteBytesN(item.Language, 3, 0)
+		b.WriteN(item.Type, 5)
+		b.WriteN(item.Magazine, 3)
+		b.WriteN(item.Page/10, 4)
+		b.WriteN(item.Page%10, 4)
+	}
+
+	return b.Err()
+}
+
+func calcDescriptorVBIDataLength(d *DescriptorVBIData) uint8 {
+	return uint8(3 * len(d.Services))
+}
+
+func writeDescriptorVBIData(w *astikit.BitsWriter, d *DescriptorVBIData) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	for _, item := range d.Services {
+		b.Write(item.DataServiceID)
+
+		if item.DataServiceID == VBIDataServiceIDClosedCaptioning ||
+			item.DataServiceID == VBIDataServiceIDEBUTeletext ||
+			item.DataServiceID == VBIDataServiceIDInvertedTeletext ||
+			item.DataServiceID == VBIDataServiceIDMonochrome442Samples ||
+			item.DataServiceID == VBIDataServiceIDVPS ||
+			item.DataServiceID == VBIDataServiceIDWSS {
+
+			b.Write(uint8(len(item.Descriptors))) // each descriptor is 1 byte
+			for _, desc := range item.Descriptors {
+				b.WriteN(uint8(0xff), 2)
+				b.Write(desc.FieldParity)
+				b.WriteN(desc.LineOffset, 5)
+			}
+		} else {
+			// let's put one reserved byte
+			b.Write(uint8(1))
+			b.Write(uint8(0xff))
+		}
+	}
+
+	return b.Err()
+}
+
+func calcDescriptorUnknownLength(d *DescriptorUnknown) uint8 {
+	return uint8(len(d.Content))
+}
+
+func writeDescriptorUnknown(w *astikit.BitsWriter, d *DescriptorUnknown) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.Write(d.Content)
+
+	return b.Err()
+}
+
+func calcDescriptorLength(d *Descriptor) uint8 {
+	if d.Tag >= 0x80 && d.Tag <= 0xfe {
+		return calcDescriptorUserDefinedLength(d.UserDefined)
+	}
+
+	switch d.Tag {
+	case DescriptorTagAC3:
+		return calcDescriptorAC3Length(d.AC3)
+	case DescriptorTagAVCVideo:
+		return calcDescriptorAVCVideoLength(d.AVCVideo)
+	case DescriptorTagComponent:
+		return calcDescriptorComponentLength(d.Component)
+	case DescriptorTagContent:
+		return calcDescriptorContentLength(d.Content)
+	case DescriptorTagDataStreamAlignment:
+		return calcDescriptorDataStreamAlignmentLength(d.DataStreamAlignment)
+	case DescriptorTagEnhancedAC3:
+		return calcDescriptorEnhancedAC3Length(d.EnhancedAC3)
+	case DescriptorTagExtendedEvent:
+		ret, _ := calcDescriptorExtendedEventLength(d.ExtendedEvent)
+		return ret
+	case DescriptorTagExtension:
+		return calcDescriptorExtensionLength(d.Extension)
+	case DescriptorTagISO639LanguageAndAudioType:
+		return calcDescriptorISO639LanguageAndAudioTypeLength(d.ISO639LanguageAndAudioType)
+	case DescriptorTagLocalTimeOffset:
+		return calcDescriptorLocalTimeOffsetLength(d.LocalTimeOffset)
+	case DescriptorTagMaximumBitrate:
+		return calcDescriptorMaximumBitrateLength(d.MaximumBitrate)
+	case DescriptorTagNetworkName:
+		return calcDescriptorNetworkNameLength(d.NetworkName)
+	case DescriptorTagParentalRating:
+		return calcDescriptorParentalRatingLength(d.ParentalRating)
+	case DescriptorTagPrivateDataIndicator:
+		return calcDescriptorPrivateDataIndicatorLength(d.PrivateDataIndicator)
+	case DescriptorTagPrivateDataSpecifier:
+		return calcDescriptorPrivateDataSpecifierLength(d.PrivateDataSpecifier)
+	case DescriptorTagRegistration:
+		return calcDescriptorRegistrationLength(d.Registration)
+	case DescriptorTagService:
+		return calcDescriptorServiceLength(d.Service)
+	case DescriptorTagShortEvent:
+		return calcDescriptorShortEventLength(d.ShortEvent)
+	case DescriptorTagStreamIdentifier:
+		return calcDescriptorStreamIdentifierLength(d.StreamIdentifier)
+	case DescriptorTagSubtitling:
+		return calcDescriptorSubtitlingLength(d.Subtitling)
+	case DescriptorTagTeletext:
+		return calcDescriptorTeletextLength(d.Teletext)
+	case DescriptorTagVBIData:
+		return calcDescriptorVBIDataLength(d.VBIData)
+	case DescriptorTagVBITeletext:
+		return calcDescriptorTeletextLength(d.VBITeletext)
+	}
+
+	return calcDescriptorUnknownLength(d.Unknown)
+}
+
+func writeDescriptor(w *astikit.BitsWriter, d *Descriptor) (int, error) {
+	b := astikit.NewBitsWriterBatch(w)
+	length := calcDescriptorLength(d)
+
+	b.Write(d.Tag)
+	b.Write(length)
+
+	if err := b.Err(); err != nil {
+		return 0, err
+	}
+
+	written := int(length) + 2
+
+	if d.Tag >= 0x80 && d.Tag <= 0xfe {
+		return written, writeDescriptorUserDefined(w, d.UserDefined)
+	}
+
+	switch d.Tag {
+	case DescriptorTagAC3:
+		return written, writeDescriptorAC3(w, d.AC3)
+	case DescriptorTagAVCVideo:
+		return written, writeDescriptorAVCVideo(w, d.AVCVideo)
+	case DescriptorTagComponent:
+		return written, writeDescriptorComponent(w, d.Component)
+	case DescriptorTagContent:
+		return written, writeDescriptorContent(w, d.Content)
+	case DescriptorTagDataStreamAlignment:
+		return written, writeDescriptorDataStreamAlignment(w, d.DataStreamAlignment)
+	case DescriptorTagEnhancedAC3:
+		return written, writeDescriptorEnhancedAC3(w, d.EnhancedAC3)
+	case DescriptorTagExtendedEvent:
+		return written, writeDescriptorExtendedEvent(w, d.ExtendedEvent)
+	case DescriptorTagExtension:
+		return written, writeDescriptorExtension(w, d.Extension)
+	case DescriptorTagISO639LanguageAndAudioType:
+		return written, writeDescriptorISO639LanguageAndAudioType(w, d.ISO639LanguageAndAudioType)
+	case DescriptorTagLocalTimeOffset:
+		return written, writeDescriptorLocalTimeOffset(w, d.LocalTimeOffset)
+	case DescriptorTagMaximumBitrate:
+		return written, writeDescriptorMaximumBitrate(w, d.MaximumBitrate)
+	case DescriptorTagNetworkName:
+		return written, writeDescriptorNetworkName(w, d.NetworkName)
+	case DescriptorTagParentalRating:
+		return written, writeDescriptorParentalRating(w, d.ParentalRating)
+	case DescriptorTagPrivateDataIndicator:
+		return written, writeDescriptorPrivateDataIndicator(w, d.PrivateDataIndicator)
+	case DescriptorTagPrivateDataSpecifier:
+		return written, writeDescriptorPrivateDataSpecifier(w, d.PrivateDataSpecifier)
+	case DescriptorTagRegistration:
+		return written, writeDescriptorRegistration(w, d.Registration)
+	case DescriptorTagService:
+		return written, writeDescriptorService(w, d.Service)
+	case DescriptorTagShortEvent:
+		return written, writeDescriptorShortEvent(w, d.ShortEvent)
+	case DescriptorTagStreamIdentifier:
+		return written, writeDescriptorStreamIdentifier(w, d.StreamIdentifier)
+	case DescriptorTagSubtitling:
+		return written, writeDescriptorSubtitling(w, d.Subtitling)
+	case DescriptorTagTeletext:
+		return written, writeDescriptorTeletext(w, d.Teletext)
+	case DescriptorTagVBIData:
+		return written, writeDescriptorVBIData(w, d.VBIData)
+	case DescriptorTagVBITeletext:
+		return written, writeDescriptorTeletext(w, d.VBITeletext)
+	}
+
+	return written, writeDescriptorUnknown(w, d.Unknown)
+}
+
+func calcDescriptorsLength(ds []*Descriptor) uint16 {
+	length := uint16(0)
+	for _, d := range ds {
+		length += 2 // tag and length
+		length += uint16(calcDescriptorLength(d))
+	}
+	return length
+}
+
+func writeDescriptors(w *astikit.BitsWriter, ds []*Descriptor) (int, error) {
+	written := 0
+
+	for _, d := range ds {
+		n, err := writeDescriptor(w, d)
+		if err != nil {
+			return 0, err
+		}
+		written += n
+	}
+
+	return written, nil
+}
+
+func writeDescriptorsWithLength(w *astikit.BitsWriter, ds []*Descriptor) (int, error) {
+	length := calcDescriptorsLength(ds)
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.WriteN(uint8(0xff), 4) // reserved
+	b.WriteN(length, 12)     // program_info_length
+
+	if err := b.Err(); err != nil {
+		return 0, err
+	}
+
+	written, err := writeDescriptors(w, ds)
+	return written + 2, err // 2 for length
 }

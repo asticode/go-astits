@@ -30,3 +30,28 @@ func (m programMap) set(pid, number uint16) {
 	defer m.m.Unlock()
 	m.p[pid] = number
 }
+
+func (m programMap) unset(pid uint16) {
+	m.m.Lock()
+	defer m.m.Unlock()
+	delete(m.p, pid)
+}
+
+func (m programMap) toPATData() *PATData {
+	m.m.Lock()
+	defer m.m.Unlock()
+
+	d := &PATData{
+		Programs:          []*PATProgram{},
+		TransportStreamID: uint16(PSITableIDPAT),
+	}
+
+	for pid, pnr := range m.p {
+		d.Programs = append(d.Programs, &PATProgram{
+			ProgramMapID:  pid,
+			ProgramNumber: pnr,
+		})
+	}
+
+	return d
+}

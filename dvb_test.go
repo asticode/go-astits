@@ -1,6 +1,7 @@
 package astits
 
 import (
+	"bytes"
 	"testing"
 	"time"
 
@@ -33,4 +34,31 @@ func TestParseDVBDurationSeconds(t *testing.T) {
 	d, err := parseDVBDurationSeconds(astikit.NewBytesIterator(dvbDurationSecondsBytes))
 	assert.Equal(t, dvbDurationSeconds, d)
 	assert.NoError(t, err)
+}
+
+func TestWriteDVBTime(t *testing.T) {
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+	n, err := writeDVBTime(w, dvbTime)
+	assert.NoError(t, err)
+	assert.Equal(t, n, buf.Len())
+	assert.Equal(t, dvbTimeBytes, buf.Bytes())
+}
+
+func TestWriteDVBDurationMinutes(t *testing.T) {
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+	n, err := writeDVBDurationMinutes(w, dvbDurationMinutes)
+	assert.NoError(t, err)
+	assert.Equal(t, n, buf.Len())
+	assert.Equal(t, dvbDurationMinutesBytes, buf.Bytes())
+}
+
+func TestWriteDVBDurationSeconds(t *testing.T) {
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+	n, err := writeDVBDurationSeconds(w, dvbDurationSeconds)
+	assert.NoError(t, err)
+	assert.Equal(t, n, buf.Len())
+	assert.Equal(t, dvbDurationSecondsBytes, buf.Bytes())
 }

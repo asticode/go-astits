@@ -6,6 +6,10 @@ import (
 	"github.com/asticode/go-astikit"
 )
 
+const (
+	patSectionEntryBytesSize = 4 // 16 bits + 3 reserved + 13 bits = 32 bits
+)
+
 // PATData represents a PAT data
 // https://en.wikipedia.org/wiki/Program-specific_information
 type PATData struct {
@@ -40,4 +44,20 @@ func parsePATSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 		})
 	}
 	return
+}
+
+func calcPATSectionLength(d *PATData) uint16 {
+	return uint16(4 * len(d.Programs))
+}
+
+func writePATSection(w *astikit.BitsWriter, d *PATData) (int, error) {
+	b := astikit.NewBitsWriterBatch(w)
+
+	for _, p := range d.Programs {
+		b.Write(p.ProgramNumber)
+		b.WriteN(uint8(0xff), 3)
+		b.WriteN(p.ProgramMapID, 13)
+	}
+
+	return len(d.Programs) * patSectionEntryBytesSize, b.Err()
 }

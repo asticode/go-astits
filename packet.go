@@ -2,7 +2,6 @@ package astits
 
 import (
 	"fmt"
-
 	"github.com/asticode/go-astikit"
 )
 
@@ -12,6 +11,12 @@ const (
 	ScramblingControlReservedForFutureUse = 1
 	ScramblingControlScrambledWithEvenKey = 2
 	ScramblingControlScrambledWithOddKey  = 3
+)
+
+const (
+	MpegTsPacketSize       = 188
+	mpegTsPacketHeaderSize = 3
+	pcrBytesSize           = 6
 )
 
 // Packet represents a packet
@@ -45,6 +50,8 @@ type PacketAdaptationField struct {
 	HasTransportPrivateData           bool
 	HasSplicingCountdown              bool
 	Length                            int
+	IsOneByteStuffing                 bool            // Only used for one byte stuffing - if true, adaptation field will be written as one uint8(0). Not part of TS format
+	StuffingLength                    int             // Only used in writePacketAdaptationField to request stuffing
 	OPCR                              *ClockReference // Original Program clock reference. Helps when one TS is copied into another
 	PCR                               *ClockReference // Program clock reference
 	RandomAccessIndicator             bool            // Set when the stream may be decoded without errors from this point
@@ -85,7 +92,7 @@ func parsePacket(i *astikit.BytesIterator) (p *Packet, err error) {
 	p = &Packet{}
 
 	// In case packet size is bigger than 188 bytes, we don't care for the first bytes
-	i.Seek(i.Len() - 188 + 1)
+	i.Seek(i.Len() - MpegTsPacketSize + 1)
 	offsetStart := i.Offset()
 
 	// Parse header
@@ -156,6 +163,8 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 
 	// Length
 	a.Length = int(b)
+
+	afStartOffset := i.Offset()
 
 	// Valid length
 	if a.Length > 0 {
@@ -287,6 +296,9 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 			}
 		}
 	}
+
+	a.StuffingLength = a.Length - (i.Offset() - afStartOffset)
+
 	return
 }
 
@@ -301,4 +313,231 @@ func parsePCR(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 	pcr := uint64(bs[0])<<40 | uint64(bs[1])<<32 | uint64(bs[2])<<24 | uint64(bs[3])<<16 | uint64(bs[4])<<8 | uint64(bs[5])
 	cr = newClockReference(int64(pcr>>15), int64(pcr&0x1ff))
 	return
+}
+
+func writePacket(w *astikit.BitsWriter, p *Packet, targetPacketSize int) (written int, retErr error) {
+	if retErr = w.Write(uint8(syncByte)); retErr != nil {
+		return
+	}
+	written += 1
+
+	n, retErr := writePacketHeader(w, p.Header)
+	if retErr != nil {
+		return
+	}
+	written += n
+
+	if p.Header.HasAdaptationField {
+		n, retErr = writePacketAdaptationField(w, p.AdaptationField)
+		if retErr != nil {
+			return
+		}
+		written += n
+	}
+
+	if targetPacketSize-written < len(p.Payload) {
+		return 0, fmt.Errorf(
+			"writePacket: can't write %d bytes of payload: only %d is available",
+			len(p.Payload),
+			targetPacketSize-written,
+		)
+	}
+
+	if p.Header.HasPayload {
+		retErr = w.Write(p.Payload)
+		if retErr != nil {
+			return
+		}
+		written += len(p.Payload)
+	}
+
+	for written < targetPacketSize {
+		if retErr = w.Write(uint8(0xff)); retErr != nil {
+			return
+		}
+		written++
+	}
+
+	return written, nil
+}
+
+func writePacketHeader(w *astikit.BitsWriter, h *PacketHeader) (written int, retErr error) {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.Write(h.TransportErrorIndicator)
+	b.Write(h.PayloadUnitStartIndicator)
+	b.Write(h.TransportPriority)
+	b.WriteN(h.PID, 13)
+	b.WriteN(h.TransportScramblingControl, 2)
+	b.Write(h.HasAdaptationField) // adaptation_field_control higher bit
+	b.Write(h.HasPayload)         // adaptation_field_control lower bit
+	b.WriteN(h.ContinuityCounter, 4)
+
+	return mpegTsPacketHeaderSize, b.Err()
+}
+
+func writePCR(w *astikit.BitsWriter, cr *ClockReference) (int, error) {
+	b := astikit.NewBitsWriterBatch(w)
+
+	b.WriteN(uint64(cr.Base), 33)
+	b.WriteN(uint8(0xff), 6)
+	b.WriteN(uint64(cr.Extension), 9)
+	return pcrBytesSize, b.Err()
+}
+
+func calcPacketAdaptationFieldLength(af *PacketAdaptationField) (length uint8) {
+	length++
+	if af.HasPCR {
+		length += pcrBytesSize
+	}
+	if af.HasOPCR {
+		length += pcrBytesSize
+	}
+	if af.HasSplicingCountdown {
+		length++
+	}
+	if af.HasTransportPrivateData {
+		length += 1 + uint8(len(af.TransportPrivateData))
+	}
+	if af.HasAdaptationExtensionField {
+		length += 1 + calcPacketAdaptationFieldExtensionLength(af.AdaptationExtensionField)
+	}
+	length += uint8(af.StuffingLength)
+	return
+}
+
+func writePacketAdaptationField(w *astikit.BitsWriter, af *PacketAdaptationField) (bytesWritten int, retErr error) {
+	b := astikit.NewBitsWriterBatch(w)
+
+	if af.IsOneByteStuffing {
+		b.Write(uint8(0))
+		return 1, nil
+	}
+
+	length := calcPacketAdaptationFieldLength(af)
+	b.Write(length)
+	bytesWritten++
+
+	b.Write(af.DiscontinuityIndicator)
+	b.Write(af.RandomAccessIndicator)
+	b.Write(af.ElementaryStreamPriorityIndicator)
+	b.Write(af.HasPCR)
+	b.Write(af.HasOPCR)
+	b.Write(af.HasSplicingCountdown)
+	b.Write(af.HasTransportPrivateData)
+	b.Write(af.HasAdaptationExtensionField)
+
+	bytesWritten++
+
+	if af.HasPCR {
+		n, err := writePCR(w, af.PCR)
+		if err != nil {
+			return 0, err
+		}
+		bytesWritten += n
+	}
+
+	if af.HasOPCR {
+		n, err := writePCR(w, af.OPCR)
+		if err != nil {
+			return 0, err
+		}
+		bytesWritten += n
+	}
+
+	if af.HasSplicingCountdown {
+		b.Write(uint8(af.SpliceCountdown))
+		bytesWritten++
+	}
+
+	if af.HasTransportPrivateData {
+		// we can get length from TransportPrivateData itself, why do we need separate field?
+		b.Write(uint8(af.TransportPrivateDataLength))
+		bytesWritten++
+		if af.TransportPrivateDataLength > 0 {
+			b.Write(af.TransportPrivateData)
+		}
+		bytesWritten += len(af.TransportPrivateData)
+	}
+
+	if af.HasAdaptationExtensionField {
+		n, err := writePacketAdaptationFieldExtension(w, af.AdaptationExtensionField)
+		if err != nil {
+			return 0, err
+		}
+		bytesWritten += n
+	}
+
+	// stuffing
+	for i := 0; i < af.StuffingLength; i++ {
+		b.Write(uint8(0xff))
+		bytesWritten++
+	}
+
+	retErr = b.Err()
+	return
+}
+
+func calcPacketAdaptationFieldExtensionLength(afe *PacketAdaptationExtensionField) (length uint8) {
+	length++
+	if afe.HasLegalTimeWindow {
+		length += 2
+	}
+	if afe.HasPiecewiseRate {
+		length += 3
+	}
+	if afe.HasSeamlessSplice {
+		length += ptsOrDTSByteLength
+	}
+	return length
+}
+
+func writePacketAdaptationFieldExtension(w *astikit.BitsWriter, afe *PacketAdaptationExtensionField) (bytesWritten int, retErr error) {
+	b := astikit.NewBitsWriterBatch(w)
+
+	length := calcPacketAdaptationFieldExtensionLength(afe)
+	b.Write(length)
+	bytesWritten++
+
+	b.Write(afe.HasLegalTimeWindow)
+	b.Write(afe.HasPiecewiseRate)
+	b.Write(afe.HasSeamlessSplice)
+	b.WriteN(uint8(0xff), 5) // reserved
+	bytesWritten++
+
+	if afe.HasLegalTimeWindow {
+		b.Write(afe.LegalTimeWindowIsValid)
+		b.WriteN(afe.LegalTimeWindowOffset, 15)
+		bytesWritten += 2
+	}
+
+	if afe.HasPiecewiseRate {
+		b.WriteN(uint8(0xff), 2)
+		b.WriteN(afe.PiecewiseRate, 22)
+		bytesWritten += 3
+	}
+
+	if afe.HasSeamlessSplice {
+		n, err := writePTSOrDTS(w, afe.SpliceType, afe.DTSNextAccessUnit)
+		if err != nil {
+			return 0, err
+		}
+		bytesWritten += n
+	}
+
+	retErr = b.Err()
+	return
+}
+
+func newStuffingAdaptationField(bytesToStuff int) *PacketAdaptationField {
+	if bytesToStuff == 1 {
+		return &PacketAdaptationField{
+			IsOneByteStuffing: true,
+		}
+	}
+
+	return &PacketAdaptationField{
+		// one byte for length and one for flags
+		StuffingLength: bytesToStuff - 2,
+	}
 }

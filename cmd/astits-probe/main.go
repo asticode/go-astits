@@ -63,7 +63,7 @@ func main() {
 	}
 
 	// Create the demuxer
-	var dmx = astits.New(ctx, r)
+	var dmx = astits.NewDemuxer(ctx, r)
 
 	// Switch on command
 	switch cmd {
@@ -219,7 +219,7 @@ func data(dmx *astits.Demuxer) (err error) {
 	}
 
 	// Loop through data
-	var d *astits.Data
+	var d *astits.DemuxerData
 	log.Println("Fetching data...")
 	for {
 		// Get next data
@@ -272,7 +272,7 @@ func data(dmx *astits.Demuxer) (err error) {
 
 func programs(dmx *astits.Demuxer) (o []*Program, err error) {
 	// Loop through data
-	var d *astits.Data
+	var d *astits.DemuxerData
 	var pgmsToProcess = make(map[uint16]bool)
 	var pgms = make(map[uint16]*Program)
 	log.Println("Fetching data...")
@@ -347,9 +347,9 @@ type Program struct {
 
 // Stream represents a stream
 type Stream struct {
-	Descriptors []string `json:"descriptors,omitempty"`
-	ID          uint16   `json:"id,omitempty"`
-	Type        uint8    `json:"type,omitempty"`
+	Descriptors []string          `json:"descriptors,omitempty"`
+	ID          uint16            `json:"id,omitempty"`
+	Type        astits.StreamType `json:"type,omitempty"`
 }
 
 func newProgram(id, mapID uint16) *Program {
@@ -359,7 +359,7 @@ func newProgram(id, mapID uint16) *Program {
 	}
 }
 
-func newStream(id uint16, _type uint8) *Stream {
+func newStream(id uint16, _type astits.StreamType) *Stream {
 	return &Stream{
 		ID:   id,
 		Type: _type,

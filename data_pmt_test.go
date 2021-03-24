@@ -40,3 +40,12 @@ func TestParsePMTSection(t *testing.T) {
 	assert.Equal(t, d, pmt)
 	assert.NoError(t, err)
 }
+
+func TestWritePMTSection(t *testing.T) {
+	buf := bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &buf})
+	n, err := writePMTSection(w, pmt)
+	assert.NoError(t, err)
+	assert.Equal(t, n, buf.Len())
+	assert.Equal(t, pmtBytes(), buf.Bytes())
+}

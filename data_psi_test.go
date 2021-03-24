@@ -220,25 +220,25 @@ func TestParsePSISectionHeader(t *testing.T) {
 }
 
 func TestPSITableType(t *testing.T) {
-	assert.Equal(t, PSITableTypeBAT, psiTableType(74))
-	for i := 78; i <= 111; i++ {
-		assert.Equal(t, PSITableTypeEIT, psiTableType(i))
+	for i := PSITableIDEITStart; i <= PSITableIDEITEnd; i++ {
+		assert.Equal(t, PSITableTypeEIT, i.Type())
 	}
-	assert.Equal(t, PSITableTypeDIT, psiTableType(126))
-	for i := 64; i <= 65; i++ {
-		assert.Equal(t, PSITableTypeNIT, psiTableType(i))
-	}
-	assert.Equal(t, PSITableTypeNull, psiTableType(255))
-	assert.Equal(t, PSITableTypePAT, psiTableType(0))
-	assert.Equal(t, PSITableTypePMT, psiTableType(2))
-	assert.Equal(t, PSITableTypeRST, psiTableType(113))
-	assert.Equal(t, PSITableTypeSDT, psiTableType(66))
-	assert.Equal(t, PSITableTypeSDT, psiTableType(70))
-	assert.Equal(t, PSITableTypeSIT, psiTableType(127))
-	assert.Equal(t, PSITableTypeST, psiTableType(114))
-	assert.Equal(t, PSITableTypeTDT, psiTableType(112))
-	assert.Equal(t, PSITableTypeTOT, psiTableType(115))
-	assert.Equal(t, PSITableTypeUnknown, psiTableType(1))
+	assert.Equal(t, PSITableTypeDIT, PSITableIDDIT.Type())
+	assert.Equal(t, PSITableTypeNIT, PSITableIDNITVariant1.Type())
+	assert.Equal(t, PSITableTypeNIT, PSITableIDNITVariant2.Type())
+	assert.Equal(t, PSITableTypeSDT, PSITableIDSDTVariant1.Type())
+	assert.Equal(t, PSITableTypeSDT, PSITableIDSDTVariant2.Type())
+
+	assert.Equal(t, PSITableTypeBAT, PSITableIDBAT.Type())
+	assert.Equal(t, PSITableTypeNull, PSITableIDNull.Type())
+	assert.Equal(t, PSITableTypePAT, PSITableIDPAT.Type())
+	assert.Equal(t, PSITableTypePMT, PSITableIDPMT.Type())
+	assert.Equal(t, PSITableTypeRST, PSITableIDRST.Type())
+	assert.Equal(t, PSITableTypeSIT, PSITableIDSIT.Type())
+	assert.Equal(t, PSITableTypeST, PSITableIDST.Type())
+	assert.Equal(t, PSITableTypeTDT, PSITableIDTDT.Type())
+	assert.Equal(t, PSITableTypeTOT, PSITableIDTOT.Type())
+	assert.Equal(t, PSITableTypeUnknown, PSITableID(1).Type())
 }
 
 var psiSectionSyntaxHeader = &PSISectionSyntaxHeader{
@@ -269,7 +269,7 @@ func TestParsePSISectionSyntaxHeader(t *testing.T) {
 
 func TestPSIToData(t *testing.T) {
 	p := &Packet{}
-	assert.Equal(t, []*Data{
+	assert.Equal(t, []*DemuxerData{
 		{EIT: eit, FirstPacket: p, PID: 2},
 		{FirstPacket: p, NIT: nit, PID: 2},
 		{FirstPacket: p, PAT: pat, PID: 2},
@@ -277,4 +277,100 @@ func TestPSIToData(t *testing.T) {
 		{FirstPacket: p, SDT: sdt, PID: 2},
 		{FirstPacket: p, TOT: tot, PID: 2},
 	}, psi.toData(p, uint16(2)))
+}
+
+type psiDataTestCase struct {
+	name      string
+	bytesFunc func(*astikit.BitsWriter)
+	data      *PSIData
+}
+
+var psiDataTestCases = []psiDataTestCase{
+	{
+		"PAT",
+		func(w *astikit.BitsWriter) {
+			w.Write(uint8(4))                      // Pointer field
+			w.Write([]byte{0, 0, 0, 0})            // Pointer field bytes
+			w.Write(uint8(0))                      // PAT table ID
+			w.Write("1")                           // PAT syntax section indicator
+			w.Write("1")                           // PAT private bit
+			w.Write("11")                          // PAT reserved
+			w.Write("000000010001")                // PAT section length
+			w.Write(psiSectionSyntaxHeaderBytes()) // PAT syntax section header
+			w.Write(patBytes())                    // PAT data
+			w.Write(uint32(0x60739f61))            // PAT CRC32
+		},
+		&PSIData{
+			PointerField: 4,
+			Sections: []*PSISection{
+				{
+					CRC32: uint32(0x60739f61),
+					Header: &PSISectionHeader{
+						PrivateBit:             true,
+						SectionLength:          17,
+						SectionSyntaxIndicator: true,
+						TableID:                0,
+						TableType:              PSITableTypePAT,
+					},
+					Syntax: &PSISectionSyntax{
+						Data:   &PSISectionSyntaxData{PAT: pat},
+						Header: psiSectionSyntaxHeader,
+					},
+				},
+			},
+		},
+	},
+	{
+		"PMT",
+		func(w *astikit.BitsWriter) {
+			w.Write(uint8(4))                      // Pointer field
+			w.Write([]byte{0, 0, 0, 0})            // Pointer field bytes
+			w.Write(uint8(2))                      // PMT table ID
+			w.Write("1")                           // PMT syntax section indicator
+			w.Write("1")                           // PMT private bit
+			w.Write("11")                          // PMT reserved
+			w.Write("000000011000")                // PMT section length
+			w.Write(psiSectionSyntaxHeaderBytes()) // PMT syntax section header
+			w.Write(pmtBytes())                    // PMT data
+			w.Write(uint32(0xc68442e8))            // PMT CRC32
+		},
+		&PSIData{
+			PointerField: 4,
+			Sections: []*PSISection{
+				{
+					CRC32: uint32(0xc68442e8),
+					Header: &PSISectionHeader{
+						PrivateBit:             true,
+						SectionLength:          24,
+						SectionSyntaxIndicator: true,
+						TableID:                2,
+						TableType:              PSITableTypePMT,
+					},
+					Syntax: &PSISectionSyntax{
+						Data:   &PSISectionSyntaxData{PMT: pmt},
+						Header: psiSectionSyntaxHeader,
+					},
+				},
+			},
+		},
+	},
+}
+
+func TestWritePSIData(t *testing.T) {
+	for _, tc := range psiDataTestCases {
+		t.Run(tc.name, func(t *testing.T) {
+			bufExpected := bytes.Buffer{}
+			wExpected := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &bufExpected})
+			bufActual := bytes.Buffer{}
+			wActual := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &bufActual})
+
+			tc.bytesFunc(wExpected)
+
+			n, err := writePSIData(wActual, tc.data)
+			assert.NoError(t, err)
+			assert.Equal(t, bufExpected.Len(), n)
+			assert.Equal(t, n, bufActual.Len())
+			assert.Equal(t, bufExpected.Bytes(), bufActual.Bytes())
+		})
+	}
 }
