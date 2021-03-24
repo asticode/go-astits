@@ -14,8 +14,8 @@ func TestParseData(t *testing.T) {
 	ps := []*Packet{}
 
 	// Custom parser
-	cds := []*Data{{PID: 1}}
-	var c = func(ps []*Packet) (o []*Data, skip bool, err error) {
+	cds := []*DemuxerData{{PID: 1}}
+	var c = func(ps []*Packet) (o []*DemuxerData, skip bool, err error) {
 		o = cds
 		skip = true
 		return
@@ -44,7 +44,7 @@ func TestParseData(t *testing.T) {
 	}
 	ds, err = parseData(ps, nil, pm)
 	assert.NoError(t, err)
-	assert.Equal(t, []*Data{{FirstPacket: ps[0], PES: pesWithHeader(), PID: uint16(256)}}, ds)
+	assert.Equal(t, []*DemuxerData{{FirstPacket: ps[0], PES: pesWithHeader(), PID: uint16(256)}}, ds)
 
 	// PSI
 	pm.set(uint16(256), uint16(1))

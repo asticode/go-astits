@@ -146,15 +146,21 @@ func (m *Muxer) SetPCRPID(pid uint16) {
 	m.pmt.PCRPID = pid
 }
 
-func (m *Muxer) WritePayload(pid uint16, af *PacketAdaptationField, ph *PESHeader, payload []byte) (int, error) {
-	ctx, ok := m.esContexts[pid]
+// WriteData writes MuxerData to TS stream
+// Currently only PES packets are supported
+// Be aware that after successful call WriteData will set d.AdaptationField.StuffingLength value to zero
+func (m *Muxer) WriteData(d *MuxerData) (int, error) {
+	ctx, ok := m.esContexts[d.PID]
 	if !ok {
 		return 0, ErrPIDNotFound
 	}
 
 	bytesWritten := 0
 
-	forceTables := af != nil && af.RandomAccessIndicator && pid == m.pmt.PCRPID
+	forceTables := d.AdaptationField != nil &&
+		d.AdaptationField.RandomAccessIndicator &&
+		d.PID == m.pmt.PCRPID
+
 	n, err := m.retransmitTables(forceTables)
 	if err != nil {
 		return n, err
@@ -163,9 +169,9 @@ func (m *Muxer) WritePayload(pid uint16, af *PacketAdaptationField, ph *PESHeade
 	bytesWritten += n
 
 	payloadStart := true
-	writeAf := af != nil
+	writeAf := d.AdaptationField != nil
 	payloadBytesWritten := 0
-	for payloadBytesWritten < len(payload) {
+	for payloadBytesWritten < len(d.PES.Data) {
 		pktLen := 1 + mpegTsPacketHeaderSize // sync byte + header
 		pkt := Packet{
 			Header: &PacketHeader{
@@ -173,25 +179,29 @@ func (m *Muxer) WritePayload(pid uint16, af *PacketAdaptationField, ph *PESHeade
 				HasAdaptationField:        writeAf,
 				HasPayload:                false,
 				PayloadUnitStartIndicator: false,
-				PID:                       pid,
+				PID:                       d.PID,
 			},
 		}
 
 		if writeAf {
-			pkt.AdaptationField = af
+			pkt.AdaptationField = d.AdaptationField
 			// one byte for adaptation field length field
-			pktLen += 1 + int(calcPacketAdaptationFieldLength(af))
+			pktLen += 1 + int(calcPacketAdaptationFieldLength(d.AdaptationField))
 			writeAf = false
 		}
 
 		bytesAvailable := m.packetSize - pktLen
 		if payloadStart {
-			pesHeaderLength := pesHeaderLength + int(calcPESOptionalHeaderLength(ph.OptionalHeader))
-			// af with pes header are too big, we don't have space to write pes header
-			if bytesAvailable < pesHeaderLength {
-				af.StuffingLength = bytesAvailable
+			pesHeaderLengthCurrent := pesHeaderLength + int(calcPESOptionalHeaderLength(d.PES.Header.OptionalHeader))
+			// d.AdaptationField with pes header are too big, we don't have space to write pes header
+			if bytesAvailable < pesHeaderLengthCurrent {
+				pkt.Header.HasAdaptationField = true
+				if pkt.AdaptationField == nil {
+					pkt.AdaptationField = newStuffingAdaptationField(bytesAvailable)
+				} else {
+					pkt.AdaptationField.StuffingLength = bytesAvailable
+				}
 			} else {
-				//bytesAvailable -= pesHeaderLength
 				pkt.Header.HasPayload = true
 				pkt.Header.PayloadUnitStartIndicator = true
 			}
@@ -201,11 +211,17 @@ func (m *Muxer) WritePayload(pid uint16, af *PacketAdaptationField, ph *PESHeade
 
 		if pkt.Header.HasPayload {
 			m.buf.Reset()
-			if ph.StreamID == 0 {
-				ph.StreamID = ctx.es.StreamType.ToPESStreamID()
+			if d.PES.Header.StreamID == 0 {
+				d.PES.Header.StreamID = ctx.es.StreamType.ToPESStreamID()
 			}
 
-			ntot, npayload, err := writePESData(m.bufWriter, ph, payload[payloadBytesWritten:], payloadStart, bytesAvailable)
+			ntot, npayload, err := writePESData(
+				m.bufWriter,
+				d.PES.Header,
+				d.PES.Data[payloadBytesWritten:],
+				payloadStart,
+				bytesAvailable,
+			)
 			if err != nil {
 				return bytesWritten, err
 			}
@@ -235,6 +251,10 @@ func (m *Muxer) WritePayload(pid uint16, af *PacketAdaptationField, ph *PESHeade
 
 			payloadStart = false
 		}
+	}
+
+	if d.AdaptationField != nil {
+		d.AdaptationField.StuffingLength = 0
 	}
 
 	return bytesWritten, nil

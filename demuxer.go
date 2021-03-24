@@ -22,7 +22,7 @@ var (
 // http://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.13.01_40/en_300468v011301o.pdf
 type Demuxer struct {
 	ctx              context.Context
-	dataBuffer       []*Data
+	dataBuffer       []*DemuxerData
 	optPacketSize    int
 	optPacketsParser PacketsParser
 	packetBuffer     *packetBuffer
@@ -33,7 +33,7 @@ type Demuxer struct {
 
 // PacketsParser represents an object capable of parsing a set of packets containing a unique payload spanning over those packets
 // Use the skip returned argument to indicate whether the default process should still be executed on the set of packets
-type PacketsParser func(ps []*Packet) (ds []*Data, skip bool, err error)
+type PacketsParser func(ps []*Packet) (ds []*DemuxerData, skip bool, err error)
 
 // NewDemuxer creates a new transport stream based on a reader
 func NewDemuxer(ctx context.Context, r io.Reader, opts ...func(*Demuxer)) (d *Demuxer) {
@@ -95,7 +95,7 @@ func (dmx *Demuxer) NextPacket() (p *Packet, err error) {
 }
 
 // NextData retrieves the next data
-func (dmx *Demuxer) NextData() (d *Data, err error) {
+func (dmx *Demuxer) NextData() (d *DemuxerData, err error) {
 	// Check data buffer
 	if len(dmx.dataBuffer) > 0 {
 		d = dmx.dataBuffer[0]
@@ -106,7 +106,7 @@ func (dmx *Demuxer) NextData() (d *Data, err error) {
 	// Loop through packets
 	var p *Packet
 	var ps []*Packet
-	var ds []*Data
+	var ds []*DemuxerData
 	for {
 		// Get next packet
 		if p, err = dmx.NextPacket(); err != nil {
@@ -154,7 +154,7 @@ func (dmx *Demuxer) NextData() (d *Data, err error) {
 	}
 }
 
-func (dmx *Demuxer) updateData(ds []*Data) (d *Data) {
+func (dmx *Demuxer) updateData(ds []*DemuxerData) (d *DemuxerData) {
 	// Check whether there is data to be processed
 	if len(ds) > 0 {
 		// Process data
@@ -178,7 +178,7 @@ func (dmx *Demuxer) updateData(ds []*Data) (d *Data) {
 
 // Rewind rewinds the demuxer reader
 func (dmx *Demuxer) Rewind() (n int64, err error) {
-	dmx.dataBuffer = []*Data{}
+	dmx.dataBuffer = []*DemuxerData{}
 	dmx.packetBuffer = nil
 	dmx.packetPool = newPacketPool()
 	if n, err = rewind(dmx.r); err != nil {

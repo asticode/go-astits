@@ -219,7 +219,7 @@ func data(dmx *astits.Demuxer) (err error) {
 	}
 
 	// Loop through data
-	var d *astits.Data
+	var d *astits.DemuxerData
 	log.Println("Fetching data...")
 	for {
 		// Get next data
@@ -272,7 +272,7 @@ func data(dmx *astits.Demuxer) (err error) {
 
 func programs(dmx *astits.Demuxer) (o []*Program, err error) {
 	// Loop through data
-	var d *astits.Data
+	var d *astits.DemuxerData
 	var pgmsToProcess = make(map[uint16]bool)
 	var pgms = make(map[uint16]*Program)
 	log.Println("Fetching data...")

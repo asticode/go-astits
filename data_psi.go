@@ -455,25 +455,25 @@ func parsePSISectionSyntaxData(i *astikit.BytesIterator, h *PSISectionHeader, sh
 	return
 }
 
-// toData parses the PSI tables and returns a set of Data
-func (d *PSIData) toData(firstPacket *Packet, pid uint16) (ds []*Data) {
+// toData parses the PSI tables and returns a set of DemuxerData
+func (d *PSIData) toData(firstPacket *Packet, pid uint16) (ds []*DemuxerData) {
 	// Loop through sections
 	for _, s := range d.Sections {
 		// Switch on table type
 		switch s.Header.TableID {
 		case PSITableIDNITVariant1, PSITableIDNITVariant2:
-			ds = append(ds, &Data{FirstPacket: firstPacket, NIT: s.Syntax.Data.NIT, PID: pid})
+			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, NIT: s.Syntax.Data.NIT, PID: pid})
 		case PSITableIDPAT:
-			ds = append(ds, &Data{FirstPacket: firstPacket, PAT: s.Syntax.Data.PAT, PID: pid})
+			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PAT: s.Syntax.Data.PAT, PID: pid})
 		case PSITableIDPMT:
-			ds = append(ds, &Data{FirstPacket: firstPacket, PID: pid, PMT: s.Syntax.Data.PMT})
+			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PID: pid, PMT: s.Syntax.Data.PMT})
 		case PSITableIDSDTVariant1, PSITableIDSDTVariant2:
-			ds = append(ds, &Data{FirstPacket: firstPacket, PID: pid, SDT: s.Syntax.Data.SDT})
+			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PID: pid, SDT: s.Syntax.Data.SDT})
 		case PSITableIDTOT:
-			ds = append(ds, &Data{FirstPacket: firstPacket, PID: pid, TOT: s.Syntax.Data.TOT})
+			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PID: pid, TOT: s.Syntax.Data.TOT})
 		}
 		if s.Header.TableID >= PSITableIDEITStart && s.Header.TableID <= PSITableIDEITEnd {
-			ds = append(ds, &Data{EIT: s.Syntax.Data.EIT, FirstPacket: firstPacket, PID: pid})
+			ds = append(ds, &DemuxerData{EIT: s.Syntax.Data.EIT, FirstPacket: firstPacket, PID: pid})
 		}
 	}
 	return

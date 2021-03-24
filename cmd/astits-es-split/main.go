@@ -62,7 +62,7 @@ func main() {
 
 	pmtsPrinted := false
 
-	lastRateOutput := time.Now()
+	timeStarted := time.Now()
 	bytesWritten := 0
 
 	for {
@@ -177,7 +177,11 @@ func main() {
 			af.PCR = pcr
 		}
 
-		n, err := mux.WritePayload(pid, af, d.PES.Header, d.PES.Data)
+		n, err := mux.WriteData(&astits.MuxerData{
+			PID:             pid,
+			AdaptationField: af,
+			PES:             d.PES,
+		})
 		if err != nil {
 			log.Fatalf("%v", err)
 		}
@@ -185,8 +189,7 @@ func main() {
 		bytesWritten += n
 	}
 
-	timeDiff := time.Since(lastRateOutput)
-	lastRateOutput = time.Now()
+	timeDiff := time.Since(timeStarted)
 	log.Printf("%d bytes written at rate %.02f mb/s", bytesWritten, (float64(bytesWritten)/1024.0/1024.0)/timeDiff.Seconds())
 
 	for _, f := range outfiles {

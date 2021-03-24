@@ -269,7 +269,7 @@ func TestParsePSISectionSyntaxHeader(t *testing.T) {
 
 func TestPSIToData(t *testing.T) {
 	p := &Packet{}
-	assert.Equal(t, []*Data{
+	assert.Equal(t, []*DemuxerData{
 		{EIT: eit, FirstPacket: p, PID: 2},
 		{FirstPacket: p, NIT: nit, PID: 2},
 		{FirstPacket: p, PAT: pat, PID: 2},

@@ -268,34 +268,48 @@ func TestMuxer_WritePayload(t *testing.T) {
 	}
 	pts := ClockReference{Base: 5726623060}
 
-	n, err := muxer.WritePayload(0x1234, &PacketAdaptationField{
-		HasPCR:                true,
-		PCR:                   &pcr,
-		RandomAccessIndicator: true,
-	}, &PESHeader{
-		OptionalHeader: &PESOptionalHeader{
-			DTS:             &pts,
-			PTS:             &pts,
-			PTSDTSIndicator: PTSDTSIndicatorBothPresent,
+	n, err := muxer.WriteData(&MuxerData{
+		PID: 0x1234,
+		AdaptationField: &PacketAdaptationField{
+			HasPCR:                true,
+			PCR:                   &pcr,
+			RandomAccessIndicator: true,
 		},
-	}, payload)
+		PES: &PESData{
+			Data: payload,
+			Header: &PESHeader{
+				OptionalHeader: &PESOptionalHeader{
+					DTS:             &pts,
+					PTS:             &pts,
+					PTSDTSIndicator: PTSDTSIndicatorBothPresent,
+				},
+			},
+		},
+	})
 
 	assert.NoError(t, err)
 	assert.Equal(t, buf.Len(), n)
 
 	bytesTotal := n
 
-	n, err = muxer.WritePayload(0x0234, &PacketAdaptationField{
-		HasPCR:                true,
-		PCR:                   &pcr,
-		RandomAccessIndicator: true,
-	}, &PESHeader{
-		OptionalHeader: &PESOptionalHeader{
-			DTS:             &pts,
-			PTS:             &pts,
-			PTSDTSIndicator: PTSDTSIndicatorBothPresent,
+	n, err = muxer.WriteData(&MuxerData{
+		PID: 0x0234,
+		AdaptationField: &PacketAdaptationField{
+			HasPCR:                true,
+			PCR:                   &pcr,
+			RandomAccessIndicator: true,
 		},
-	}, payload)
+		PES: &PESData{
+			Data: payload,
+			Header: &PESHeader{
+				OptionalHeader: &PESOptionalHeader{
+					DTS:             &pts,
+					PTS:             &pts,
+					PTSDTSIndicator: PTSDTSIndicatorBothPresent,
+				},
+			},
+		},
+	})
 
 	assert.NoError(t, err)
 	assert.Equal(t, buf.Len(), bytesTotal+n)

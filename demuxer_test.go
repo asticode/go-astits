@@ -12,7 +12,7 @@ import (
 
 func TestDemuxerNew(t *testing.T) {
 	ps := 1
-	pp := func(ps []*Packet) (ds []*Data, skip bool, err error) { return }
+	pp := func(ps []*Packet) (ds []*DemuxerData, skip bool, err error) { return }
 	dmx := NewDemuxer(context.Background(), nil, DemuxerOptPacketSize(ps), DemuxerOptPacketsParser(pp))
 	assert.Equal(t, ps, dmx.optPacketSize)
 	assert.Equal(t, fmt.Sprintf("%p", pp), fmt.Sprintf("%p", dmx.optPacketsParser))
@@ -67,7 +67,7 @@ func TestDemuxerNextData(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Next data
-	var ds []*Data
+	var ds []*DemuxerData
 	for _, s := range psi.Sections {
 		if !s.Header.TableID.isUnknown() {
 			d, err := dmx.NextData()
@@ -87,7 +87,7 @@ func TestDemuxerRewind(t *testing.T) {
 	r := bytes.NewReader([]byte("content"))
 	dmx := NewDemuxer(context.Background(), r)
 	dmx.packetPool.add(&Packet{Header: &PacketHeader{PID: 1}})
-	dmx.dataBuffer = append(dmx.dataBuffer, &Data{})
+	dmx.dataBuffer = append(dmx.dataBuffer, &DemuxerData{})
 	b := make([]byte, 2)
 	_, err := r.Read(b)
 	assert.NoError(t, err)

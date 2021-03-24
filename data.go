@@ -14,8 +14,8 @@ const (
 	PIDNull uint16 = 0x1fff // Null Packet (used for fixed bandwidth padding)
 )
 
-// Data represents a data
-type Data struct {
+// DemuxerData represents a data parsed by Demuxer
+type DemuxerData struct {
 	EIT         *EITData
 	FirstPacket *Packet
 	NIT         *NITData
@@ -27,8 +27,15 @@ type Data struct {
 	TOT         *TOTData
 }
 
+// MuxerData represents a data to be written by Muxer
+type MuxerData struct {
+	PID             uint16
+	AdaptationField *PacketAdaptationField
+	PES             *PESData
+}
+
 // parseData parses a payload spanning over multiple packets and returns a set of data
-func parseData(ps []*Packet, prs PacketsParser, pm programMap) (ds []*Data, err error) {
+func parseData(ps []*Packet, prs PacketsParser, pm programMap) (ds []*DemuxerData, err error) {
 	// Use custom parser first
 	if prs != nil {
 		var skip bool
@@ -82,7 +89,7 @@ func parseData(ps []*Packet, prs PacketsParser, pm programMap) (ds []*Data, err 
 		}
 
 		// Append data
-		ds = append(ds, &Data{
+		ds = append(ds, &DemuxerData{
 			FirstPacket: ps[0],
 			PES:         pesData,
 			PID:         pid,
