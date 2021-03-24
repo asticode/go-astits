@@ -154,7 +154,7 @@ func TestMuxer_generatePMT(t *testing.T) {
 	err := muxer.AddElementaryStream(PMTElementaryStream{
 		ElementaryPID: 0x1234,
 		StreamType:    StreamTypeH264Video,
-	}, true)
+	})
 	assert.NoError(t, err)
 
 	err = muxer.generatePMT()
@@ -165,7 +165,7 @@ func TestMuxer_generatePMT(t *testing.T) {
 	err = muxer.AddElementaryStream(PMTElementaryStream{
 		ElementaryPID: 0x0234,
 		StreamType:    StreamTypeAACAudio,
-	}, false)
+	})
 	assert.NoError(t, err)
 
 	err = muxer.generatePMT()
@@ -180,7 +180,7 @@ func TestMuxer_WriteTables(t *testing.T) {
 	err := muxer.AddElementaryStream(PMTElementaryStream{
 		ElementaryPID: 0x1234,
 		StreamType:    StreamTypeH264Video,
-	}, true)
+	})
 	assert.NoError(t, err)
 
 	n, err := muxer.WriteTables()
@@ -197,7 +197,7 @@ func TestMuxer_WriteTables_Error(t *testing.T) {
 	err := muxer.AddElementaryStream(PMTElementaryStream{
 		ElementaryPID: 0x1234,
 		StreamType:    StreamTypeH264Video,
-	}, false)
+	})
 	assert.NoError(t, err)
 
 	_, err = muxer.WriteTables()
@@ -209,13 +209,13 @@ func TestMuxer_AddElementaryStream(t *testing.T) {
 	err := muxer.AddElementaryStream(PMTElementaryStream{
 		ElementaryPID: 0x1234,
 		StreamType:    StreamTypeH264Video,
-	}, true)
+	})
 	assert.NoError(t, err)
 
 	err = muxer.AddElementaryStream(PMTElementaryStream{
 		ElementaryPID: 0x1234,
 		StreamType:    StreamTypeH264Video,
-	}, true)
+	})
 	assert.Equal(t, ErrPIDAlreadyExists, err)
 }
 
@@ -224,7 +224,7 @@ func TestMuxer_RemoveElementaryStream(t *testing.T) {
 	err := muxer.AddElementaryStream(PMTElementaryStream{
 		ElementaryPID: 0x1234,
 		StreamType:    StreamTypeH264Video,
-	}, true)
+	})
 	assert.NoError(t, err)
 
 	err = muxer.RemoveElementaryStream(0x1234)
@@ -249,13 +249,13 @@ func TestMuxer_WritePayload(t *testing.T) {
 	err := muxer.AddElementaryStream(PMTElementaryStream{
 		ElementaryPID: 0x1234,
 		StreamType:    StreamTypeH264Video,
-	}, true)
+	})
 	assert.NoError(t, err)
 
 	err = muxer.AddElementaryStream(PMTElementaryStream{
 		ElementaryPID: 0x0234,
 		StreamType:    StreamTypeAACAudio,
-	}, false)
+	})
 	assert.NoError(t, err)
 
 	payload := testPayload()

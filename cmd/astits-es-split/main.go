@@ -117,10 +117,11 @@ func main() {
 
 					bufWriter := bufio.NewWriterSize(outfile, ioBufSize)
 					mux := astits.NewMuxer(context.Background(), bufWriter)
-					err = mux.AddElementaryStream(*es, true)
+					err = mux.AddElementaryStream(*es)
 					if err != nil {
 						log.Fatalf("%v", err)
 					}
+					mux.SetPCRPID(es.ElementaryPID)
 
 					outfiles[es.ElementaryPID] = muxerOut{
 						f: outfile,

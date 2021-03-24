@@ -100,7 +100,7 @@ func NewMuxer(ctx context.Context, w io.Writer, opts ...func(*Muxer)) *Muxer {
 }
 
 // if es.ElementaryPID is zero, it will be generated automatically
-func (m *Muxer) AddElementaryStream(es PMTElementaryStream, isPCRPid bool) error {
+func (m *Muxer) AddElementaryStream(es PMTElementaryStream) error {
 	if es.ElementaryPID != 0 {
 		for _, oes := range m.pmt.ElementaryStreams {
 			if oes.ElementaryPID == es.ElementaryPID {
@@ -113,9 +113,6 @@ func (m *Muxer) AddElementaryStream(es PMTElementaryStream, isPCRPid bool) error
 	}
 
 	m.pmt.ElementaryStreams = append(m.pmt.ElementaryStreams, &es)
-	if isPCRPid {
-		m.pmt.PCRPID = es.ElementaryPID
-	}
 
 	m.esContexts[es.ElementaryPID] = newEsContext(&es)
 	// invalidate pmt cache
@@ -140,6 +137,10 @@ func (m *Muxer) RemoveElementaryStream(pid uint16) error {
 	delete(m.esContexts, pid)
 	m.pmtBytes.Reset()
 	return nil
+}
+
+func (m *Muxer) SetPCRPID(pid uint16) {
+	m.pmt.PCRPID = pid
 }
 
 func (m *Muxer) WritePayload(pid uint16, af *PacketAdaptationField, ph *PESHeader, payload []byte) (int, error) {
