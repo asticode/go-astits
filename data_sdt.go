@@ -42,7 +42,7 @@ func parseSDTSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 
 	// Get next bytes
 	var bs []byte
-	if bs, err = i.NextBytes(2); err != nil {
+	if bs, err = i.NextBytesFast(2); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
@@ -59,7 +59,7 @@ func parseSDTSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 		s := &SDTDataService{}
 
 		// Get next bytes
-		if bs, err = i.NextBytes(2); err != nil {
+		if bs, err = i.NextBytesFast(2); err != nil {
 			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 			return
 		}

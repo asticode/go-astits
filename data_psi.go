@@ -165,7 +165,7 @@ func parsePSISection(i *astikit.BytesIterator) (s *PSISection, stop bool, err er
 			// Get CRC32 data
 			i.Seek(offsetStart)
 			var crc32Data []byte
-			if crc32Data, err = i.NextBytes(offsetSectionsEnd - offsetStart); err != nil {
+			if crc32Data, err = i.NextBytesFast(offsetSectionsEnd - offsetStart); err != nil {
 				err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 				return
 			}
@@ -189,7 +189,7 @@ func parsePSISection(i *astikit.BytesIterator) (s *PSISection, stop bool, err er
 // parseCRC32 parses a CRC32
 func parseCRC32(i *astikit.BytesIterator) (c uint32, err error) {
 	var bs []byte
-	if bs, err = i.NextBytes(4); err != nil {
+	if bs, err = i.NextBytesFast(4); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
@@ -229,7 +229,7 @@ func parsePSISectionHeader(i *astikit.BytesIterator) (h *PSISectionHeader, offse
 
 	// Get next bytes
 	var bs []byte
-	if bs, err = i.NextBytes(2); err != nil {
+	if bs, err = i.NextBytesFast(2); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
@@ -358,7 +358,7 @@ func parsePSISectionSyntaxHeader(i *astikit.BytesIterator) (h *PSISectionSyntaxH
 
 	// Get next 2 bytes
 	var bs []byte
-	if bs, err = i.NextBytes(2); err != nil {
+	if bs, err = i.NextBytesFast(2); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
