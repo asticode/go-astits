@@ -662,3 +662,44 @@ func TestWriteDescriptorAll(t *testing.T) {
 	assert.Equal(t, bufExpected.Len(), bufActual.Len())
 	assert.Equal(t, bufExpected.Bytes(), bufActual.Bytes())
 }
+
+func BenchmarkWriteDescriptor(b *testing.B) {
+	buf := bytes.Buffer{}
+	buf.Grow(1024)
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &buf})
+
+	for _, bm := range descriptorTestTable {
+		b.Run(bm.name, func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				buf.Reset()
+				writeDescriptor(w, &bm.desc)
+			}
+		})
+	}
+}
+
+func BenchmarkParseDescriptor(b *testing.B) {
+	bss := make([][]byte, len(descriptorTestTable))
+
+	for ti, tc := range descriptorTestTable {
+		buf := bytes.Buffer{}
+		buf.Write([]byte{0x00, 0x00}) // reserve two bytes for length
+		w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &buf})
+		tc.bytesFunc(w)
+		descLen := uint16(buf.Len() - 2)
+		descBytes := buf.Bytes()
+		descBytes[0] = byte(descLen >> 8)
+		descBytes[1] = byte(descLen & 0xff)
+		bss[ti] = descBytes
+	}
+
+	for ti, tc := range descriptorTestTable {
+		b.Run(tc.name, func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				parseDescriptors(astikit.NewBytesIterator(bss[ti]))
+			}
+		})
+	}
+}

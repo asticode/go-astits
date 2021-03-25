@@ -485,3 +485,25 @@ func TestWritePESOptionalHeader(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkParsePESData(b *testing.B) {
+	bss := make([][]byte, len(pesTestCases))
+
+	for ti, tc := range pesTestCases {
+		buf := bytes.Buffer{}
+		w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &buf})
+		tc.headerBytesFunc(w, true, true)
+		tc.optionalHeaderBytesFunc(w, true, true)
+		tc.bytesFunc(w, true, true)
+		bss[ti] = buf.Bytes()
+	}
+
+	for ti, tc := range pesTestCases {
+		b.Run(tc.name, func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				parsePESData(astikit.NewBytesIterator(bss[ti]))
+			}
+		})
+	}
+}
