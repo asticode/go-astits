@@ -17,7 +17,7 @@ import (
 func parseDVBTime(i *astikit.BytesIterator) (t time.Time, err error) {
 	// Get next 2 bytes
 	var bs []byte
-	if bs, err = i.NextBytes(2); err != nil {
+	if bs, err = i.NextBytesNoCopy(2); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
@@ -49,7 +49,7 @@ func parseDVBTime(i *astikit.BytesIterator) (t time.Time, err error) {
 // 16 bit field containing the duration of the event in hours, minutes. format: 4 digits, 4 - bit BCD = 18 bit
 func parseDVBDurationMinutes(i *astikit.BytesIterator) (d time.Duration, err error) {
 	var bs []byte
-	if bs, err = i.NextBytes(2); err != nil {
+	if bs, err = i.NextBytesNoCopy(2); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
@@ -61,7 +61,7 @@ func parseDVBDurationMinutes(i *astikit.BytesIterator) (d time.Duration, err err
 // 24 bit field containing the duration of the event in hours, minutes, seconds. format: 6 digits, 4 - bit BCD = 24 bit
 func parseDVBDurationSeconds(i *astikit.BytesIterator) (d time.Duration, err error) {
 	var bs []byte
-	if bs, err = i.NextBytes(3); err != nil {
+	if bs, err = i.NextBytesNoCopy(3); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}

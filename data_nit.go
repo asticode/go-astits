@@ -35,7 +35,7 @@ func parseNITSection(i *astikit.BytesIterator, tableIDExtension uint16) (d *NITD
 
 	// Get next bytes
 	var bs []byte
-	if bs, err = i.NextBytes(2); err != nil {
+	if bs, err = i.NextBytesNoCopy(2); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
@@ -50,7 +50,7 @@ func parseNITSection(i *astikit.BytesIterator, tableIDExtension uint16) (d *NITD
 		ts := &NITDataTransportStream{}
 
 		// Get next bytes
-		if bs, err = i.NextBytes(2); err != nil {
+		if bs, err = i.NextBytesNoCopy(2); err != nil {
 			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 			return
 		}
@@ -59,7 +59,7 @@ func parseNITSection(i *astikit.BytesIterator, tableIDExtension uint16) (d *NITD
 		ts.TransportStreamID = uint16(bs[0])<<8 | uint16(bs[1])
 
 		// Get next bytes
-		if bs, err = i.NextBytes(2); err != nil {
+		if bs, err = i.NextBytesNoCopy(2); err != nil {
 			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 			return
 		}

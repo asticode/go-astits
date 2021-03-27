@@ -35,7 +35,7 @@ func TestParsePATSection(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestWritePatSection(t *testing.T) {
+func TestWritePATSection(t *testing.T) {
 	bw := &bytes.Buffer{}
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: bw})
 	n, err := writePATSection(w, pat)
@@ -43,4 +43,26 @@ func TestWritePatSection(t *testing.T) {
 	assert.Equal(t, n, 8)
 	assert.Equal(t, n, bw.Len())
 	assert.Equal(t, patBytes(), bw.Bytes())
+}
+
+func BenchmarkParsePATSection(b *testing.B) {
+	b.ReportAllocs()
+	bs := patBytes()
+
+	for i := 0; i < b.N; i++ {
+		parsePATSection(astikit.NewBytesIterator(bs), len(bs), uint16(1))
+	}
+}
+
+func BenchmarkWritePATSection(b *testing.B) {
+	b.ReportAllocs()
+
+	bw := &bytes.Buffer{}
+	bw.Grow(1024)
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: bw})
+
+	for i := 0; i < b.N; i++ {
+		bw.Reset()
+		writePATSection(w, pat)
+	}
 }

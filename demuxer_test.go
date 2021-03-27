@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"testing"
 
 	"github.com/asticode/go-astikit"
@@ -98,4 +99,29 @@ func TestDemuxerRewind(t *testing.T) {
 	assert.Equal(t, 0, len(dmx.dataBuffer))
 	assert.Equal(t, 0, len(dmx.packetPool.b))
 	assert.Nil(t, dmx.packetBuffer)
+}
+
+func BenchmarkDemuxer_NextData(b *testing.B) {
+	b.ReportAllocs()
+
+	buf := &bytes.Buffer{}
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+	bs := psiBytes()
+	b1, _ := packet(PacketHeader{ContinuityCounter: uint8(0), PayloadUnitStartIndicator: true, PID: PIDPAT}, PacketAdaptationField{}, bs[:147], true)
+	w.Write(b1)
+	b2, _ := packet(PacketHeader{ContinuityCounter: uint8(1), PID: PIDPAT}, PacketAdaptationField{}, bs[147:], true)
+	w.Write(b2)
+
+	r := bytes.NewReader(buf.Bytes())
+
+	for i := 0; i < b.N; i++ {
+		r.Seek(0, io.SeekStart)
+		dmx := NewDemuxer(context.Background(), r)
+
+		for _, s := range psi.Sections {
+			if !s.Header.TableID.isUnknown() {
+				dmx.NextData()
+			}
+		}
+	}
 }

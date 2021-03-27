@@ -49,3 +49,25 @@ func TestWritePMTSection(t *testing.T) {
 	assert.Equal(t, n, buf.Len())
 	assert.Equal(t, pmtBytes(), buf.Bytes())
 }
+
+func BenchmarkParsePMTSection(b *testing.B) {
+	b.ReportAllocs()
+	bs := pmtBytes()
+
+	for i := 0; i < b.N; i++ {
+		parsePMTSection(astikit.NewBytesIterator(bs), len(bs), uint16(1))
+	}
+}
+
+func BenchmarkWritePMTSection(b *testing.B) {
+	b.ReportAllocs()
+
+	bw := &bytes.Buffer{}
+	bw.Grow(1024)
+	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: bw})
+
+	for i := 0; i < b.N; i++ {
+		bw.Reset()
+		writePMTSection(w, pmt)
+	}
+}
