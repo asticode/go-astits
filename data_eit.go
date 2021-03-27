@@ -36,7 +36,7 @@ func parseEITSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 
 	// Get next 2 bytes
 	var bs []byte
-	if bs, err = i.NextBytesFast(2); err != nil {
+	if bs, err = i.NextBytesNoCopy(2); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
@@ -45,7 +45,7 @@ func parseEITSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 	d.TransportStreamID = uint16(bs[0])<<8 | uint16(bs[1])
 
 	// Get next 2 bytes
-	if bs, err = i.NextBytesFast(2); err != nil {
+	if bs, err = i.NextBytesNoCopy(2); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
@@ -75,7 +75,7 @@ func parseEITSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 	// Loop until end of section data is reached
 	for i.Offset() < offsetSectionsEnd {
 		// Get next 2 bytes
-		if bs, err = i.NextBytesFast(2); err != nil {
+		if bs, err = i.NextBytesNoCopy(2); err != nil {
 			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 			return
 		}

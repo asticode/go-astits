@@ -32,7 +32,7 @@ func parsePATSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 	for i.Offset() < offsetSectionsEnd {
 		// Get next bytes
 		var bs []byte
-		if bs, err = i.NextBytesFast(4); err != nil {
+		if bs, err = i.NextBytesNoCopy(4); err != nil {
 			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 			return
 		}

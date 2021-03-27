@@ -340,7 +340,7 @@ func newDescriptorContent(i *astikit.BytesIterator, offsetEnd int) (d *Descripto
 	for i.Offset() < offsetEnd {
 		// Get next bytes
 		var bs []byte
-		if bs, err = i.NextBytesFast(2); err != nil {
+		if bs, err = i.NextBytesNoCopy(2); err != nil {
 			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 			return
 		}
@@ -793,7 +793,7 @@ type DescriptorMaximumBitrate struct {
 func newDescriptorMaximumBitrate(i *astikit.BytesIterator) (d *DescriptorMaximumBitrate, err error) {
 	// Get next bytes
 	var bs []byte
-	if bs, err = i.NextBytesFast(3); err != nil {
+	if bs, err = i.NextBytesNoCopy(3); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
@@ -873,7 +873,7 @@ type DescriptorPrivateDataIndicator struct {
 func newDescriptorPrivateDataIndicator(i *astikit.BytesIterator) (d *DescriptorPrivateDataIndicator, err error) {
 	// Get next bytes
 	var bs []byte
-	if bs, err = i.NextBytesFast(4); err != nil {
+	if bs, err = i.NextBytesNoCopy(4); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
@@ -891,7 +891,7 @@ type DescriptorPrivateDataSpecifier struct {
 func newDescriptorPrivateDataSpecifier(i *astikit.BytesIterator) (d *DescriptorPrivateDataSpecifier, err error) {
 	// Get next bytes
 	var bs []byte
-	if bs, err = i.NextBytesFast(4); err != nil {
+	if bs, err = i.NextBytesNoCopy(4); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
@@ -911,7 +911,7 @@ type DescriptorRegistration struct {
 func newDescriptorRegistration(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorRegistration, err error) {
 	// Get next bytes
 	var bs []byte
-	if bs, err = i.NextBytesFast(4); err != nil {
+	if bs, err = i.NextBytesNoCopy(4); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
@@ -1089,7 +1089,7 @@ func newDescriptorSubtitling(i *astikit.BytesIterator, offsetEnd int) (d *Descri
 
 		// Get next bytes
 		var bs []byte
-		if bs, err = i.NextBytesFast(2); err != nil {
+		if bs, err = i.NextBytesNoCopy(2); err != nil {
 			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 			return
 		}
@@ -1098,7 +1098,7 @@ func newDescriptorSubtitling(i *astikit.BytesIterator, offsetEnd int) (d *Descri
 		itm.CompositionPageID = uint16(bs[0])<<8 | uint16(bs[1])
 
 		// Get next bytes
-		if bs, err = i.NextBytesFast(2); err != nil {
+		if bs, err = i.NextBytesNoCopy(2); err != nil {
 			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 			return
 		}
@@ -1268,7 +1268,7 @@ func newDescriptorVBIData(i *astikit.BytesIterator, offsetEnd int) (d *Descripto
 func parseDescriptors(i *astikit.BytesIterator) (o []*Descriptor, err error) {
 	// Get next 2 bytes
 	var bs []byte
-	if bs, err = i.NextBytesFast(2); err != nil {
+	if bs, err = i.NextBytesNoCopy(2); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
@@ -1281,7 +1281,7 @@ func parseDescriptors(i *astikit.BytesIterator) (o []*Descriptor, err error) {
 		offsetEnd := i.Offset() + length
 		for i.Offset() < offsetEnd {
 			// Get next 2 bytes
-			if bs, err = i.NextBytesFast(2); err != nil {
+			if bs, err = i.NextBytesNoCopy(2); err != nil {
 				err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 				return
 			}

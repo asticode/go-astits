@@ -130,7 +130,7 @@ func payloadOffset(offsetStart int, h *PacketHeader, a *PacketAdaptationField) (
 func parsePacketHeader(i *astikit.BytesIterator) (h *PacketHeader, err error) {
 	// Get next bytes
 	var bs []byte
-	if bs, err = i.NextBytesFast(3); err != nil {
+	if bs, err = i.NextBytesNoCopy(3); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
@@ -255,7 +255,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 				// Legal time window
 				if a.AdaptationExtensionField.HasLegalTimeWindow {
 					var bs []byte
-					if bs, err = i.NextBytesFast(2); err != nil {
+					if bs, err = i.NextBytesNoCopy(2); err != nil {
 						err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 						return
 					}
@@ -266,7 +266,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 				// Piecewise rate
 				if a.AdaptationExtensionField.HasPiecewiseRate {
 					var bs []byte
-					if bs, err = i.NextBytesFast(3); err != nil {
+					if bs, err = i.NextBytesNoCopy(3); err != nil {
 						err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 						return
 					}
@@ -306,7 +306,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 // Program clock reference, stored as 33 bits base, 6 bits reserved, 9 bits extension.
 func parsePCR(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 	var bs []byte
-	if bs, err = i.NextBytesFast(6); err != nil {
+	if bs, err = i.NextBytesNoCopy(6); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}

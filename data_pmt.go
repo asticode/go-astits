@@ -58,7 +58,7 @@ func parsePMTSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 
 	// Get next bytes
 	var bs []byte
-	if bs, err = i.NextBytesFast(2); err != nil {
+	if bs, err = i.NextBytesNoCopy(2); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
@@ -88,7 +88,7 @@ func parsePMTSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 		e.StreamType = StreamType(b)
 
 		// Get next bytes
-		if bs, err = i.NextBytesFast(2); err != nil {
+		if bs, err = i.NextBytesNoCopy(2); err != nil {
 			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 			return
 		}

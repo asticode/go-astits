@@ -162,7 +162,7 @@ func parsePESHeader(i *astikit.BytesIterator) (h *PESHeader, dataStart, dataEnd 
 
 	// Get next bytes
 	var bs []byte
-	if bs, err = i.NextBytesFast(2); err != nil {
+	if bs, err = i.NextBytesNoCopy(2); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
@@ -276,7 +276,7 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 	// ES rate
 	if h.HasESRate {
 		var bs []byte
-		if bs, err = i.NextBytesFast(3); err != nil {
+		if bs, err = i.NextBytesNoCopy(3); err != nil {
 			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 			return
 		}
@@ -304,7 +304,7 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 	// CRC
 	if h.HasCRC {
 		var bs []byte
-		if bs, err = i.NextBytesFast(2); err != nil {
+		if bs, err = i.NextBytesNoCopy(2); err != nil {
 			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 			return
 		}
@@ -347,7 +347,7 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 		// Program packet sequence counter
 		if h.HasProgramPacketSequenceCounter {
 			var bs []byte
-			if bs, err = i.NextBytesFast(2); err != nil {
+			if bs, err = i.NextBytesNoCopy(2); err != nil {
 				err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 				return
 			}
@@ -359,7 +359,7 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 		// P-STD buffer
 		if h.HasPSTDBuffer {
 			var bs []byte
-			if bs, err = i.NextBytesFast(2); err != nil {
+			if bs, err = i.NextBytesNoCopy(2); err != nil {
 				err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 				return
 			}
@@ -405,7 +405,7 @@ func parseDSMTrickMode(i byte) (m *DSMTrickMode) {
 // parsePTSOrDTS parses a PTS or a DTS
 func parsePTSOrDTS(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 	var bs []byte
-	if bs, err = i.NextBytesFast(5); err != nil {
+	if bs, err = i.NextBytesNoCopy(5); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
@@ -416,7 +416,7 @@ func parsePTSOrDTS(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 // parseESCR parses an ESCR
 func parseESCR(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 	var bs []byte
-	if bs, err = i.NextBytesFast(6); err != nil {
+	if bs, err = i.NextBytesNoCopy(6); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
