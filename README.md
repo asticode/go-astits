@@ -58,6 +58,7 @@ go func() {
 }()
 
 // Open your file or initialize any kind of io.Reader
+// Buffering using bufio.Reader is recommended for performance
 f, _ := os.Open("/path/to/file.ts")
 defer f.Close()
 
@@ -92,8 +93,9 @@ go func() {
     cancel()
 }()
 
-// Open your file or initialize any kind of io.Writer
-f, _ := os.Open("/path/to/file.ts")
+// Create your file or initialize any kind of io.Writer
+// Buffering using bufio.Writer is recommended for performance
+f, _ := os.Create("/path/to/file.ts")
 defer f.Close()
 
 // Create the muxer
@@ -106,6 +108,7 @@ mx.AddElementaryStream(astits.PMTElementaryStream{
 })
 
 // Write tables
+// Using that function is not mandatory, WriteData will retransmit tables from time to time 
 mx.WriteTables()
 
 // Write data
