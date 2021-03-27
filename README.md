@@ -3,7 +3,7 @@
 [![Travis](https://travis-ci.org/asticode/go-astits.svg?branch=master)](https://travis-ci.org/asticode/go-astits#)
 [![Coveralls](https://coveralls.io/repos/github/asticode/go-astits/badge.svg?branch=master)](https://coveralls.io/github/asticode/go-astits)
 
-This is a Golang library to natively parse and demux MPEG Transport Streams (ts) in GO.
+This is a Golang library to natively demux and mux MPEG Transport Streams (ts) in GO.
 
 WARNING: this library is not yet production ready. Use at your own risks!
 
@@ -43,6 +43,8 @@ Several payloads can be appended and parsed as a data.
 
 WARNING: the code below doesn't handle errors for readability purposes. However you SHOULD!
 
+## Demux
+
 ```go
 // Create a cancellable context in case you want to stop reading packets/data any time you want
 ctx, cancel := context.WithCancel(context.Background())
@@ -60,7 +62,7 @@ f, _ := os.Open("/path/to/file.ts")
 defer f.Close()
 
 // Create the demuxer
-dmx := astits.New(ctx, f)
+dmx := astits.NewDemuxer(ctx, f)
 for {
     // Get the next data
     d, _ := dmx.NextData()
@@ -76,9 +78,48 @@ for {
 }
 ```
 
+## Mux
+
+```go
+// Create a cancellable context in case you want to stop writing packets/data any time you want
+ctx, cancel := context.WithCancel(context.Background())
+
+// Handle SIGTERM signal
+ch := make(chan os.Signal, 1)
+signal.Notify(ch, syscall.SIGTERM)
+go func() {
+    <-ch
+    cancel()
+}()
+
+// Open your file or initialize any kind of io.Writer
+f, _ := os.Open("/path/to/file.ts")
+defer f.Close()
+
+// Create the muxer
+mx := astits.NewMuxer(ctx, f)
+
+// Add an elementary stream
+mx.AddElementaryStream(astits.PMTElementaryStream{
+    ElementaryPID: 1,
+    StreamType:    astits.StreamTypeMetadata,
+})
+
+// Write tables
+mx.WriteTables()
+
+// Write data
+mx.WriteData(&astits.MuxerData{
+    PES: &astits.PESData{
+        Data: []byte("test"),
+    },
+    PID: 1,
+})
+```
+
 ## Options
 
-In order to pass options to the demuxer, look for the methods prefixed with `Opt` and add them upon calling `New`:
+In order to pass options to the demuxer or the muxer, look for the methods prefixed with `DemuxerOpt` or `MuxerOpt` and add them upon calling `NewDemuxer` or `NewMuxer` :
 
 ```go
 // This is your custom packets parser
@@ -89,38 +130,61 @@ p := func(ps []*astits.Packet) (ds []*astits.Data, skip bool, err error) {
 }
 
 // Now you can create a demuxer with the proper options
-dmx := New(ctx, f, OptPacketSize(192), OptPacketsParser(p))
+dmx := NewDemuxer(ctx, f, DemuxerOptPacketSize(192), DemuxerOptPacketsParser(p))
 ```
 
 # CLI
 
-This library provides a CLI that will automatically get installed in `GOPATH/bin` on `go get` execution.
+This library provides 2 CLIs that will automatically get installed in `GOPATH/bin` on `go get` execution.
 
-## List streams
+## astits-probe
 
-    $ astits -i <path to your file> -f <format: text|json (default: text)>
+### List streams
 
-## List packets
+    $ astits-probe -i <path to your file> -f <format: text|json (default: text)>
 
-    $ astits packets -i <path to your file>
+### List packets
 
-## List data
+    $ astits-probe packets -i <path to your file>
 
-    $ astits data -i <path to your file> -d <data type: eit|nit|... (repeatable argument | if empty, all data types are shown)>
+### List data
+
+    $ astits-probe data -i <path to your file> -d <data type: eit|nit|... (repeatable argument | if empty, all data types are shown)>
+
+## astits-es-split
+
+### Split streams into separate .ts files
+
+    $ astits-es-split <path to your file> -o <path to output dir>
 
 # Features and roadmap
 
-- [x] Parse PES packets
-- [x] Parse PAT packets
-- [x] Parse PMT packets
-- [x] Parse EIT packets
-- [x] Parse NIT packets
-- [x] Parse SDT packets
-- [x] Parse TOT packets
-- [ ] Parse BAT packets
-- [ ] Parse DIT packets
-- [ ] Parse RST packets
-- [ ] Parse SIT packets
-- [ ] Parse ST packets
-- [ ] Parse TDT packets
-- [ ] Parse TSDT packets
+- [x] Add demuxer
+- [x] Add muxer
+- [x] Demux PES packets
+- [x] Mux PES packets
+- [x] Demux PAT packets
+- [x] Mux PAT packets
+- [x] Demux PMT packets
+- [x] Mux PMT packets
+- [x] Demux EIT packets
+- [ ] Mux EIT packets
+- [x] Demux NIT packets
+- [ ] Mux NIT packets
+- [x] Demux SDT packets
+- [ ] Mux SDT packets
+- [x] Demux TOT packets
+- [ ] Mux TOT packets
+- [ ] Demux BAT packets
+- [ ] Mux BAT packets
+- [ ] Demux DIT packets
+- [ ] Mux DIT packets
+- [ ] Demux RST packets
+- [ ] Mux RST packets
+- [ ] Demux SIT packets
+- [ ] Mux SIT packets
+- [ ] Mux ST packets
+- [ ] Demux TDT packets
+- [ ] Mux TDT packets
+- [ ] Demux TSDT packets
+- [ ] Mux TSDT packets

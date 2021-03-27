@@ -5,12 +5,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/asticode/go-astikit"
-	"github.com/asticode/go-astits"
 	"log"
 	"os"
 	"path"
 	"time"
+
+	"github.com/asticode/go-astikit"
+	"github.com/asticode/go-astits"
 )
 
 const (
@@ -25,7 +26,7 @@ type muxerOut struct {
 func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Split TS file into multiple files each holding one elementary stream")
-		fmt.Fprintf(flag.CommandLine.Output(), "%s [FLAGS] INPUT_FILE:\n", os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "%s INPUT_FILE [FLAGS]:\n", os.Args[0])
 		flag.PrintDefaults()
 	}
 	outDir := flag.String("o", "out", "Output dir, 'out' by default")
