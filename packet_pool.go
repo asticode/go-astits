@@ -5,16 +5,55 @@ import (
 	"sync"
 )
 
-// packetPool represents a pool of packets
+// packetAccumulator keeps track of packets for a single PID and decides when to flush them
+type packetAccumulator struct {
+	pid uint16
+	q   []*Packet
+}
+
+// add adds a new packet for this PID to the queue
+func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
+	mps := b.q
+
+	// Empty buffer if we detect a discontinuity
+	if hasDiscontinuity(mps, p) {
+		mps = []*Packet{}
+	}
+
+	// Throw away packet if it's the same as the previous one
+	if isSameAsPrevious(mps, p) {
+		return
+	}
+
+	// Flush buffer if new payload starts here
+	if p.Header.PayloadUnitStartIndicator {
+		ps = mps
+		mps = []*Packet{p}
+	} else {
+		mps = append(mps, p)
+	}
+
+	b.q = mps
+	return
+}
+
+// newPacketAccumulator creates a new packet queue for a single PID
+func newPacketAccumulator(pid uint16) *packetAccumulator {
+	return &packetAccumulator{
+		pid: pid,
+	}
+}
+
+// packetPool represents a queue of packets for each PID in the stream
 type packetPool struct {
-	b map[uint16][]*Packet // Indexed by PID
+	b map[uint16]*packetAccumulator // Indexed by PID
 	m *sync.Mutex
 }
 
 // newPacketPool creates a new packet pool
 func newPacketPool() *packetPool {
 	return &packetPool{
-		b: make(map[uint16][]*Packet),
+		b: make(map[uint16]*packetAccumulator),
 		m: &sync.Mutex{},
 	}
 }
@@ -37,32 +76,17 @@ func (b *packetPool) add(p *Packet) (ps []*Packet) {
 	defer b.m.Unlock()
 
 	// Init buffer
-	var mps []*Packet
+	var acc *packetAccumulator
 	var ok bool
-	if mps, ok = b.b[p.Header.PID]; !ok {
-		mps = []*Packet{}
+	if acc, ok = b.b[p.Header.PID]; !ok {
+		acc = newPacketAccumulator(p.Header.PID)
 	}
 
-	// Empty buffer if we detect a discontinuity
-	if hasDiscontinuity(mps, p) {
-		mps = []*Packet{}
-	}
-
-	// Throw away packet if it's the same as the previous one
-	if isSameAsPrevious(mps, p) {
-		return
-	}
-
-	// Flush buffer if new payload starts here
-	if p.Header.PayloadUnitStartIndicator {
-		ps = mps
-		mps = []*Packet{p}
-	} else {
-		mps = append(mps, p)
-	}
+	// Add to the accumulator
+	ps = acc.add(p)
 
 	// Assign
-	b.b[p.Header.PID] = mps
+	b.b[p.Header.PID] = acc
 	return
 }
 
@@ -76,7 +100,7 @@ func (b *packetPool) dump() (ps []*Packet) {
 	}
 	sort.Ints(keys)
 	for _, k := range keys {
-		ps = b.b[uint16(k)]
+		ps = b.b[uint16(k)].q
 		delete(b.b, uint16(k))
 		if len(ps) > 0 {
 			return
