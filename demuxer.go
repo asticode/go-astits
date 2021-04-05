@@ -40,10 +40,10 @@ func NewDemuxer(ctx context.Context, r io.Reader, opts ...func(*Demuxer)) (d *De
 	// Init
 	d = &Demuxer{
 		ctx:        ctx,
-		packetPool: newPacketPool(d),
 		programMap: newProgramMap(),
 		r:          r,
 	}
+	d.packetPool = newPacketPool(d)
 
 	// Apply options
 	for _, opt := range opts {

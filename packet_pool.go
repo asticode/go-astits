@@ -7,9 +7,17 @@ import (
 
 // packetAccumulator keeps track of packets for a single PID and decides when to flush them
 type packetAccumulator struct {
-	dmx  *Demuxer
-	pid  uint16
-	q    []*Packet
+	dmx *Demuxer
+	pid uint16
+	q   []*Packet
+}
+
+// newPacketAccumulator creates a new packet queue for a single PID
+func newPacketAccumulator(dmx *Demuxer, pid uint16) *packetAccumulator {
+	return &packetAccumulator{
+		dmx: dmx,
+		pid: pid,
+	}
 }
 
 // add adds a new packet for this PID to the queue
@@ -44,13 +52,6 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 
 	b.q = mps
 	return
-}
-
-// newPacketAccumulator creates a new packet queue for a single PID
-func newPacketAccumulator(dmx *Demuxer, pid uint16) *packetAccumulator {
-	return &packetAccumulator{
-		pid: pid,
-	}
 }
 
 // packetPool represents a queue of packets for each PID in the stream
