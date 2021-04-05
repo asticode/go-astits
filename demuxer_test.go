@@ -3,13 +3,23 @@ package astits
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"fmt"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
 )
+
+func hexToBytes(in string) []byte {
+	o, err := hex.DecodeString(strings.ReplaceAll(in, "\n", ""))
+	if err != nil {
+		panic(err)
+	}
+	return o
+}
 
 func TestDemuxerNew(t *testing.T) {
 	ps := 1
@@ -82,6 +92,37 @@ func TestDemuxerNextData(t *testing.T) {
 	// No more packets
 	_, err = dmx.NextData()
 	assert.EqualError(t, err, ErrNoMorePackets.Error())
+}
+
+func TestDemuxerNextDataPATPMT(t *testing.T) {
+	pat := hexToBytes(`474000100000b00d0001c100000001f0002ab104b2ffffffffffffffff
+ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+ffffffffffffffffff`)
+	pmt := hexToBytes(`475000100002b0170001c10000e100f0001be100f0000fe101f0002f44
+b99bffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+ffffffffffffffffff`)
+	r := bytes.NewReader(append(pat, pmt...))
+	dmx := NewDemuxer(context.Background(), r, DemuxerOptPacketSize(188))
+	assert.Equal(t, 188*2, r.Len())
+
+	d, err := dmx.NextData()
+	assert.NoError(t, err)
+	assert.Equal(t, uint16(0), d.FirstPacket.Header.PID)
+	assert.NotNil(t, d.PAT)
+	assert.Equal(t, 188, r.Len())
+
+	d, err = dmx.NextData()
+	assert.NoError(t, err)
+	assert.Equal(t, uint16(0x1000), d.FirstPacket.Header.PID)
+	assert.NotNil(t, d.PMT)
 }
 
 func TestDemuxerRewind(t *testing.T) {
