@@ -46,15 +46,17 @@ func newPacketAccumulator(pid uint16) *packetAccumulator {
 
 // packetPool represents a queue of packets for each PID in the stream
 type packetPool struct {
-	b map[uint16]*packetAccumulator // Indexed by PID
-	m *sync.Mutex
+	b   map[uint16]*packetAccumulator // Indexed by PID
+	m   *sync.Mutex
+	dmx *Demuxer
 }
 
-// newPacketPool creates a new packet pool
-func newPacketPool() *packetPool {
+// newPacketPool creates a new packet pool with an optional demuxer
+func newPacketPool(dmx *Demuxer) *packetPool {
 	return &packetPool{
-		b: make(map[uint16]*packetAccumulator),
-		m: &sync.Mutex{},
+		b:   make(map[uint16]*packetAccumulator),
+		m:   &sync.Mutex{},
+		dmx: dmx,
 	}
 }
 
