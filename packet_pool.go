@@ -7,8 +7,9 @@ import (
 
 // packetAccumulator keeps track of packets for a single PID and decides when to flush them
 type packetAccumulator struct {
-	pid uint16
-	q   []*Packet
+	dmx  *Demuxer
+	pid  uint16
+	q    []*Packet
 }
 
 // add adds a new packet for this PID to the queue
@@ -33,12 +34,20 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 		mps = append(mps, p)
 	}
 
+	// Check if PSI payload is complete
+	if b.dmx != nil && (b.pid == PIDPAT || b.dmx.programMap.exists(b.pid)) {
+		if _, err := b.dmx.parseData(mps); err == nil {
+			ps = mps
+			mps = nil
+		}
+	}
+
 	b.q = mps
 	return
 }
 
 // newPacketAccumulator creates a new packet queue for a single PID
-func newPacketAccumulator(pid uint16) *packetAccumulator {
+func newPacketAccumulator(dmx *Demuxer, pid uint16) *packetAccumulator {
 	return &packetAccumulator{
 		pid: pid,
 	}
@@ -81,7 +90,7 @@ func (b *packetPool) add(p *Packet) (ps []*Packet) {
 	var acc *packetAccumulator
 	var ok bool
 	if acc, ok = b.b[p.Header.PID]; !ok {
-		acc = newPacketAccumulator(p.Header.PID)
+		acc = newPacketAccumulator(b.dmx, p.Header.PID)
 	}
 
 	// Add to the accumulator
