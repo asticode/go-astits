@@ -2,11 +2,21 @@ package astits
 
 import (
 	"bytes"
+	"encoding/hex"
+	"strings"
 	"testing"
 
 	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
 )
+
+func hexToBytes(in string) []byte {
+	o, err := hex.DecodeString(strings.ReplaceAll(in, "\n", ""))
+	if err != nil {
+		panic(err)
+	}
+	return o
+}
 
 var psi = &PSIData{
 	PointerField: 4,
