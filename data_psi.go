@@ -120,6 +120,9 @@ func parsePSIData(i *astikit.BytesIterator) (d *PSIData, err error) {
 			err = fmt.Errorf("astits: parsing PSI table failed: %w", err)
 			return
 		}
+		if stop {
+			break
+		}
 		d.Sections = append(d.Sections, s)
 	}
 	return
@@ -199,8 +202,7 @@ func parseCRC32(i *astikit.BytesIterator) (c uint32, err error) {
 
 // shouldStopPSIParsing checks whether the PSI parsing should be stopped
 func shouldStopPSIParsing(tableID PSITableID) bool {
-	return tableID == PSITableIDNull ||
-		tableID.isUnknown()
+	return tableID == PSITableIDNull
 }
 
 // parsePSISectionHeader parses a PSI section header
@@ -241,7 +243,7 @@ func parsePSISectionHeader(i *astikit.BytesIterator) (h *PSISectionHeader, offse
 	h.PrivateBit = bs[0]&0x40 > 0
 
 	// Section length
-	h.SectionLength = uint16(bs[0]&0xf)<<8 | uint16(bs[1])
+	h.SectionLength = uint16(bs[0]&3)<<8 | uint16(bs[1])
 
 	// Offsets
 	offsetSectionsStart = i.Offset()

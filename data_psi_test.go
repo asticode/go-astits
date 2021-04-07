@@ -366,6 +366,27 @@ var psiDataTestCases = []psiDataTestCase{
 	},
 }
 
+func TestParsePSIDataPMTMultipleSections(t *testing.T) {
+	pmt := hexToBytes(`00C0001500000100FF000000
+000000010000000000038D646B02B07B
+0001C90000EF9BF02109044749E10B05
+04474139348713C1010100F30D01656E
+670100000554562D504702EF9BF00E11
+01FF1006C0BD62C0080006010281EF9C
+F018050441432D33810A083805FF0F01
+BF656E670A04656E670081EF9DF01805
+0441432D33810A082885FF0001BF7370
+610A0473706100082F08E3FFFFFFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFF`)
+	d, err := parsePSIData(astikit.NewBytesIterator(pmt))
+	assert.NoError(t, err)
+	assert.NotNil(t, d)
+	assert.Len(t, d.Sections, 2)
+	assert.Equal(t, PSITableID(0xc0), d.Sections[0].Header.TableID)
+	assert.Equal(t, PSITableID(0x02), d.Sections[1].Header.TableID)
+}
+
 func TestWritePSIData(t *testing.T) {
 	for _, tc := range psiDataTestCases {
 		t.Run(tc.name, func(t *testing.T) {
