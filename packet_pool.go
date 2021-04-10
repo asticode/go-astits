@@ -53,15 +53,12 @@ func (b *packetPool) add(p *Packet) (ps []*Packet) {
 		return
 	}
 
-	// Add packet
-	if len(mps) > 0 || (len(mps) == 0 && p.Header.PayloadUnitStartIndicator) {
-		mps = append(mps, p)
-	}
-
-	// Check payload unit start indicator
-	if p.Header.PayloadUnitStartIndicator && len(mps) > 1 {
-		ps = mps[:len(mps)-1]
+	// Flush buffer if new payload starts here
+	if p.Header.PayloadUnitStartIndicator {
+		ps = mps
 		mps = []*Packet{p}
+	} else {
+		mps = append(mps, p)
 	}
 
 	// Assign
