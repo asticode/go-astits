@@ -2,11 +2,21 @@ package astits
 
 import (
 	"bytes"
+	"encoding/hex"
+	"strings"
 	"testing"
 
 	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
 )
+
+func hexToBytes(in string) []byte {
+	o, err := hex.DecodeString(strings.ReplaceAll(in, "\n", ""))
+	if err != nil {
+		panic(err)
+	}
+	return o
+}
 
 var psi = &PSIData{
 	PointerField: 4,
@@ -202,7 +212,7 @@ func TestParsePSISectionHeader(t *testing.T) {
 	w.Write(uint8(254)) // Table ID
 	w.Write("1")        // Syntax section indicator
 	w.Write("0000000")  // Finish the byte
-	d, _, _, _, _, err := parsePSISectionHeader(astikit.NewBytesIterator(buf.Bytes()))
+	d, _, _, _, _, _, err := parsePSISectionHeader(astikit.NewBytesIterator(buf.Bytes()))
 	assert.Equal(t, d, &PSISectionHeader{
 		TableID:   254,
 		TableType: PSITableTypeUnknown,
@@ -210,12 +220,13 @@ func TestParsePSISectionHeader(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Valid table type
-	d, offsetStart, offsetSectionsStart, offsetSectionsEnd, offsetEnd, err := parsePSISectionHeader(astikit.NewBytesIterator(psiSectionHeaderBytes()))
+	d, offsetStart, offsetSectionsStart, offsetSectionsEnd, offsetEnd, stop, err := parsePSISectionHeader(astikit.NewBytesIterator(psiSectionHeaderBytes()))
 	assert.Equal(t, d, psiSectionHeader)
 	assert.Equal(t, 0, offsetStart)
 	assert.Equal(t, 3, offsetSectionsStart)
 	assert.Equal(t, 2729, offsetSectionsEnd)
 	assert.Equal(t, 2733, offsetEnd)
+	assert.Equal(t, false, stop)
 	assert.NoError(t, err)
 }
 
@@ -354,6 +365,27 @@ var psiDataTestCases = []psiDataTestCase{
 			},
 		},
 	},
+}
+
+func TestParsePSIDataPMTMultipleSections(t *testing.T) {
+	pmt := hexToBytes(`00C0001500000100FF000000
+000000010000000000038D646B02B07B
+0001C90000EF9BF02109044749E10B05
+04474139348713C1010100F30D01656E
+670100000554562D504702EF9BF00E11
+01FF1006C0BD62C0080006010281EF9C
+F018050441432D33810A083805FF0F01
+BF656E670A04656E670081EF9DF01805
+0441432D33810A082885FF0001BF7370
+610A0473706100082F08E3FFFFFFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFF`)
+	d, err := parsePSIData(astikit.NewBytesIterator(pmt))
+	assert.NoError(t, err)
+	assert.NotNil(t, d)
+	assert.Len(t, d.Sections, 2)
+	assert.Equal(t, PSITableID(0xc0), d.Sections[0].Header.TableID)
+	assert.Equal(t, PSITableID(0x02), d.Sections[1].Header.TableID)
 }
 
 func TestWritePSIData(t *testing.T) {

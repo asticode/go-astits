@@ -119,6 +119,8 @@ func parsePSIData(i *astikit.BytesIterator) (d *PSIData, err error) {
 		if s, stop, err = parsePSISection(i); err != nil {
 			err = fmt.Errorf("astits: parsing PSI table failed: %w", err)
 			return
+		} else if stop {
+			break
 		}
 		d.Sections = append(d.Sections, s)
 	}
@@ -132,14 +134,10 @@ func parsePSISection(i *astikit.BytesIterator) (s *PSISection, stop bool, err er
 
 	// Parse header
 	var offsetStart, offsetSectionsEnd, offsetEnd int
-	if s.Header, offsetStart, _, offsetSectionsEnd, offsetEnd, err = parsePSISectionHeader(i); err != nil {
+	if s.Header, offsetStart, _, offsetSectionsEnd, offsetEnd, stop, err = parsePSISectionHeader(i); err != nil {
 		err = fmt.Errorf("astits: parsing PSI section header failed: %w", err)
 		return
-	}
-
-	// Check whether we need to stop the parsing
-	if shouldStopPSIParsing(s.Header.TableID) {
-		stop = true
+	} else if stop {
 		return
 	}
 
@@ -199,12 +197,11 @@ func parseCRC32(i *astikit.BytesIterator) (c uint32, err error) {
 
 // shouldStopPSIParsing checks whether the PSI parsing should be stopped
 func shouldStopPSIParsing(tableID PSITableID) bool {
-	return tableID == PSITableIDNull ||
-		tableID.isUnknown()
+	return tableID == PSITableIDNull
 }
 
 // parsePSISectionHeader parses a PSI section header
-func parsePSISectionHeader(i *astikit.BytesIterator) (h *PSISectionHeader, offsetStart, offsetSectionsStart, offsetSectionsEnd, offsetEnd int, err error) {
+func parsePSISectionHeader(i *astikit.BytesIterator) (h *PSISectionHeader, offsetStart, offsetSectionsStart, offsetSectionsEnd, offsetEnd int, stop bool, err error) {
 	// Init
 	h = &PSISectionHeader{}
 	offsetStart = i.Offset()
@@ -223,7 +220,8 @@ func parsePSISectionHeader(i *astikit.BytesIterator) (h *PSISectionHeader, offse
 	h.TableType = h.TableID.Type()
 
 	// Check whether we need to stop the parsing
-	if shouldStopPSIParsing(h.TableID) {
+	if h.TableID == PSITableIDNull {
+		stop = true
 		return
 	}
 
@@ -241,7 +239,7 @@ func parsePSISectionHeader(i *astikit.BytesIterator) (h *PSISectionHeader, offse
 	h.PrivateBit = bs[0]&0x40 > 0
 
 	// Section length
-	h.SectionLength = uint16(bs[0]&0xf)<<8 | uint16(bs[1])
+	h.SectionLength = uint16(bs[0]&3)<<8 | uint16(bs[1])
 
 	// Offsets
 	offsetSectionsStart = i.Offset()
