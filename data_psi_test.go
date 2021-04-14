@@ -212,7 +212,7 @@ func TestParsePSISectionHeader(t *testing.T) {
 	w.Write(uint8(254)) // Table ID
 	w.Write("1")        // Syntax section indicator
 	w.Write("0000000")  // Finish the byte
-	d, _, _, _, _, err := parsePSISectionHeader(astikit.NewBytesIterator(buf.Bytes()))
+	d, _, _, _, _, _, err := parsePSISectionHeader(astikit.NewBytesIterator(buf.Bytes()))
 	assert.Equal(t, d, &PSISectionHeader{
 		TableID:   254,
 		TableType: PSITableTypeUnknown,
@@ -220,12 +220,13 @@ func TestParsePSISectionHeader(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Valid table type
-	d, offsetStart, offsetSectionsStart, offsetSectionsEnd, offsetEnd, err := parsePSISectionHeader(astikit.NewBytesIterator(psiSectionHeaderBytes()))
+	d, offsetStart, offsetSectionsStart, offsetSectionsEnd, offsetEnd, stop, err := parsePSISectionHeader(astikit.NewBytesIterator(psiSectionHeaderBytes()))
 	assert.Equal(t, d, psiSectionHeader)
 	assert.Equal(t, 0, offsetStart)
 	assert.Equal(t, 3, offsetSectionsStart)
 	assert.Equal(t, 2729, offsetSectionsEnd)
 	assert.Equal(t, 2733, offsetEnd)
+	assert.Equal(t, false, stop)
 	assert.NoError(t, err)
 }
 

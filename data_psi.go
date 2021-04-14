@@ -119,8 +119,7 @@ func parsePSIData(i *astikit.BytesIterator) (d *PSIData, err error) {
 		if s, stop, err = parsePSISection(i); err != nil {
 			err = fmt.Errorf("astits: parsing PSI table failed: %w", err)
 			return
-		}
-		if stop {
+		} else if stop {
 			break
 		}
 		d.Sections = append(d.Sections, s)
@@ -135,14 +134,10 @@ func parsePSISection(i *astikit.BytesIterator) (s *PSISection, stop bool, err er
 
 	// Parse header
 	var offsetStart, offsetSectionsEnd, offsetEnd int
-	if s.Header, offsetStart, _, offsetSectionsEnd, offsetEnd, err = parsePSISectionHeader(i); err != nil {
+	if s.Header, offsetStart, _, offsetSectionsEnd, offsetEnd, stop, err = parsePSISectionHeader(i); err != nil {
 		err = fmt.Errorf("astits: parsing PSI section header failed: %w", err)
 		return
-	}
-
-	// Check whether we need to stop the parsing
-	if shouldStopPSIParsing(s.Header.TableID) {
-		stop = true
+	} else if stop {
 		return
 	}
 
@@ -206,7 +201,7 @@ func shouldStopPSIParsing(tableID PSITableID) bool {
 }
 
 // parsePSISectionHeader parses a PSI section header
-func parsePSISectionHeader(i *astikit.BytesIterator) (h *PSISectionHeader, offsetStart, offsetSectionsStart, offsetSectionsEnd, offsetEnd int, err error) {
+func parsePSISectionHeader(i *astikit.BytesIterator) (h *PSISectionHeader, offsetStart, offsetSectionsStart, offsetSectionsEnd, offsetEnd int, stop bool, err error) {
 	// Init
 	h = &PSISectionHeader{}
 	offsetStart = i.Offset()
@@ -225,7 +220,8 @@ func parsePSISectionHeader(i *astikit.BytesIterator) (h *PSISectionHeader, offse
 	h.TableType = h.TableID.Type()
 
 	// Check whether we need to stop the parsing
-	if shouldStopPSIParsing(h.TableID) {
+	if h.TableID == PSITableIDNull {
+		stop = true
 		return
 	}
 
