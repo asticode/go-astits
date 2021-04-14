@@ -43,9 +43,9 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 	}
 
 	// Check if PSI payload is complete
-	// TODO Use partial data parsing instead
 	if b.pool != nil && b.pool.programMap != nil &&
 		(b.pid == PIDPAT || b.pool.programMap.exists(b.pid)) {
+		// TODO Use partial data parsing instead
 		if _, err := parseData(mps, b.pool.parser, b.pool.programMap); err == nil {
 			ps = mps
 			mps = nil
