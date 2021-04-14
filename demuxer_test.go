@@ -8,13 +8,20 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
 )
 
 func hexToBytes(in string) []byte {
-	o, err := hex.DecodeString(strings.ReplaceAll(in, "\n", ""))
+	cin := strings.Map(func(r rune) rune {
+		if unicode.IsSpace(r) {
+			return -1
+		}
+		return r
+	}, in)
+	o, err := hex.DecodeString(cin)
 	if err != nil {
 		panic(err)
 	}
@@ -96,19 +103,19 @@ func TestDemuxerNextData(t *testing.T) {
 
 func TestDemuxerNextDataPATPMT(t *testing.T) {
 	pat := hexToBytes(`474000100000b00d0001c100000001f0002ab104b2ffffffffffffffff
-ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-ffffffffffffffffff`)
+	ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+	ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+	ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+	ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+	ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+	ffffffffffffffffff`)
 	pmt := hexToBytes(`475000100002b0170001c10000e100f0001be100f0000fe101f0002f44
-b99bffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-ffffffffffffffffff`)
+	b99bffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+	ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+	ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+	ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+	ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+	ffffffffffffffffff`)
 	r := bytes.NewReader(append(pat, pmt...))
 	dmx := NewDemuxer(context.Background(), r, DemuxerOptPacketSize(188))
 	assert.Equal(t, 188*2, r.Len())
