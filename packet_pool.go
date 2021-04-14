@@ -7,16 +7,16 @@ import (
 
 // packetAccumulator keeps track of packets for a single PID and decides when to flush them
 type packetAccumulator struct {
-	dmx *Demuxer
-	pid uint16
-	q   []*Packet
+	pid  uint16
+	q    []*Packet
+	pool *packetPool
 }
 
 // newPacketAccumulator creates a new packet queue for a single PID
-func newPacketAccumulator(dmx *Demuxer, pid uint16) *packetAccumulator {
+func newPacketAccumulator(pool *packetPool, pid uint16) *packetAccumulator {
 	return &packetAccumulator{
-		dmx: dmx,
-		pid: pid,
+		pid:  pid,
+		pool: pool,
 	}
 }
 
@@ -43,8 +43,10 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 	}
 
 	// Check if PSI payload is complete
-	if b.dmx != nil && (b.pid == PIDPAT || b.dmx.programMap.exists(b.pid)) {
-		if _, err := b.dmx.parseData(mps); err == nil {
+	// TODO Use partial data parsing instead
+	if b.pool != nil && b.pool.programMap != nil &&
+		(b.pid == PIDPAT || b.pool.programMap.exists(b.pid)) {
+		if _, err := parseData(mps, b.pool.parser, b.pool.programMap); err == nil {
 			ps = mps
 			mps = nil
 		}
@@ -56,17 +58,21 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 
 // packetPool represents a queue of packets for each PID in the stream
 type packetPool struct {
-	b   map[uint16]*packetAccumulator // Indexed by PID
-	m   *sync.Mutex
-	dmx *Demuxer
+	b map[uint16]*packetAccumulator // Indexed by PID
+	m *sync.Mutex
+
+	parser     PacketsParser
+	programMap *programMap
 }
 
-// newPacketPool creates a new packet pool with an optional demuxer
-func newPacketPool(dmx *Demuxer) *packetPool {
+// newPacketPool creates a new packet pool with an optional programMap
+func newPacketPool(parser PacketsParser, programMap *programMap) *packetPool {
 	return &packetPool{
-		b:   make(map[uint16]*packetAccumulator),
-		m:   &sync.Mutex{},
-		dmx: dmx,
+		b: make(map[uint16]*packetAccumulator),
+		m: &sync.Mutex{},
+
+		parser:     parser,
+		programMap: programMap,
 	}
 }
 
@@ -87,19 +93,13 @@ func (b *packetPool) add(p *Packet) (ps []*Packet) {
 	b.m.Lock()
 	defer b.m.Unlock()
 
-	// Init buffer
-	var acc *packetAccumulator
-	var ok bool
-	if acc, ok = b.b[p.Header.PID]; !ok {
-		acc = newPacketAccumulator(b.dmx, p.Header.PID)
+	// Make sure accumulator exists
+	if _, ok := b.b[p.Header.PID]; !ok {
+		b.b[p.Header.PID] = newPacketAccumulator(b, p.Header.PID)
 	}
 
 	// Add to the accumulator
-	ps = acc.add(p)
-
-	// Assign
-	b.b[p.Header.PID] = acc
-	return
+	return b.b[p.Header.PID].add(p)
 }
 
 // dump dumps the packet pool by looking for the first item with packets inside

@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/asticode/go-astikit"
 	"io"
+
+	"github.com/asticode/go-astikit"
 )
 
 const (
@@ -28,7 +29,7 @@ type Muxer struct {
 	packetSize             int
 	tablesRetransmitPeriod int // period in PES packets
 
-	pm         programMap // pid -> programNumber
+	pm         *programMap // pid -> programNumber
 	pmt        PMTData
 	nextPID    uint16
 	patVersion wrappingCounter
