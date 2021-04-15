@@ -7,16 +7,18 @@ import (
 
 // packetAccumulator keeps track of packets for a single PID and decides when to flush them
 type packetAccumulator struct {
-	pid  uint16
-	q    []*Packet
-	pool *packetPool
+	parser     PacketsParser
+	pid        uint16
+	programMap *programMap
+	q          []*Packet
 }
 
 // newPacketAccumulator creates a new packet queue for a single PID
-func newPacketAccumulator(pool *packetPool, pid uint16) *packetAccumulator {
+func newPacketAccumulator(pid uint16, parser PacketsParser, programMap *programMap) *packetAccumulator {
 	return &packetAccumulator{
-		pid:  pid,
-		pool: pool,
+		parser:     parser,
+		pid:        pid,
+		programMap: programMap,
 	}
 }
 
@@ -43,10 +45,10 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 	}
 
 	// Check if PSI payload is complete
-	if b.pool != nil && b.pool.programMap != nil &&
-		(b.pid == PIDPAT || b.pool.programMap.exists(b.pid)) {
+	if b.programMap != nil &&
+		(b.pid == PIDPAT || b.programMap.exists(b.pid)) {
 		// TODO Use partial data parsing instead
-		if _, err := parseData(mps, b.pool.parser, b.pool.programMap); err == nil {
+		if _, err := parseData(mps, b.parser, b.programMap); err == nil {
 			ps = mps
 			mps = nil
 		}
@@ -65,7 +67,7 @@ type packetPool struct {
 	programMap *programMap
 }
 
-// newPacketPool creates a new packet pool with an optional programMap
+// newPacketPool creates a new packet pool with an optional parser and programMap
 func newPacketPool(parser PacketsParser, programMap *programMap) *packetPool {
 	return &packetPool{
 		b: make(map[uint16]*packetAccumulator),
@@ -95,7 +97,7 @@ func (b *packetPool) add(p *Packet) (ps []*Packet) {
 
 	// Make sure accumulator exists
 	if _, ok := b.b[p.Header.PID]; !ok {
-		b.b[p.Header.PID] = newPacketAccumulator(b, p.Header.PID)
+		b.b[p.Header.PID] = newPacketAccumulator(p.Header.PID, b.parser, b.programMap)
 	}
 
 	// Add to the accumulator
