@@ -27,7 +27,7 @@ type Demuxer struct {
 	optPacketsParser PacketsParser
 	packetBuffer     *packetBuffer
 	packetPool       *packetPool
-	programMap       programMap
+	programMap       *programMap
 	r                io.Reader
 }
 
@@ -40,10 +40,10 @@ func NewDemuxer(ctx context.Context, r io.Reader, opts ...func(*Demuxer)) (d *De
 	// Init
 	d = &Demuxer{
 		ctx:        ctx,
-		packetPool: newPacketPool(),
 		programMap: newProgramMap(),
 		r:          r,
 	}
+	d.packetPool = newPacketPool(d.optPacketsParser, d.programMap)
 
 	// Apply options
 	for _, opt := range opts {
@@ -180,7 +180,7 @@ func (dmx *Demuxer) updateData(ds []*DemuxerData) (d *DemuxerData) {
 func (dmx *Demuxer) Rewind() (n int64, err error) {
 	dmx.dataBuffer = []*DemuxerData{}
 	dmx.packetBuffer = nil
-	dmx.packetPool = newPacketPool()
+	dmx.packetPool = newPacketPool(dmx.optPacketsParser, dmx.programMap)
 	if n, err = rewind(dmx.r); err != nil {
 		err = fmt.Errorf("astits: rewinding reader failed: %w", err)
 		return
