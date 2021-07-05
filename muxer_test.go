@@ -8,14 +8,14 @@ import (
 	"testing"
 )
 
-func patExpectedBytes(versionNumber uint8) []byte {
+func patExpectedBytes(versionNumber uint8, cc uint8) []byte {
 	buf := bytes.Buffer{}
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &buf})
 	w.Write(uint8(syncByte))
 	w.Write("010") // no transport error, payload start, no priority
 	w.WriteN(PIDPAT, 13)
 	w.Write("0001") // no scrambling, no AF, payload present
-	w.Write("0000") // CC
+	w.WriteN(cc, 4)
 
 	w.Write(uint16(0))       // Table ID
 	w.Write("1011")          // Syntax section indicator, private bit, reserved
@@ -50,13 +50,13 @@ func TestMuxer_generatePAT(t *testing.T) {
 	err := muxer.generatePAT()
 	assert.NoError(t, err)
 	assert.Equal(t, MpegTsPacketSize, muxer.patBytes.Len())
-	assert.Equal(t, patExpectedBytes(0), muxer.patBytes.Bytes())
+	assert.Equal(t, patExpectedBytes(0, 0), muxer.patBytes.Bytes())
 
 	// to check version number increment
 	err = muxer.generatePAT()
 	assert.NoError(t, err)
 	assert.Equal(t, MpegTsPacketSize, muxer.patBytes.Len())
-	assert.Equal(t, patExpectedBytes(1), muxer.patBytes.Bytes())
+	assert.Equal(t, patExpectedBytes(1, 1), muxer.patBytes.Bytes())
 }
 
 func pmtExpectedBytesVideoOnly(versionNumber uint8) []byte {
@@ -99,14 +99,14 @@ func pmtExpectedBytesVideoOnly(versionNumber uint8) []byte {
 	return buf.Bytes()
 }
 
-func pmtExpectedBytesVideoAndAudio(versionNumber uint8) []byte {
+func pmtExpectedBytesVideoAndAudio(versionNumber uint8, cc uint8) []byte {
 	buf := bytes.Buffer{}
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &buf})
 	w.Write(uint8(syncByte))
 	w.Write("010") // no transport error, payload start, no priority
 	w.WriteN(pmtStartPID, 13)
 	w.Write("0001") // no scrambling, no AF, payload present
-	w.Write("0000") // CC
+	w.WriteN(cc, 4)
 
 	w.Write(uint16(PSITableIDPMT)) // Table ID
 	w.Write("1011")                // Syntax section indicator, private bit, reserved
@@ -172,7 +172,7 @@ func TestMuxer_generatePMT(t *testing.T) {
 	err = muxer.generatePMT()
 	assert.NoError(t, err)
 	assert.Equal(t, MpegTsPacketSize, muxer.pmtBytes.Len())
-	assert.Equal(t, pmtExpectedBytesVideoAndAudio(1), muxer.pmtBytes.Bytes())
+	assert.Equal(t, pmtExpectedBytesVideoAndAudio(1, 1), muxer.pmtBytes.Bytes())
 }
 
 func TestMuxer_WriteTables(t *testing.T) {
@@ -190,7 +190,7 @@ func TestMuxer_WriteTables(t *testing.T) {
 	assert.Equal(t, 2*MpegTsPacketSize, n)
 	assert.Equal(t, n, buf.Len())
 
-	expectedBytes := append(patExpectedBytes(0), pmtExpectedBytesVideoOnly(0)...)
+	expectedBytes := append(patExpectedBytes(0, 0), pmtExpectedBytesVideoOnly(0)...)
 	assert.Equal(t, expectedBytes, buf.Bytes())
 }
 
@@ -316,6 +316,6 @@ func TestMuxer_WritePayload(t *testing.T) {
 	assert.Equal(t, 0, buf.Len()%MpegTsPacketSize)
 
 	bs := buf.Bytes()
-	assert.Equal(t, patExpectedBytes(0), bs[:MpegTsPacketSize])
-	assert.Equal(t, pmtExpectedBytesVideoAndAudio(0), bs[MpegTsPacketSize:MpegTsPacketSize*2])
+	assert.Equal(t, patExpectedBytes(0, 0), bs[:MpegTsPacketSize])
+	assert.Equal(t, pmtExpectedBytesVideoAndAudio(0, 0), bs[MpegTsPacketSize:MpegTsPacketSize*2])
 }

@@ -34,6 +34,8 @@ type Muxer struct {
 	nextPID    uint16
 	patVersion wrappingCounter
 	pmtVersion wrappingCounter
+	patCC      wrappingCounter
+	pmtCC      wrappingCounter
 
 	patBytes bytes.Buffer
 	pmtBytes bytes.Buffer
@@ -82,6 +84,9 @@ func NewMuxer(ctx context.Context, w io.Writer, opts ...func(*Muxer)) *Muxer {
 		// table version is 5-bit field
 		patVersion: newWrappingCounter(0b11111),
 		pmtVersion: newWrappingCounter(0b11111),
+
+		patCC: newWrappingCounter(0b1111),
+		pmtCC: newWrappingCounter(0b1111),
 
 		esContexts: map[uint16]*esContext{},
 	}
@@ -285,16 +290,12 @@ func (m *Muxer) retransmitTables(force bool) (int, error) {
 func (m *Muxer) WriteTables() (int, error) {
 	bytesWritten := 0
 
-	if m.patBytes.Len() != m.packetSize {
-		if err := m.generatePAT(); err != nil {
-			return bytesWritten, err
-		}
+	if err := m.generatePAT(); err != nil {
+		return bytesWritten, err
 	}
 
-	if m.pmtBytes.Len() != m.packetSize {
-		if err := m.generatePMT(); err != nil {
-			return bytesWritten, err
-		}
+	if err := m.generatePMT(); err != nil {
+		return bytesWritten, err
 	}
 
 	n, err := m.w.Write(m.patBytes.Bytes())
@@ -351,6 +352,7 @@ func (m *Muxer) generatePAT() error {
 			HasPayload:                true,
 			PayloadUnitStartIndicator: true,
 			PID:                       PIDPAT,
+			ContinuityCounter:         uint8(m.patCC.get()),
 		},
 		Payload: m.buf.Bytes(),
 	}
@@ -411,6 +413,7 @@ func (m *Muxer) generatePMT() error {
 			HasPayload:                true,
 			PayloadUnitStartIndicator: true,
 			PID:                       pmtStartPID, // FIXME multiple programs support
+			ContinuityCounter:         uint8(m.pmtCC.get()),
 		},
 		Payload: m.buf.Bytes(),
 	}
