@@ -80,11 +80,6 @@ func newPacketPool(parser PacketsParser, programMap *programMap) *packetPool {
 
 // add adds a new packet to the pool
 func (b *packetPool) add(p *Packet) (ps []*Packet) {
-	// Throw away packet if error indicator
-	if p.Header.TransportErrorIndicator {
-		return
-	}
-
 	// Throw away packets that don't have a payload until we figure out what we're going to do with them
 	// TODO figure out what we're going to do with them :D
 	if !p.Header.HasPayload {
