@@ -115,7 +115,7 @@ func (h *PESHeader) IsVideoStream() bool {
 }
 
 // parsePESData parses a PES data
-func parsePESData(i *astikit.BytesIterator) (d *PESData, err error) {
+func ParsePESData(i *astikit.BytesIterator) (d *PESData, err error) {
 	// Create data
 	d = &PESData{}
 
@@ -124,7 +124,7 @@ func parsePESData(i *astikit.BytesIterator) (d *PESData, err error) {
 
 	// Parse header
 	var dataStart, dataEnd int
-	if d.Header, dataStart, dataEnd, err = parsePESHeader(i); err != nil {
+	if d.Header, dataStart, dataEnd, err = ParsePESHeader(i); err != nil {
 		err = fmt.Errorf("astits: parsing PES header failed: %w", err)
 		return
 	}
@@ -141,12 +141,12 @@ func parsePESData(i *astikit.BytesIterator) (d *PESData, err error) {
 }
 
 // hasPESOptionalHeader checks whether the data has a PES optional header
-func hasPESOptionalHeader(streamID uint8) bool {
+func HasPESOptionalHeader(streamID uint8) bool {
 	return streamID != StreamIDPaddingStream && streamID != StreamIDPrivateStream2
 }
 
 // parsePESData parses a PES header
-func parsePESHeader(i *astikit.BytesIterator) (h *PESHeader, dataStart, dataEnd int, err error) {
+func ParsePESHeader(i *astikit.BytesIterator) (h *PESHeader, dataStart, dataEnd int, err error) {
 	// Create header
 	h = &PESHeader{}
 
@@ -178,8 +178,8 @@ func parsePESHeader(i *astikit.BytesIterator) (h *PESHeader, dataStart, dataEnd 
 	}
 
 	// Optional header
-	if hasPESOptionalHeader(h.StreamID) {
-		if h.OptionalHeader, dataStart, err = parsePESOptionalHeader(i); err != nil {
+	if HasPESOptionalHeader(h.StreamID) {
+		if h.OptionalHeader, dataStart, err = ParsePESOptionalHeader(i); err != nil {
 			err = fmt.Errorf("astits: parsing PES optional header failed: %w", err)
 			return
 		}
@@ -190,7 +190,7 @@ func parsePESHeader(i *astikit.BytesIterator) (h *PESHeader, dataStart, dataEnd 
 }
 
 // parsePESOptionalHeader parses a PES optional header
-func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dataStart int, err error) {
+func ParsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dataStart int, err error) {
 	// Create header
 	h = &PESOptionalHeader{}
 
@@ -250,16 +250,16 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 
 	// PTS/DTS
 	if h.PTSDTSIndicator == PTSDTSIndicatorOnlyPTS {
-		if h.PTS, err = parsePTSOrDTS(i); err != nil {
+		if h.PTS, err = ParsePTSOrDTS(i); err != nil {
 			err = fmt.Errorf("astits: parsing PTS failed: %w", err)
 			return
 		}
 	} else if h.PTSDTSIndicator == PTSDTSIndicatorBothPresent {
-		if h.PTS, err = parsePTSOrDTS(i); err != nil {
+		if h.PTS, err = ParsePTSOrDTS(i); err != nil {
 			err = fmt.Errorf("astits: parsing PTS failed: %w", err)
 			return
 		}
-		if h.DTS, err = parsePTSOrDTS(i); err != nil {
+		if h.DTS, err = ParsePTSOrDTS(i); err != nil {
 			err = fmt.Errorf("astits: parsing PTS failed: %w", err)
 			return
 		}
@@ -267,7 +267,7 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 
 	// ESCR
 	if h.HasESCR {
-		if h.ESCR, err = parseESCR(i); err != nil {
+		if h.ESCR, err = ParseESCR(i); err != nil {
 			err = fmt.Errorf("astits: parsing ESCR failed: %w", err)
 			return
 		}
@@ -289,7 +289,7 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
 			return
 		}
-		h.DSMTrickMode = parseDSMTrickMode(b)
+		h.DSMTrickMode = ParseDSMTrickMode(b)
 	}
 
 	// Additional copy info
@@ -387,7 +387,7 @@ func parsePESOptionalHeader(i *astikit.BytesIterator) (h *PESOptionalHeader, dat
 }
 
 // parseDSMTrickMode parses a DSM trick mode
-func parseDSMTrickMode(i byte) (m *DSMTrickMode) {
+func ParseDSMTrickMode(i byte) (m *DSMTrickMode) {
 	m = &DSMTrickMode{}
 	m.TrickModeControl = i >> 5
 	if m.TrickModeControl == TrickModeControlFastForward || m.TrickModeControl == TrickModeControlFastReverse {
@@ -403,7 +403,7 @@ func parseDSMTrickMode(i byte) (m *DSMTrickMode) {
 }
 
 // parsePTSOrDTS parses a PTS or a DTS
-func parsePTSOrDTS(i *astikit.BytesIterator) (cr *ClockReference, err error) {
+func ParsePTSOrDTS(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 	var bs []byte
 	if bs, err = i.NextBytesNoCopy(5); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
@@ -414,7 +414,7 @@ func parsePTSOrDTS(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 }
 
 // parseESCR parses an ESCR
-func parseESCR(i *astikit.BytesIterator) (cr *ClockReference, err error) {
+func ParseESCR(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 	var bs []byte
 	if bs, err = i.NextBytesNoCopy(6); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
@@ -428,10 +428,10 @@ func parseESCR(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 // will count how many total bytes and payload bytes will be written when writePESData is called with the same arguments
 // should be used by the caller of writePESData to determine AF stuffing size needed to be applied
 // since the length of video PES packets are often zero, we can't just stuff it with 0xff-s at the end
-func calcPESDataLength(h *PESHeader, payloadLeft []byte, isPayloadStart bool, bytesAvailable int) (totalBytes, payloadBytes int) {
+func CalcPESDataLength(h *PESHeader, payloadLeft []byte, isPayloadStart bool, bytesAvailable int) (totalBytes, payloadBytes int) {
 	totalBytes += pesHeaderLength
 	if isPayloadStart {
-		totalBytes += int(calcPESOptionalHeaderLength(h.OptionalHeader))
+		totalBytes += int(CalcPESOptionalHeaderLength(h.OptionalHeader))
 	}
 	bytesAvailable -= totalBytes
 
@@ -447,10 +447,10 @@ func calcPESDataLength(h *PESHeader, payloadLeft []byte, isPayloadStart bool, by
 // first packet will contain PES header with optional PES header and payload, if possible
 // all consequential packets will contain just payload
 // for the last packet caller must add AF with stuffing, see calcPESDataLength
-func writePESData(w *astikit.BitsWriter, h *PESHeader, payloadLeft []byte, isPayloadStart bool, bytesAvailable int) (totalBytesWritten, payloadBytesWritten int, err error) {
+func WritePESData(w *astikit.BitsWriter, h *PESHeader, payloadLeft []byte, isPayloadStart bool, bytesAvailable int) (totalBytesWritten, payloadBytesWritten int, err error) {
 	if isPayloadStart {
 		var n int
-		n, err = writePESHeader(w, h, len(payloadLeft))
+		n, err = WritePESHeader(w, h, len(payloadLeft))
 		if err != nil {
 			return
 		}
@@ -471,7 +471,7 @@ func writePESData(w *astikit.BitsWriter, h *PESHeader, payloadLeft []byte, isPay
 	return
 }
 
-func writePESHeader(w *astikit.BitsWriter, h *PESHeader, payloadSize int) (int, error) {
+func WritePESHeader(w *astikit.BitsWriter, h *PESHeader, payloadSize int) (int, error) {
 	b := astikit.NewBitsWriterBatch(w)
 
 	b.WriteN(uint32(0x000001), 24) // packet_start_code_prefix
@@ -481,8 +481,8 @@ func writePESHeader(w *astikit.BitsWriter, h *PESHeader, payloadSize int) (int, 
 
 	if !h.IsVideoStream() {
 		pesPacketLength = payloadSize
-		if hasPESOptionalHeader(h.StreamID) {
-			pesPacketLength += int(calcPESOptionalHeaderLength(h.OptionalHeader))
+		if HasPESOptionalHeader(h.StreamID) {
+			pesPacketLength += int(CalcPESOptionalHeaderLength(h.OptionalHeader))
 		}
 		if pesPacketLength > 0xffff {
 			pesPacketLength = 0
@@ -493,8 +493,8 @@ func writePESHeader(w *astikit.BitsWriter, h *PESHeader, payloadSize int) (int, 
 
 	bytesWritten := pesHeaderLength
 
-	if hasPESOptionalHeader(h.StreamID) {
-		n, err := writePESOptionalHeader(w, h.OptionalHeader)
+	if HasPESOptionalHeader(h.StreamID) {
+		n, err := WritePESOptionalHeader(w, h.OptionalHeader)
 		if err != nil {
 			return 0, err
 		}
@@ -504,14 +504,14 @@ func writePESHeader(w *astikit.BitsWriter, h *PESHeader, payloadSize int) (int, 
 	return bytesWritten, b.Err()
 }
 
-func calcPESOptionalHeaderLength(h *PESOptionalHeader) uint8 {
+func CalcPESOptionalHeaderLength(h *PESOptionalHeader) uint8 {
 	if h == nil {
 		return 0
 	}
-	return 3 + calcPESOptionalHeaderDataLength(h)
+	return 3 + CalcPESOptionalHeaderDataLength(h)
 }
 
-func calcPESOptionalHeaderDataLength(h *PESOptionalHeader) (length uint8) {
+func CalcPESOptionalHeaderDataLength(h *PESOptionalHeader) (length uint8) {
 	if h.PTSDTSIndicator == PTSDTSIndicatorOnlyPTS {
 		length += ptsOrDTSByteLength
 	} else if h.PTSDTSIndicator == PTSDTSIndicatorBothPresent {
@@ -565,7 +565,7 @@ func calcPESOptionalHeaderDataLength(h *PESOptionalHeader) (length uint8) {
 	return
 }
 
-func writePESOptionalHeader(w *astikit.BitsWriter, h *PESOptionalHeader) (int, error) {
+func WritePESOptionalHeader(w *astikit.BitsWriter, h *PESOptionalHeader) (int, error) {
 	if h == nil {
 		return 0, nil
 	}
@@ -588,13 +588,13 @@ func writePESOptionalHeader(w *astikit.BitsWriter, h *PESOptionalHeader) (int, e
 	//b.Write(h.HasCRC)
 	b.Write(h.HasExtension)
 
-	pesOptionalHeaderDataLength := calcPESOptionalHeaderDataLength(h)
+	pesOptionalHeaderDataLength := CalcPESOptionalHeaderDataLength(h)
 	b.Write(pesOptionalHeaderDataLength)
 
 	bytesWritten := 3
 
 	if h.PTSDTSIndicator == PTSDTSIndicatorOnlyPTS {
-		n, err := writePTSOrDTS(w, 0b0010, h.PTS)
+		n, err := WritePTSOrDTS(w, 0b0010, h.PTS)
 		if err != nil {
 			return 0, err
 		}
@@ -602,13 +602,13 @@ func writePESOptionalHeader(w *astikit.BitsWriter, h *PESOptionalHeader) (int, e
 	}
 
 	if h.PTSDTSIndicator == PTSDTSIndicatorBothPresent {
-		n, err := writePTSOrDTS(w, 0b0011, h.PTS)
+		n, err := WritePTSOrDTS(w, 0b0011, h.PTS)
 		if err != nil {
 			return 0, err
 		}
 		bytesWritten += n
 
-		n, err = writePTSOrDTS(w, 0b0001, h.DTS)
+		n, err = WritePTSOrDTS(w, 0b0001, h.DTS)
 		if err != nil {
 			return 0, err
 		}
@@ -616,7 +616,7 @@ func writePESOptionalHeader(w *astikit.BitsWriter, h *PESOptionalHeader) (int, e
 	}
 
 	if h.HasESCR {
-		n, err := writeESCR(w, h.ESCR)
+		n, err := WriteESCR(w, h.ESCR)
 		if err != nil {
 			return 0, err
 		}
@@ -631,7 +631,7 @@ func writePESOptionalHeader(w *astikit.BitsWriter, h *PESOptionalHeader) (int, e
 	}
 
 	if h.HasDSMTrickMode {
-		n, err := writeDSMTrickMode(w, h.DSMTrickMode)
+		n, err := WriteDSMTrickMode(w, h.DSMTrickMode)
 		if err != nil {
 			return 0, err
 		}
@@ -696,7 +696,7 @@ func writePESOptionalHeader(w *astikit.BitsWriter, h *PESOptionalHeader) (int, e
 	return bytesWritten, b.Err()
 }
 
-func writeDSMTrickMode(w *astikit.BitsWriter, m *DSMTrickMode) (int, error) {
+func WriteDSMTrickMode(w *astikit.BitsWriter, m *DSMTrickMode) (int, error) {
 	b := astikit.NewBitsWriterBatch(w)
 
 	b.WriteN(m.TrickModeControl, 3)
@@ -716,7 +716,7 @@ func writeDSMTrickMode(w *astikit.BitsWriter, m *DSMTrickMode) (int, error) {
 	return dsmTrickModeLength, b.Err()
 }
 
-func writeESCR(w *astikit.BitsWriter, cr *ClockReference) (int, error) {
+func WriteESCR(w *astikit.BitsWriter, cr *ClockReference) (int, error) {
 	b := astikit.NewBitsWriterBatch(w)
 
 	b.WriteN(uint8(0xff), 2)
@@ -732,7 +732,7 @@ func writeESCR(w *astikit.BitsWriter, cr *ClockReference) (int, error) {
 	return escrLength, b.Err()
 }
 
-func writePTSOrDTS(w *astikit.BitsWriter, flag uint8, cr *ClockReference) (bytesWritten int, retErr error) {
+func WritePTSOrDTS(w *astikit.BitsWriter, flag uint8, cr *ClockReference) (bytesWritten int, retErr error) {
 	b := astikit.NewBitsWriterBatch(w)
 
 	b.WriteN(flag, 4)

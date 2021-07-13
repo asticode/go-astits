@@ -11,7 +11,7 @@ import (
 func TestHasPESOptionalHeader(t *testing.T) {
 	var a []int
 	for i := 0; i <= 255; i++ {
-		if !hasPESOptionalHeader(uint8(i)) {
+		if !HasPESOptionalHeader(uint8(i)) {
 			a = append(a, i)
 		}
 	}
@@ -120,7 +120,7 @@ func TestParseDSMTrickMode(t *testing.T) {
 			buf := &bytes.Buffer{}
 			w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 			tc.bytesFunc(w)
-			assert.Equal(t, parseDSMTrickMode(buf.Bytes()[0]), tc.trickMode)
+			assert.Equal(t, ParseDSMTrickMode(buf.Bytes()[0]), tc.trickMode)
 		})
 	}
 }
@@ -135,7 +135,7 @@ func TestWriteDSMTrickMode(t *testing.T) {
 			bufActual := &bytes.Buffer{}
 			wActual := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: bufActual})
 
-			n, err := writeDSMTrickMode(wActual, tc.trickMode)
+			n, err := WriteDSMTrickMode(wActual, tc.trickMode)
 			assert.NoError(t, err)
 			assert.Equal(t, 1, n)
 			assert.Equal(t, n, bufActual.Len())
@@ -175,7 +175,7 @@ func dtsBytes(flag string) []byte {
 }
 
 func TestParsePTSOrDTS(t *testing.T) {
-	v, err := parsePTSOrDTS(astikit.NewBytesIterator(ptsBytes("0010")))
+	v, err := ParsePTSOrDTS(astikit.NewBytesIterator(ptsBytes("0010")))
 	assert.Equal(t, v, ptsClockReference)
 	assert.NoError(t, err)
 }
@@ -183,7 +183,7 @@ func TestParsePTSOrDTS(t *testing.T) {
 func TestWritePTSOrDTS(t *testing.T) {
 	buf := &bytes.Buffer{}
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	n, err := writePTSOrDTS(w, uint8(0b0010), dtsClockReference)
+	n, err := WritePTSOrDTS(w, uint8(0b0010), dtsClockReference)
 	assert.NoError(t, err)
 	assert.Equal(t, n, 5)
 	assert.Equal(t, n, buf.Len())
@@ -206,7 +206,7 @@ func escrBytes() []byte {
 }
 
 func TestParseESCR(t *testing.T) {
-	v, err := parseESCR(astikit.NewBytesIterator(escrBytes()))
+	v, err := ParseESCR(astikit.NewBytesIterator(escrBytes()))
 	assert.Equal(t, v, clockReference)
 	assert.NoError(t, err)
 }
@@ -214,7 +214,7 @@ func TestParseESCR(t *testing.T) {
 func TestWriteESCR(t *testing.T) {
 	buf := &bytes.Buffer{}
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	n, err := writeESCR(w, clockReference)
+	n, err := WriteESCR(w, clockReference)
 	assert.NoError(t, err)
 	assert.Equal(t, n, 6)
 	assert.Equal(t, n, buf.Len())
@@ -402,7 +402,7 @@ func TestParsePESData(t *testing.T) {
 			tc.headerBytesFunc(w, true, true)
 			tc.optionalHeaderBytesFunc(w, true, true)
 			tc.bytesFunc(w, true, true)
-			d, err := parsePESData(astikit.NewBytesIterator(buf.Bytes()))
+			d, err := ParsePESData(astikit.NewBytesIterator(buf.Bytes()))
 			assert.NoError(t, err)
 			assert.Equal(t, tc.pesData, d)
 		})
@@ -426,7 +426,7 @@ func TestWritePESData(t *testing.T) {
 			payloadPos := 0
 
 			for payloadPos+1 < len(tc.pesData.Data) {
-				n, payloadN, err := writePESData(
+				n, payloadN, err := WritePESData(
 					wActual,
 					tc.pesData.Header,
 					tc.pesData.Data[payloadPos:],
@@ -458,7 +458,7 @@ func TestWritePESHeader(t *testing.T) {
 			bufActual := bytes.Buffer{}
 			wActual := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &bufActual})
 
-			n, err := writePESHeader(wActual, tc.pesData.Header, len(tc.pesData.Data))
+			n, err := WritePESHeader(wActual, tc.pesData.Header, len(tc.pesData.Data))
 			assert.NoError(t, err)
 			assert.Equal(t, n, bufActual.Len())
 			assert.Equal(t, bufExpected.Len(), bufActual.Len())
@@ -477,7 +477,7 @@ func TestWritePESOptionalHeader(t *testing.T) {
 			bufActual := bytes.Buffer{}
 			wActual := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &bufActual})
 
-			n, err := writePESOptionalHeader(wActual, tc.pesData.Header.OptionalHeader)
+			n, err := WritePESOptionalHeader(wActual, tc.pesData.Header.OptionalHeader)
 			assert.NoError(t, err)
 			assert.Equal(t, n, bufActual.Len())
 			assert.Equal(t, bufExpected.Len(), bufActual.Len())
@@ -502,7 +502,7 @@ func BenchmarkParsePESData(b *testing.B) {
 		b.Run(tc.name, func(b *testing.B) {
 			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {
-				parsePESData(astikit.NewBytesIterator(bss[ti]))
+				ParsePESData(astikit.NewBytesIterator(bss[ti]))
 			}
 		})
 	}

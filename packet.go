@@ -288,7 +288,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 					i.Skip(-1)
 
 					// DTS Next access unit
-					if a.AdaptationExtensionField.DTSNextAccessUnit, err = parsePTSOrDTS(i); err != nil {
+					if a.AdaptationExtensionField.DTSNextAccessUnit, err = ParsePTSOrDTS(i); err != nil {
 						err = fmt.Errorf("astits: parsing DTS failed: %w", err)
 						return
 					}
@@ -518,7 +518,7 @@ func writePacketAdaptationFieldExtension(w *astikit.BitsWriter, afe *PacketAdapt
 	}
 
 	if afe.HasSeamlessSplice {
-		n, err := writePTSOrDTS(w, afe.SpliceType, afe.DTSNextAccessUnit)
+		n, err := WritePTSOrDTS(w, afe.SpliceType, afe.DTSNextAccessUnit)
 		if err != nil {
 			return 0, err
 		}

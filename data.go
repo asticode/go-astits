@@ -83,7 +83,7 @@ func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerDa
 	} else if isPESPayload(payload) {
 		// Parse PES data
 		var pesData *PESData
-		if pesData, err = parsePESData(i); err != nil {
+		if pesData, err = ParsePESData(i); err != nil {
 			err = fmt.Errorf("astits: parsing PES data failed: %w", err)
 			return
 		}
