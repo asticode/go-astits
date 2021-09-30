@@ -101,6 +101,27 @@ func TestDemuxerNextData(t *testing.T) {
 	assert.EqualError(t, err, ErrNoMorePackets.Error())
 }
 
+func TestDemuxerNextDataUnknownDataPackets(t *testing.T) {
+	buf := &bytes.Buffer{}
+	bufWriter := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+
+	// Packet that isn't a data packet (PSI or PES)
+	b1, _ := packet(PacketHeader{
+		ContinuityCounter:         uint8(0),
+		PID:                       256,
+		PayloadUnitStartIndicator: true,
+		HasPayload:                true,
+	}, PacketAdaptationField{}, []byte{0x01, 0x02, 0x03, 0x04}, true)
+	bufWriter.Write(b1)
+
+	// The demuxer must return "no more packets"
+	dmx := NewDemuxer(context.Background(), bytes.NewReader(buf.Bytes()),
+		DemuxerOptPacketSize(188))
+	d, err := dmx.NextData()
+	assert.Equal(t, (*DemuxerData)(nil), d)
+	assert.EqualError(t, err, ErrNoMorePackets.Error())
+}
+
 func TestDemuxerNextDataPATPMT(t *testing.T) {
 	pat := hexToBytes(`474000100000b00d0001c100000001f0002ab104b2ffffffffffffffff
 	ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff

@@ -119,7 +119,8 @@ func (dmx *Demuxer) NextData() (d *DemuxerData, err error) {
 					}
 
 					// Parse data
-					if ds, err = parseData(ps, dmx.optPacketsParser, dmx.programMap); err != nil {
+					var errParseData error
+					if ds, errParseData = parseData(ps, dmx.optPacketsParser, dmx.programMap); errParseData != nil {
 						// We need to silence this error as there may be some incomplete data here
 						// We still want to try to parse all packets, in case final data is complete
 						continue
@@ -127,6 +128,7 @@ func (dmx *Demuxer) NextData() (d *DemuxerData, err error) {
 
 					// Update data
 					if d = dmx.updateData(ds); d != nil {
+						err = nil
 						return
 					}
 				}
