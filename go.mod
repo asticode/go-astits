@@ -1,9 +1,9 @@
-module github.com/asticode/go-astits
+module github.com/SpalkLtd/go-astits
 
-go 1.13
+go 1.15
 
 require (
-	github.com/asticode/go-astikit v0.2.0
-	github.com/pkg/profile v1.4.0
-	github.com/stretchr/testify v1.4.0
+	github.com/asticode/go-astikit v0.21.1
+	github.com/pkg/profile v1.6.0
+	github.com/stretchr/testify v1.7.0
 )

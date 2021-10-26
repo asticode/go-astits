@@ -15,8 +15,8 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/SpalkLtd/go-astits"
 	"github.com/asticode/go-astikit"
-	"github.com/asticode/go-astits"
 	"github.com/pkg/profile"
 )
 
