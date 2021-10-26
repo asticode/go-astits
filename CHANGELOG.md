@@ -1,6 +1,8 @@
 # go-astits Go MPEGTS Parser
 
 ## Unreleased
+
+## v1.5.0
  - Add serialisation methods for PAT and PMT packets
  - Make ParseData public
  - Make `PacketPool` and `(p *PacketPool) Add()` public
