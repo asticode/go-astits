@@ -129,6 +129,12 @@ func parsePESData(i *astikit.BytesIterator) (d *PESData, err error) {
 		return
 	}
 
+	var dataAvailable = i.Len() - dataStart
+	if int(d.Header.PacketLength) > dataAvailable {
+		dataEnd = dataAvailable + dataStart
+		d.Header.PacketLength = uint16(dataAvailable)
+	}
+
 	// Seek to data
 	i.Seek(dataStart)
 
