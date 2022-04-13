@@ -148,7 +148,7 @@ func parsePMTSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 }
 
 func (p *PMTData) Serialise(b []byte) (int, error) {
-	if len(b) < 4 {
+	if len(b) <= 4 {
 		return 0, ErrNoRoomInBuffer
 	}
 	b[0] = 0x7<<5 | uint8(0x1f&(p.PCRPID>>8))
@@ -176,7 +176,7 @@ func (p *PMTData) Serialise(b []byte) (int, error) {
 }
 
 func (pes *PMTElementaryStream) Serialise(b []byte) (int, error) {
-	if len(b) < 5 {
+	if len(b) <= 5 {
 		return 0, ErrNoRoomInBuffer
 	}
 	b[0] = pes.StreamType

@@ -1455,11 +1455,11 @@ func parseDescriptors(i *astikit.BytesIterator) (o []*Descriptor, err error) {
 }
 
 func (d *Descriptor) Serialise(b []byte) (int, error) {
-	b[0] = d.Tag
-	b[1] = d.Length
-	if len(b) < int(d.Length)+2 {
+	if len(b) < 3 || len(b) < int(d.Length)+2 {
 		return 0, ErrNoRoomInBuffer
 	}
+	b[0] = d.Tag
+	b[1] = d.Length
 	//TODO actually create the descriptor from the struct
 	copy(b[2:], d.originalBytes)
 	// +2 to account for the Tag and Length fields

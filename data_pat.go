@@ -43,6 +43,9 @@ func parsePATSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExt
 }
 
 func (p *PATData) Serialise(b []byte) (int, error) {
+	if len(b) == 0 {
+		return 0, ErrNoRoomInBuffer
+	}
 	currentIdx := 0
 	for i := range p.Programs {
 		n, err := p.Programs[i].Serialise(b[currentIdx:])
