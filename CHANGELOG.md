@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+ - Length check array length before index use
+
 ## v1.5.0
  - Add serialisation methods for PAT and PMT packets
  - Make ParseData public

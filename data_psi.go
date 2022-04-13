@@ -452,6 +452,9 @@ func (d *PSIData) toData(firstPacket *Packet, pid uint16) (ds []*Data) {
 }
 
 func (d *PSIData) Serialise(b []byte) (int, error) {
+	if len(b) <= 1 {
+		return 0, ErrNoRoomInBuffer
+	}
 
 	//TODO take care of pointer field
 	if d.PointerField != 0 {
@@ -479,7 +482,7 @@ func (s *PSISection) Serialise(b []byte) (int, error) {
 	if s.Header.TableID == 255 {
 		return 0, nil
 	}
-	if len(b) < 3 {
+	if len(b) <= 3 {
 		return 0, ErrNoRoomInBuffer
 	}
 	idx := 3 // Skip 3 byte header we put in afterward
@@ -549,6 +552,9 @@ func (h *PSISectionHeader) Serialise(b []byte) (int, error) {
 }
 
 func (s *PSISectionSyntax) Serialise(b []byte) (int, error) {
+	if len(b) == 0 {
+		return 0, ErrNoRoomInBuffer
+	}
 	idx := 0
 	if s.Header != nil {
 		n, err := s.Header.Serialise(b[idx:])
