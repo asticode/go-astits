@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asticode/go-astikit"
+	"github.com/icza/bitio"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,26 +19,29 @@ var (
 )
 
 func TestParseDVBTime(t *testing.T) {
-	d, err := parseDVBTime(astikit.NewBytesIterator(dvbTimeBytes))
+	r := bitio.NewCountReader(bytes.NewReader(dvbTimeBytes))
+	d, err := parseDVBTime(r)
 	assert.Equal(t, dvbTime, d)
 	assert.NoError(t, err)
 }
 
 func TestParseDVBDurationMinutes(t *testing.T) {
-	d, err := parseDVBDurationMinutes(astikit.NewBytesIterator(dvbDurationMinutesBytes))
+	r := bitio.NewCountReader(bytes.NewReader(dvbDurationMinutesBytes))
+	d, err := parseDVBDurationMinutes(r)
 	assert.Equal(t, dvbDurationMinutes, d)
 	assert.NoError(t, err)
 }
 
 func TestParseDVBDurationSeconds(t *testing.T) {
-	d, err := parseDVBDurationSeconds(astikit.NewBytesIterator(dvbDurationSecondsBytes))
+	r := bitio.NewCountReader(bytes.NewReader(dvbDurationSecondsBytes))
+	d, err := parseDVBDurationSeconds(r)
 	assert.Equal(t, dvbDurationSeconds, d)
 	assert.NoError(t, err)
 }
 
 func TestWriteDVBTime(t *testing.T) {
 	buf := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+	w := bitio.NewWriter(buf)
 	n, err := writeDVBTime(w, dvbTime)
 	assert.NoError(t, err)
 	assert.Equal(t, n, buf.Len())
@@ -47,16 +50,15 @@ func TestWriteDVBTime(t *testing.T) {
 
 func TestWriteDVBDurationMinutes(t *testing.T) {
 	buf := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	n, err := writeDVBDurationMinutes(w, dvbDurationMinutes)
+	w := bitio.NewWriter(buf)
+	err := writeDVBDurationMinutes(w, dvbDurationMinutes)
 	assert.NoError(t, err)
-	assert.Equal(t, n, buf.Len())
 	assert.Equal(t, dvbDurationMinutesBytes, buf.Bytes())
 }
 
 func TestWriteDVBDurationSeconds(t *testing.T) {
 	buf := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+	w := bitio.NewWriter(buf)
 	n, err := writeDVBDurationSeconds(w, dvbDurationSeconds)
 	assert.NoError(t, err)
 	assert.Equal(t, n, buf.Len())

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/asticode/go-astikit"
+	"github.com/icza/bitio"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,26 +18,27 @@ var pat = &PATData{
 
 func patBytes() []byte {
 	buf := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	w.Write(uint16(2))       // Program #1 number
-	w.Write("111")           // Program #1 reserved bits
-	w.Write("0000000000011") // Program #1 map ID
-	w.Write(uint16(4))       // Program #2 number
-	w.Write("111")           // Program #2 reserved bits
-	w.Write("0000000000101") // Program #3 map ID
+	w := bitio.NewWriter(buf)
+	w.WriteBits(uint64(2), 16)      // Program #1 number
+	WriteBinary(w, "111")           // Program #1 reserved bits
+	WriteBinary(w, "0000000000011") // Program #1 map ID
+	w.WriteBits(uint64(4), 16)      // Program #2 number
+	WriteBinary(w, "111")           // Program #2 reserved bits
+	WriteBinary(w, "0000000000101") // Program #3 map ID
 	return buf.Bytes()
 }
 
 func TestParsePATSection(t *testing.T) {
-	var b = patBytes()
-	d, err := parsePATSection(astikit.NewBytesIterator(b), len(b), uint16(1))
+	b := patBytes()
+	r := bitio.NewCountReader(bytes.NewReader(b))
+	d, err := parsePATSection(r, int64(len(b)*8), uint16(1))
 	assert.Equal(t, d, pat)
 	assert.NoError(t, err)
 }
 
 func TestWritePATSection(t *testing.T) {
 	bw := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: bw})
+	w := bitio.NewWriter(bw)
 	n, err := writePATSection(w, pat)
 	assert.NoError(t, err)
 	assert.Equal(t, n, 8)
@@ -50,7 +51,8 @@ func BenchmarkParsePATSection(b *testing.B) {
 	bs := patBytes()
 
 	for i := 0; i < b.N; i++ {
-		parsePATSection(astikit.NewBytesIterator(bs), len(bs), uint16(1))
+		r := bitio.NewCountReader(bytes.NewReader(bs))
+		parsePATSection(r, int64(len(bs)), uint16(1))
 	}
 }
 
@@ -59,7 +61,7 @@ func BenchmarkWritePATSection(b *testing.B) {
 
 	bw := &bytes.Buffer{}
 	bw.Grow(1024)
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: bw})
+	w := bitio.NewWriter(bw)
 
 	for i := 0; i < b.N; i++ {
 		bw.Reset()

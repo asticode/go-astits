@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/asticode/go-astikit"
+	"github.com/icza/bitio"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,7 +15,7 @@ func TestParseData(t *testing.T) {
 
 	// Custom parser
 	cds := []*DemuxerData{{PID: 1}}
-	var c = func(ps []*Packet) (o []*DemuxerData, skip bool, err error) {
+	c := func(ps []*Packet) (o []*DemuxerData, skip bool, err error) {
 		o = cds
 		skip = true
 		return
@@ -79,10 +79,10 @@ func TestIsPSIPayload(t *testing.T) {
 
 func TestIsPESPayload(t *testing.T) {
 	buf := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	w.Write("0000000000000001")
+	w := bitio.NewWriter(buf)
+	WriteBinary(w, "0000000000000001")
 	assert.False(t, isPESPayload(buf.Bytes()))
 	buf.Reset()
-	w.Write("000000000000000000000001")
+	WriteBinary(w, "000000000000000000000001")
 	assert.True(t, isPESPayload(buf.Bytes()))
 }

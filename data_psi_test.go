@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/asticode/go-astikit"
+	"github.com/icza/bitio"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -100,78 +100,81 @@ var psi = &PSIData{
 
 func psiBytes() []byte {
 	buf := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	w.Write(uint8(4))                      // Pointer field
+	w := bitio.NewWriter(buf)
+	w.WriteByte(4)                         // Pointer field
 	w.Write([]byte("test"))                // Pointer field bytes
-	w.Write(uint8(78))                     // EIT table ID
-	w.Write("1")                           // EIT syntax section indicator
-	w.Write("1")                           // EIT private bit
-	w.Write("11")                          // EIT reserved
-	w.Write("000000011110")                // EIT section length
+	w.WriteByte(78)                        // EIT table ID
+	WriteBinary(w, "1")                    // EIT syntax section indicator
+	WriteBinary(w, "1")                    // EIT private bit
+	WriteBinary(w, "11")                   // EIT reserved
+	WriteBinary(w, "000000011110")         // EIT section length
 	w.Write(psiSectionSyntaxHeaderBytes()) // EIT syntax section header
 	w.Write(eitBytes())                    // EIT data
-	w.Write(uint32(0x7ffc6102))            // EIT CRC32
-	w.Write(uint8(64))                     // NIT table ID
-	w.Write("1")                           // NIT syntax section indicator
-	w.Write("1")                           // NIT private bit
-	w.Write("11")                          // NIT reserved
-	w.Write("000000011001")                // NIT section length
+	w.WriteBits(0x7ffc6102, 32)            // EIT CRC32
+	w.WriteByte(64)                        // NIT table ID
+	WriteBinary(w, "1")                    // NIT syntax section indicator
+	WriteBinary(w, "1")                    // NIT private bit
+	WriteBinary(w, "11")                   // NIT reserved
+	WriteBinary(w, "000000011001")         // NIT section length
 	w.Write(psiSectionSyntaxHeaderBytes()) // NIT syntax section header
 	w.Write(nitBytes())                    // NIT data
-	w.Write(uint32(0xfebaa941))            // NIT CRC32
-	w.Write(uint8(0))                      // PAT table ID
-	w.Write("1")                           // PAT syntax section indicator
-	w.Write("1")                           // PAT private bit
-	w.Write("11")                          // PAT reserved
-	w.Write("000000010001")                // PAT section length
+	w.WriteBits(0xfebaa941, 32)            // NIT CRC32
+	w.WriteByte(0)                         // PAT table ID
+	WriteBinary(w, "1")                    // PAT syntax section indicator
+	WriteBinary(w, "1")                    // PAT private bit
+	WriteBinary(w, "11")                   // PAT reserved
+	WriteBinary(w, "000000010001")         // PAT section length
 	w.Write(psiSectionSyntaxHeaderBytes()) // PAT syntax section header
 	w.Write(patBytes())                    // PAT data
-	w.Write(uint32(0x60739f61))            // PAT CRC32
-	w.Write(uint8(2))                      // PMT table ID
-	w.Write("1")                           // PMT syntax section indicator
-	w.Write("1")                           // PMT private bit
-	w.Write("11")                          // PMT reserved
-	w.Write("000000011000")                // PMT section length
+	w.WriteBits(0x60739f61, 32)            // PAT CRC32
+	w.WriteByte(2)                         // PMT table ID
+	WriteBinary(w, "1")                    // PMT syntax section indicator
+	WriteBinary(w, "1")                    // PMT private bit
+	WriteBinary(w, "11")                   // PMT reserved
+	WriteBinary(w, "000000011000")         // PMT section length
 	w.Write(psiSectionSyntaxHeaderBytes()) // PMT syntax section header
 	w.Write(pmtBytes())                    // PMT data
-	w.Write(uint32(0xc68442e8))            // PMT CRC32
-	w.Write(uint8(66))                     // SDT table ID
-	w.Write("1")                           // SDT syntax section indicator
-	w.Write("1")                           // SDT private bit
-	w.Write("11")                          // SDT reserved
-	w.Write("000000010100")                // SDT section length
+	w.WriteBits(0xc68442e8, 32)            // PMT CRC32
+	w.WriteByte(66)                        // SDT table ID
+	WriteBinary(w, "1")                    // SDT syntax section indicator
+	WriteBinary(w, "1")                    // SDT private bit
+	WriteBinary(w, "11")                   // SDT reserved
+	WriteBinary(w, "000000010100")         // SDT section length
 	w.Write(psiSectionSyntaxHeaderBytes()) // SDT syntax section header
 	w.Write(sdtBytes())                    // SDT data
-	w.Write(uint32(0xef3751d6))            // SDT CRC32
-	w.Write(uint8(115))                    // TOT table ID
-	w.Write("1")                           // TOT syntax section indicator
-	w.Write("1")                           // TOT private bit
-	w.Write("11")                          // TOT reserved
-	w.Write("000000001110")                // TOT section length
+	w.WriteBits(0xef3751d6, 32)            // SDT CRC32
+	w.WriteByte(115)                       // TOT table ID
+	WriteBinary(w, "1")                    // TOT syntax section indicator
+	WriteBinary(w, "1")                    // TOT private bit
+	WriteBinary(w, "11")                   // TOT reserved
+	WriteBinary(w, "000000001110")         // TOT section length
 	w.Write(totBytes())                    // TOT data
-	w.Write(uint32(0x6969b13))             // TOT CRC32
-	w.Write(uint8(254))                    // Unknown table ID
-	w.Write(uint8(0))                      // PAT table ID
+	w.WriteBits(0x6969b13, 32)             // TOT CRC32
+	w.WriteByte(254)                       // Unknown table ID
+	w.WriteByte(0)                         // PAT table ID
 	return buf.Bytes()
 }
 
 func TestParsePSIData(t *testing.T) {
 	// Invalid CRC32
 	buf := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	w.Write(uint8(0))       // Pointer field
-	w.Write(uint8(115))     // TOT table ID
-	w.Write("1")            // TOT syntax section indicator
-	w.Write("1")            // TOT private bit
-	w.Write("11")           // TOT reserved
-	w.Write("000000001110") // TOT section length
-	w.Write(totBytes())     // TOT data
-	w.Write(uint32(32))     // TOT CRC32
-	_, err := parsePSIData(astikit.NewBytesIterator(buf.Bytes()))
-	assert.EqualError(t, err, "astits: parsing PSI table failed: astits: Table CRC32 20 != computed CRC32 6969b13")
+	w := bitio.NewWriter(buf)
+	w.WriteByte(0)                 // Pointer field
+	w.WriteByte(115)               // TOT table ID
+	WriteBinary(w, "1")            // TOT syntax section indicator
+	WriteBinary(w, "1")            // TOT private bit
+	WriteBinary(w, "11")           // TOT reserved
+	WriteBinary(w, "000000001110") // TOT section length
+	w.Write(totBytes())            // TOT data
+	w.WriteBits(32, 32)            // TOT CRC32
+
+	r := bitio.NewCountReader(bytes.NewReader(buf.Bytes()))
+	_, err := parsePSIData(r)
+	assert.ErrorIs(t, err, ErrPSIInvalidCRC32)
 
 	// Valid
-	d, err := parsePSIData(astikit.NewBytesIterator(psiBytes()))
+	r = bitio.NewCountReader(bytes.NewReader(psiBytes()))
+	d, err := parsePSIData(r)
 	assert.NoError(t, err)
 	assert.Equal(t, d, psi)
 }
@@ -186,23 +189,24 @@ var psiSectionHeader = &PSISectionHeader{
 
 func psiSectionHeaderBytes() []byte {
 	buf := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	w.Write(uint8(0))       // Table ID
-	w.Write("1")            // Syntax section indicator
-	w.Write("1")            // Private bit
-	w.Write("11")           // Reserved
-	w.Write("101010101010") // Section length
+	w := bitio.NewWriter(buf)
+	w.WriteByte(0)                 // Table ID
+	WriteBinary(w, "1")            // Syntax section indicator
+	WriteBinary(w, "1")            // Private bit
+	WriteBinary(w, "11")           // Reserved
+	WriteBinary(w, "101010101010") // Section length
 	return buf.Bytes()
 }
 
 func TestParsePSISectionHeader(t *testing.T) {
 	// Unknown table type
 	buf := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	w.Write(uint8(254)) // Table ID
-	w.Write("1")        // Syntax section indicator
-	w.Write("0000000")  // Finish the byte
-	d, _, _, _, _, err := parsePSISectionHeader(astikit.NewBytesIterator(buf.Bytes()))
+	w := bitio.NewWriter(buf)
+	w.WriteByte(254)          // Table ID
+	WriteBinary(w, "1")       // Syntax section indicator
+	WriteBinary(w, "0000000") // Finish the byte
+	r := bitio.NewCountReader(bytes.NewReader(buf.Bytes()))
+	d, _, _, err := parsePSISectionHeader(r)
 	assert.Equal(t, d, &PSISectionHeader{
 		TableID:   254,
 		TableType: PSITableTypeUnknown,
@@ -210,12 +214,11 @@ func TestParsePSISectionHeader(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Valid table type
-	d, offsetStart, offsetSectionsStart, offsetSectionsEnd, offsetEnd, err := parsePSISectionHeader(astikit.NewBytesIterator(psiSectionHeaderBytes()))
+	r = bitio.NewCountReader(bytes.NewReader(psiSectionHeaderBytes()))
+	d, offsetSectionsEnd, offsetEnd, err := parsePSISectionHeader(r)
 	assert.Equal(t, d, psiSectionHeader)
-	assert.Equal(t, 0, offsetStart)
-	assert.Equal(t, 3, offsetSectionsStart)
-	assert.Equal(t, 2729, offsetSectionsEnd)
-	assert.Equal(t, 2733, offsetEnd)
+	assert.Equal(t, int64(2729*8), offsetSectionsEnd)
+	assert.Equal(t, int64(2733*8), offsetEnd)
 	assert.NoError(t, err)
 }
 
@@ -251,18 +254,19 @@ var psiSectionSyntaxHeader = &PSISectionSyntaxHeader{
 
 func psiSectionSyntaxHeaderBytes() []byte {
 	buf := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	w.Write(uint16(1)) // Table ID extension
-	w.Write("11")      // Reserved bits
-	w.Write("10101")   // Version number
-	w.Write("1")       // Current/next indicator
-	w.Write(uint8(2))  // Section number
-	w.Write(uint8(3))  // Last section number
+	w := bitio.NewWriter(buf)
+	w.WriteBits(1, 16)      // Table ID extension
+	WriteBinary(w, "11")    // Reserved bits
+	WriteBinary(w, "10101") // Version number
+	WriteBinary(w, "1")     // Current/next indicator
+	w.WriteByte(2)          // Section number
+	w.WriteByte(3)          // Last section number
 	return buf.Bytes()
 }
 
 func TestParsePSISectionSyntaxHeader(t *testing.T) {
-	h, err := parsePSISectionSyntaxHeader(astikit.NewBytesIterator(psiSectionSyntaxHeaderBytes()))
+	r := bitio.NewCountReader(bytes.NewReader(psiSectionSyntaxHeaderBytes()))
+	h, err := parsePSISectionSyntaxHeader(r)
 	assert.Equal(t, psiSectionSyntaxHeader, h)
 	assert.NoError(t, err)
 }
@@ -281,24 +285,24 @@ func TestPSIToData(t *testing.T) {
 
 type psiDataTestCase struct {
 	name      string
-	bytesFunc func(*astikit.BitsWriter)
+	bytesFunc func(*bitio.Writer)
 	data      *PSIData
 }
 
 var psiDataTestCases = []psiDataTestCase{
 	{
 		"PAT",
-		func(w *astikit.BitsWriter) {
-			w.Write(uint8(4))                      // Pointer field
+		func(w *bitio.Writer) {
+			w.WriteByte(4)                         // Pointer field
 			w.Write([]byte{0, 0, 0, 0})            // Pointer field bytes
-			w.Write(uint8(0))                      // PAT table ID
-			w.Write("1")                           // PAT syntax section indicator
-			w.Write("1")                           // PAT private bit
-			w.Write("11")                          // PAT reserved
-			w.Write("000000010001")                // PAT section length
+			w.WriteByte(0)                         // PAT table ID
+			WriteBinary(w, "1")                    // PAT syntax section indicator
+			WriteBinary(w, "1")                    // PAT private bit
+			WriteBinary(w, "11")                   // PAT reserved
+			WriteBinary(w, "000000010001")         // PAT section length
 			w.Write(psiSectionSyntaxHeaderBytes()) // PAT syntax section header
 			w.Write(patBytes())                    // PAT data
-			w.Write(uint32(0x60739f61))            // PAT CRC32
+			w.WriteBits(0x60739f61, 32)            // PAT CRC32
 		},
 		&PSIData{
 			PointerField: 4,
@@ -322,17 +326,17 @@ var psiDataTestCases = []psiDataTestCase{
 	},
 	{
 		"PMT",
-		func(w *astikit.BitsWriter) {
-			w.Write(uint8(4))                      // Pointer field
+		func(w *bitio.Writer) {
+			w.WriteByte(4)                         // Pointer field
 			w.Write([]byte{0, 0, 0, 0})            // Pointer field bytes
-			w.Write(uint8(2))                      // PMT table ID
-			w.Write("1")                           // PMT syntax section indicator
-			w.Write("1")                           // PMT private bit
-			w.Write("11")                          // PMT reserved
-			w.Write("000000011000")                // PMT section length
+			w.WriteByte(2)                         // PMT table ID
+			WriteBinary(w, "1")                    // PMT syntax section indicator
+			WriteBinary(w, "1")                    // PMT private bit
+			WriteBinary(w, "11")                   // PMT reserved
+			WriteBinary(w, "000000011000")         // PMT section length
 			w.Write(psiSectionSyntaxHeaderBytes()) // PMT syntax section header
 			w.Write(pmtBytes())                    // PMT data
-			w.Write(uint32(0xc68442e8))            // PMT CRC32
+			w.WriteBits(0xc68442e8, 32)            // PMT CRC32
 		},
 		&PSIData{
 			PointerField: 4,
@@ -360,17 +364,16 @@ func TestWritePSIData(t *testing.T) {
 	for _, tc := range psiDataTestCases {
 		t.Run(tc.name, func(t *testing.T) {
 			bufExpected := bytes.Buffer{}
-			wExpected := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &bufExpected})
+			wExpected := bitio.NewWriter(&bufExpected)
 			bufActual := bytes.Buffer{}
-			wActual := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &bufActual})
+			wActual := bitio.NewWriter(&bufActual)
 
 			tc.bytesFunc(wExpected)
 
-			n, err := writePSIData(wActual, tc.data)
+			err := writePSIData(wActual, tc.data)
 			assert.NoError(t, err)
-			assert.Equal(t, bufExpected.Len(), n)
-			assert.Equal(t, n, bufActual.Len())
-			assert.Equal(t, bufExpected.Bytes(), bufActual.Bytes())
+			assert.Equal(t, bufActual.Len(), bufExpected.Len())
+			assert.Equal(t, bufActual.Bytes(), bufExpected.Bytes())
 		})
 	}
 }
@@ -378,6 +381,7 @@ func TestWritePSIData(t *testing.T) {
 func BenchmarkParsePSIData(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		parsePSIData(astikit.NewBytesIterator(psiBytes()))
+		r := bitio.NewCountReader(bytes.NewReader(psiBytes()))
+		parsePSIData(r)
 	}
 }

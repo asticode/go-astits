@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/asticode/go-astikit"
+	"github.com/icza/bitio"
 )
 
 // EITData represents an EIT data
-// Page: 36 | Chapter: 5.2.4 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
-// (barbashov) the link above can be broken, alternative: https://dvb.org/wp-content/uploads/2019/12/a038_tm1217r37_en300468v1_17_1_-_rev-134_-_si_specification.pdf
+// Page: 36 | Chapter: 5.2.4 | Link:
+// https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
 type EITData struct {
 	Events                   []*EITDataEvent
 	LastTableID              uint8
@@ -19,106 +19,60 @@ type EITData struct {
 	TransportStreamID        uint16
 }
 
-// EITDataEvent represents an EIT data event
+// EITDataEvent represents an EIT data event.
 type EITDataEvent struct {
+	Duration      time.Duration
+	EventID       uint16
+	StartTime     time.Time
+	RunningStatus uint8
+
+	// When true indicates that access to one or
+	// more streams may be controlled by a CA system.
+	HasFreeCSAMode bool
 	Descriptors    []*Descriptor
-	Duration       time.Duration
-	EventID        uint16
-	HasFreeCSAMode bool // When true indicates that access to one or more streams may be controlled by a CA system.
-	RunningStatus  uint8
-	StartTime      time.Time
 }
 
-// parseEITSection parses an EIT section
-func parseEITSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExtension uint16) (d *EITData, err error) {
-	// Create data
-	d = &EITData{ServiceID: tableIDExtension}
+// parseEITSection parses an EIT section.
+func parseEITSection(
+	r *bitio.CountReader,
+	offsetSectionsEnd int64,
+	tableIDExtension uint16,
+) (*EITData, error) {
+	d := &EITData{ServiceID: tableIDExtension}
 
-	// Get next 2 bytes
-	var bs []byte
-	if bs, err = i.NextBytesNoCopy(2); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
-	}
+	d.TransportStreamID = uint16(r.TryReadBits(16))
 
-	// Transport stream ID
-	d.TransportStreamID = uint16(bs[0])<<8 | uint16(bs[1])
+	d.OriginalNetworkID = uint16(r.TryReadBits(16))
 
-	// Get next 2 bytes
-	if bs, err = i.NextBytesNoCopy(2); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
-	}
+	d.SegmentLastSectionNumber = r.TryReadByte()
 
-	// Original network ID
-	d.OriginalNetworkID = uint16(bs[0])<<8 | uint16(bs[1])
+	d.LastTableID = r.TryReadByte()
 
-	// Get next byte
-	var b byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
+	// Loop until end of section data is reached.
+	for r.BitsCount < offsetSectionsEnd {
+		e := &EITDataEvent{}
 
-	// Segment last section number
-	d.SegmentLastSectionNumber = uint8(b)
+		e.EventID = uint16(r.TryReadBits(16))
 
-	// Get next byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
-
-	// Last table ID
-	d.LastTableID = uint8(b)
-
-	// Loop until end of section data is reached
-	for i.Offset() < offsetSectionsEnd {
-		// Get next 2 bytes
-		if bs, err = i.NextBytesNoCopy(2); err != nil {
-			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-			return
+		var err error
+		if e.StartTime, err = parseDVBTime(r); err != nil {
+			return nil, fmt.Errorf("parsing DVB time: %w", err)
 		}
 
-		// Event ID
-		var e = &EITDataEvent{}
-		e.EventID = uint16(bs[0])<<8 | uint16(bs[1])
-
-		// Start time
-		if e.StartTime, err = parseDVBTime(i); err != nil {
-			err = fmt.Errorf("astits: parsing DVB time")
-			return
+		if e.Duration, err = parseDVBDurationSeconds(r); err != nil {
+			return nil, fmt.Errorf("parsing DVB duration seconds failed: %w", err)
 		}
 
-		// Duration
-		if e.Duration, err = parseDVBDurationSeconds(i); err != nil {
-			err = fmt.Errorf("astits: parsing DVB duration seconds failed: %w", err)
-			return
+		e.RunningStatus = uint8(r.TryReadBits(3))
+
+		e.HasFreeCSAMode = r.TryReadBool()
+
+		if e.Descriptors, err = parseDescriptors(r); err != nil {
+			return nil, fmt.Errorf("parsing descriptors failed: %w", err)
 		}
 
-		// Get next byte
-		if b, err = i.NextByte(); err != nil {
-			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-			return
-		}
-
-		// Running status
-		e.RunningStatus = uint8(b) >> 5
-
-		// Free CA mode
-		e.HasFreeCSAMode = uint8(b&0x10) > 0
-
-		// We need to rewind since the current byte is used by the descriptor as well
-		i.Skip(-1)
-
-		// Descriptors
-		if e.Descriptors, err = parseDescriptors(i); err != nil {
-			err = fmt.Errorf("astits: parsing descriptors failed: %w", err)
-			return
-		}
-
-		// Add event
 		d.Events = append(d.Events, e)
 	}
-	return
+
+	return d, r.TryError
 }

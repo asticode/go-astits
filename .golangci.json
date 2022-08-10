@@ -1,0 +1,56 @@
+{
+	"run": {
+		"tests": false,
+		"timeout": "5m"
+	},
+	"linters": {
+		"enable": [
+			"asciicheck",
+			"bodyclose",
+			"deadcode",
+			"depguard",
+			"dogsled",
+			"dupl",
+			"durationcheck",
+			"errcheck",
+			"errname",
+			"errorlint",
+			"exportloopref",
+			"forcetypeassert",
+			"funlen",
+			"gocognit",
+			"gocritic",
+			"gocyclo",
+			"godot",
+			"goerr113",
+			"gofumpt",
+			"goprintffuncname",
+			"gosimple",
+			"govet",
+			"ineffassign",
+			"lll",
+			"misspell",
+			"nakedret",
+			"nestif",
+			"noctx",
+			"nolintlint",
+			"revive",
+			"rowserrcheck",
+			"staticcheck",
+			"structcheck",
+			"testpackage",
+			"typecheck",
+			"unconvert",
+			"unparam",
+			"unused",
+			"varcheck",
+			"whitespace"
+		]
+	},
+	"linters-settings": {
+		"funlen": {},
+		"gocritic": {
+			"disabled-checks": ["commentFormatting"]
+		}
+	}
+}

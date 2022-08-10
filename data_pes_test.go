@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/asticode/go-astikit"
+	"github.com/icza/bitio"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,39 +25,39 @@ var dsmTrickModeSlow = &DSMTrickMode{
 
 func dsmTrickModeSlowBytes() []byte {
 	buf := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	w.Write("001")   // Control
-	w.Write("10101") // Repeat control
+	w := bitio.NewWriter(buf)
+	WriteBinary(w, "001")   // Control
+	WriteBinary(w, "10101") // Repeat control
 	return buf.Bytes()
 }
 
 type dsmTrickModeTestCase struct {
 	name      string
-	bytesFunc func(w *astikit.BitsWriter)
+	bytesFunc func(w *bitio.Writer)
 	trickMode *DSMTrickMode
 }
 
 var dsmTrickModeTestCases = []dsmTrickModeTestCase{
 	{
 		"fast_forward",
-		func(w *astikit.BitsWriter) {
-			w.Write("000") // Control
-			w.Write("10")  // Field ID
-			w.Write("1")   // Intra slice refresh
-			w.Write("11")  // Frequency truncation
+		func(w *bitio.Writer) {
+			WriteBinary(w, "000") // Control
+			WriteBinary(w, "10")  // Field ID
+			WriteBinary(w, "1")   // Intra slice refresh
+			WriteBinary(w, "11")  // Frequency truncation
 		},
 		&DSMTrickMode{
 			FieldID:             2,
 			FrequencyTruncation: 3,
-			IntraSliceRefresh:   1,
+			IntraSliceRefresh:   true,
 			TrickModeControl:    TrickModeControlFastForward,
 		},
 	},
 	{
 		"slow_motion",
-		func(w *astikit.BitsWriter) {
-			w.Write("001")
-			w.Write("10101")
+		func(w *bitio.Writer) {
+			WriteBinary(w, "001")
+			WriteBinary(w, "10101")
 		},
 		&DSMTrickMode{
 			RepeatControl:    0b10101,
@@ -66,10 +66,10 @@ var dsmTrickModeTestCases = []dsmTrickModeTestCase{
 	},
 	{
 		"freeze_frame",
-		func(w *astikit.BitsWriter) {
-			w.Write("010") // Control
-			w.Write("10")  // Field ID
-			w.Write("111") // Reserved
+		func(w *bitio.Writer) {
+			WriteBinary(w, "010") // Control
+			WriteBinary(w, "10")  // Field ID
+			WriteBinary(w, "111") // Reserved
 		},
 		&DSMTrickMode{
 			FieldID:          2,
@@ -78,24 +78,24 @@ var dsmTrickModeTestCases = []dsmTrickModeTestCase{
 	},
 	{
 		"fast_reverse",
-		func(w *astikit.BitsWriter) {
-			w.Write("011") // Control
-			w.Write("10")  // Field ID
-			w.Write("1")   // Intra slice refresh
-			w.Write("11")  // Frequency truncation
+		func(w *bitio.Writer) {
+			WriteBinary(w, "011") // Control
+			WriteBinary(w, "10")  // Field ID
+			WriteBinary(w, "1")   // Intra slice refresh
+			WriteBinary(w, "11")  // Frequency truncation
 		},
 		&DSMTrickMode{
 			FieldID:             2,
 			FrequencyTruncation: 3,
-			IntraSliceRefresh:   1,
+			IntraSliceRefresh:   true,
 			TrickModeControl:    TrickModeControlFastReverse,
 		},
 	},
 	{
 		"slow_reverse",
-		func(w *astikit.BitsWriter) {
-			w.Write("100")
-			w.Write("01010")
+		func(w *bitio.Writer) {
+			WriteBinary(w, "100")
+			WriteBinary(w, "01010")
 		},
 		&DSMTrickMode{
 			RepeatControl:    0b01010,
@@ -104,9 +104,9 @@ var dsmTrickModeTestCases = []dsmTrickModeTestCase{
 	},
 	{
 		"reserved",
-		func(w *astikit.BitsWriter) {
-			w.Write("101")
-			w.Write("11111")
+		func(w *bitio.Writer) {
+			WriteBinary(w, "101")
+			WriteBinary(w, "11111")
 		},
 		&DSMTrickMode{
 			TrickModeControl: 5, // reserved
@@ -118,9 +118,12 @@ func TestParseDSMTrickMode(t *testing.T) {
 	for _, tc := range dsmTrickModeTestCases {
 		t.Run(tc.name, func(t *testing.T) {
 			buf := &bytes.Buffer{}
-			w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+			w := bitio.NewWriter(buf)
 			tc.bytesFunc(w)
-			assert.Equal(t, parseDSMTrickMode(buf.Bytes()[0]), tc.trickMode)
+			r := bitio.NewCountReader(bytes.NewReader(buf.Bytes()))
+			trickMode, err := parseDSMTrickMode(r)
+			assert.NoError(t, err)
+			assert.Equal(t, trickMode, tc.trickMode)
 		})
 	}
 }
@@ -129,11 +132,11 @@ func TestWriteDSMTrickMode(t *testing.T) {
 	for _, tc := range dsmTrickModeTestCases {
 		t.Run(tc.name, func(t *testing.T) {
 			bufExpected := &bytes.Buffer{}
-			wExpected := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: bufExpected})
+			wExpected := bitio.NewWriter(bufExpected)
 			tc.bytesFunc(wExpected)
 
 			bufActual := &bytes.Buffer{}
-			wActual := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: bufActual})
+			wActual := bitio.NewWriter(bufActual)
 
 			n, err := writeDSMTrickMode(wActual, tc.trickMode)
 			assert.NoError(t, err)
@@ -148,14 +151,14 @@ var ptsClockReference = &ClockReference{Base: 5726623061}
 
 func ptsBytes(flag string) []byte {
 	buf := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	w.Write(flag)              // Flag
-	w.Write("101")             // 32...30
-	w.Write("1")               // Dummy
-	w.Write("010101010101010") // 29...15
-	w.Write("1")               // Dummy
-	w.Write("101010101010101") // 14...0
-	w.Write("1")               // Dummy
+	w := bitio.NewWriter(buf)
+	WriteBinary(w, flag)              // Flag
+	WriteBinary(w, "101")             // 32...30
+	WriteBinary(w, "1")               // Dummy
+	WriteBinary(w, "010101010101010") // 29...15
+	WriteBinary(w, "1")               // Dummy
+	WriteBinary(w, "101010101010101") // 14...0
+	WriteBinary(w, "1")               // Dummy
 	return buf.Bytes()
 }
 
@@ -163,26 +166,29 @@ var dtsClockReference = &ClockReference{Base: 5726623060}
 
 func dtsBytes(flag string) []byte {
 	buf := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	w.Write(flag)              // Flag
-	w.Write("101")             // 32...30
-	w.Write("1")               // Dummy
-	w.Write("010101010101010") // 29...15
-	w.Write("1")               // Dummy
-	w.Write("101010101010100") // 14...0
-	w.Write("1")               // Dummy
+	w := bitio.NewWriter(buf)
+	WriteBinary(w, flag)              // Flag
+	WriteBinary(w, "101")             // 32...30
+	WriteBinary(w, "1")               // Dummy
+	WriteBinary(w, "010101010101010") // 29...15
+	WriteBinary(w, "1")               // Dummy
+	WriteBinary(w, "101010101010100") // 14...0
+	WriteBinary(w, "1")               // Dummy
 	return buf.Bytes()
 }
 
 func TestParsePTSOrDTS(t *testing.T) {
-	v, err := parsePTSOrDTS(astikit.NewBytesIterator(ptsBytes("0010")))
+	r := bitio.NewCountReader(bytes.NewReader(ptsBytes("0010")))
+	_, err := r.ReadBits(4)
+	assert.NoError(t, err)
+	v, err := parsePTSOrDTS(r)
 	assert.Equal(t, v, ptsClockReference)
 	assert.NoError(t, err)
 }
 
 func TestWritePTSOrDTS(t *testing.T) {
 	buf := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+	w := bitio.NewWriter(buf)
 	n, err := writePTSOrDTS(w, uint8(0b0010), dtsClockReference)
 	assert.NoError(t, err)
 	assert.Equal(t, n, 5)
@@ -192,28 +198,29 @@ func TestWritePTSOrDTS(t *testing.T) {
 
 func escrBytes() []byte {
 	buf := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	w.Write("11")              // Dummy
-	w.Write("011")             // 32...30
-	w.Write("1")               // Dummy
-	w.Write("000010111110000") // 29...15
-	w.Write("1")               // Dummy
-	w.Write("000010111001111") // 14...0
-	w.Write("1")               // Dummy
-	w.Write("000111010")       // Ext
-	w.Write("1")               // Dummy
+	w := bitio.NewWriter(buf)
+	WriteBinary(w, "11")              // Dummy
+	WriteBinary(w, "011")             // 32...30
+	WriteBinary(w, "1")               // Dummy
+	WriteBinary(w, "000010111110000") // 29...15
+	WriteBinary(w, "1")               // Dummy
+	WriteBinary(w, "000010111001111") // 14...0
+	WriteBinary(w, "1")               // Dummy
+	WriteBinary(w, "000111010")       // Ext
+	WriteBinary(w, "1")               // Dummy
 	return buf.Bytes()
 }
 
 func TestParseESCR(t *testing.T) {
-	v, err := parseESCR(astikit.NewBytesIterator(escrBytes()))
+	r := bitio.NewCountReader(bytes.NewReader(escrBytes()))
+	v, err := parseESCR(r)
 	assert.Equal(t, v, clockReference)
 	assert.NoError(t, err)
 }
 
 func TestWriteESCR(t *testing.T) {
 	buf := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+	w := bitio.NewWriter(buf)
 	n, err := writeESCR(w, clockReference)
 	assert.NoError(t, err)
 	assert.Equal(t, n, 6)
@@ -223,24 +230,24 @@ func TestWriteESCR(t *testing.T) {
 
 type pesTestCase struct {
 	name                    string
-	headerBytesFunc         func(w *astikit.BitsWriter, withStuffing bool, withCRC bool)
-	optionalHeaderBytesFunc func(w *astikit.BitsWriter, withStuffing bool, withCRC bool)
-	bytesFunc               func(w *astikit.BitsWriter, withStuffing bool, withCRC bool)
+	headerBytesFunc         func(w *bitio.Writer, withStuffing bool, withCRC bool)
+	optionalHeaderBytesFunc func(w *bitio.Writer, withStuffing bool, withCRC bool)
+	bytesFunc               func(w *bitio.Writer, withStuffing bool, withCRC bool)
 	pesData                 *PESData
 }
 
 var pesTestCases = []pesTestCase{
 	{
 		"without_header",
-		func(w *astikit.BitsWriter, withStuffing bool, withCRC bool) {
-			w.Write("000000000000000000000001")   // Prefix
-			w.Write(uint8(StreamIDPaddingStream)) // Stream ID
-			w.Write(uint16(4))                    // Packet length
+		func(w *bitio.Writer, withStuffing bool, withCRC bool) {
+			WriteBinary(w, "000000000000000000000001") // Prefix
+			w.WriteByte(StreamIDPaddingStream)         // Stream ID
+			w.WriteBits(4, 16)                         // Packet length
 		},
-		func(w *astikit.BitsWriter, withStuffing bool, withCRC bool) {
+		func(w *bitio.Writer, withStuffing bool, withCRC bool) {
 			// do nothing here
 		},
-		func(w *astikit.BitsWriter, withStuffing bool, withCRC bool) {
+		func(w *bitio.Writer, withStuffing bool, withCRC bool) {
 			w.Write([]byte("data")) // Data
 		},
 		&PESData{
@@ -253,7 +260,7 @@ var pesTestCases = []pesTestCase{
 	},
 	{
 		"with_header",
-		func(w *astikit.BitsWriter, withStuffing bool, withCRC bool) {
+		func(w *bitio.Writer, withStuffing bool, withCRC bool) {
 			packetLength := 67
 			stuffing := []byte("stuff")
 
@@ -265,12 +272,11 @@ var pesTestCases = []pesTestCase{
 				packetLength -= 2
 			}
 
-			w.Write("000000000000000000000001") // Prefix
-			w.Write(uint8(1))                   // Stream ID
-			w.Write(uint16(packetLength))       // Packet length
-
+			WriteBinary(w, "000000000000000000000001") // Prefix
+			w.WriteByte(1)                             // Stream ID
+			w.WriteBits(uint64(packetLength), 16)      // Packet length
 		},
-		func(w *astikit.BitsWriter, withStuffing bool, withCRC bool) {
+		func(w *bitio.Writer, withStuffing bool, withCRC bool) {
 			optionalHeaderLength := 60
 			stuffing := []byte("stuff")
 
@@ -282,47 +288,47 @@ var pesTestCases = []pesTestCase{
 				optionalHeaderLength -= 2
 			}
 
-			w.Write("10")                        // Marker bits
-			w.Write("01")                        // Scrambling control
-			w.Write("1")                         // Priority
-			w.Write("1")                         // Data alignment indicator
-			w.Write("1")                         // Copyright
-			w.Write("1")                         // Original or copy
-			w.Write("11")                        // PTS/DTS indicator
-			w.Write("1")                         // ESCR flag
-			w.Write("1")                         // ES rate flag
-			w.Write("1")                         // DSM trick mode flag
-			w.Write("1")                         // Additional copy flag
-			w.Write(withCRC)                     // CRC flag
-			w.Write("1")                         // Extension flag
-			w.Write(uint8(optionalHeaderLength)) // Header length
-			w.Write(ptsBytes("0011"))            // PTS
-			w.Write(dtsBytes("0001"))            // DTS
-			w.Write(escrBytes())                 // ESCR
-			w.Write("101010101010101010101011")  // ES rate
-			w.Write(dsmTrickModeSlowBytes())     // DSM trick mode
-			w.Write("11111111")                  // Additional copy info
+			WriteBinary(w, "10")                       // Marker bits
+			WriteBinary(w, "01")                       // Scrambling control
+			WriteBinary(w, "1")                        // Priority
+			WriteBinary(w, "1")                        // Data alignment indicator
+			WriteBinary(w, "1")                        // Copyright
+			WriteBinary(w, "1")                        // Original or copy
+			WriteBinary(w, "11")                       // PTS/DTS indicator
+			WriteBinary(w, "1")                        // ESCR flag
+			WriteBinary(w, "1")                        // ES rate flag
+			WriteBinary(w, "1")                        // DSM trick mode flag
+			WriteBinary(w, "1")                        // Additional copy flag
+			w.WriteBool(withCRC)                       // CRC flag
+			WriteBinary(w, "1")                        // Extension flag
+			w.WriteByte(uint8(optionalHeaderLength))   // Header length
+			w.Write(ptsBytes("0011"))                  // PTS
+			w.Write(dtsBytes("0001"))                  // DTS
+			w.Write(escrBytes())                       // ESCR
+			WriteBinary(w, "101010101010101010101011") // ES rate
+			w.Write(dsmTrickModeSlowBytes())           // DSM trick mode
+			WriteBinary(w, "11111111")                 // Additional copy info
 			if withCRC {
-				w.Write(uint16(4)) // CRC
+				w.WriteBits(4, 16) // CRC
 			}
 			// Extension starts here
-			w.Write("1")                        // Private data flag
-			w.Write("0")                        // Pack header field flag
-			w.Write("1")                        // Program packet sequence counter flag
-			w.Write("1")                        // PSTD buffer flag
-			w.Write("111")                      // Dummy
-			w.Write("1")                        // Extension 2 flag
+			WriteBinary(w, "1")                 // Private data flag
+			WriteBinary(w, "0")                 // Pack header field flag
+			WriteBinary(w, "1")                 // Program packet sequence counter flag
+			WriteBinary(w, "1")                 // PSTD buffer flag
+			WriteBinary(w, "111")               // Dummy
+			WriteBinary(w, "1")                 // Extension 2 flag
 			w.Write([]byte("1234567890123456")) // Private data
-			//w.Write(uint8(5))                   // Pack field
-			w.Write("1101010111010101")   // Packet sequence counter
-			w.Write("0111010101010101")   // PSTD buffer
-			w.Write("10001010")           // Extension 2 header
-			w.Write([]byte("extension2")) // Extension 2 data
+			// w.WriteByte(uint8(5))                   // Pack field
+			WriteBinary(w, "1101010111010101") // Packet sequence counter
+			WriteBinary(w, "0111010101010101") // PSTD buffer
+			WriteBinary(w, "10001010")         // Extension 2 header
+			w.Write([]byte("extension2"))      // Extension 2 data
 			if withStuffing {
 				w.Write(stuffing) // Optional header stuffing bytes
 			}
 		},
-		func(w *astikit.BitsWriter, withStuffing bool, withCRC bool) {
+		func(w *bitio.Writer, withStuffing bool, withCRC bool) {
 			stuffing := []byte("stuff")
 			w.Write([]byte("data")) // Data
 			if withStuffing {
@@ -357,13 +363,13 @@ var pesTestCases = []pesTestCase{
 					IsCopyrighted:                   true,
 					IsOriginal:                      true,
 					MarkerBits:                      2,
-					MPEG1OrMPEG2ID:                  1,
+					MPEG1OrMPEG2ID:                  true,
 					OriginalStuffingLength:          21,
 					PacketSequenceCounter:           85,
-					//PackField:                       5,
+					// PackField:                       5,
 					Priority:          true,
 					PrivateData:       []byte("1234567890123456"),
-					PSTDBufferScale:   1,
+					PSTDBufferScale:   true,
 					PSTDBufferSize:    5461,
 					PTSDTSIndicator:   3,
 					PTS:               ptsClockReference,
@@ -379,7 +385,7 @@ var pesTestCases = []pesTestCase{
 // used by TestParseData
 func pesWithHeaderBytes() []byte {
 	buf := bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &buf})
+	w := bitio.NewWriter(&buf)
 	pesTestCases[1].headerBytesFunc(w, true, true)
 	pesTestCases[1].optionalHeaderBytesFunc(w, true, true)
 	pesTestCases[1].bytesFunc(w, true, true)
@@ -395,11 +401,12 @@ func TestParsePESData(t *testing.T) {
 	for _, tc := range pesTestCases {
 		t.Run(tc.name, func(t *testing.T) {
 			buf := bytes.Buffer{}
-			w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &buf})
+			w := bitio.NewWriter(&buf)
 			tc.headerBytesFunc(w, true, true)
 			tc.optionalHeaderBytesFunc(w, true, true)
 			tc.bytesFunc(w, true, true)
-			d, err := parsePESData(astikit.NewBytesIterator(buf.Bytes()))
+			r := bitio.NewCountReader(bytes.NewReader(buf.Bytes()))
+			d, err := parsePESData(r, int64(len(buf.Bytes())*8))
 			assert.NoError(t, err)
 			assert.Equal(t, tc.pesData, d)
 		})
@@ -410,17 +417,17 @@ func TestWritePESData(t *testing.T) {
 	for _, tc := range pesTestCases {
 		t.Run(tc.name, func(t *testing.T) {
 			bufExpected := bytes.Buffer{}
-			wExpected := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &bufExpected})
+			wExpected := bitio.NewWriter(&bufExpected)
 			tc.headerBytesFunc(wExpected, false, false)
 			tc.optionalHeaderBytesFunc(wExpected, false, false)
 			tc.bytesFunc(wExpected, false, false)
 
 			bufActual := bytes.Buffer{}
-			wActual := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &bufActual})
+			wActual := bitio.NewWriter(&bufActual)
 
 			start := true
-			totalBytes := 0
-			payloadPos := 0
+			var totalBytes int
+			var payloadPos int
 
 			for payloadPos+1 < len(tc.pesData.Data) {
 				n, payloadN, err := writePESData(
@@ -448,12 +455,12 @@ func TestWritePESHeader(t *testing.T) {
 	for _, tc := range pesTestCases {
 		t.Run(tc.name, func(t *testing.T) {
 			bufExpected := bytes.Buffer{}
-			wExpected := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &bufExpected})
+			wExpected := bitio.NewWriter(&bufExpected)
 			tc.headerBytesFunc(wExpected, false, false)
 			tc.optionalHeaderBytesFunc(wExpected, false, false)
 
 			bufActual := bytes.Buffer{}
-			wActual := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &bufActual})
+			wActual := bitio.NewWriter(&bufActual)
 
 			n, err := writePESHeader(wActual, tc.pesData.Header, len(tc.pesData.Data))
 			assert.NoError(t, err)
@@ -468,11 +475,11 @@ func TestWritePESOptionalHeader(t *testing.T) {
 	for _, tc := range pesTestCases {
 		t.Run(tc.name, func(t *testing.T) {
 			bufExpected := bytes.Buffer{}
-			wExpected := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &bufExpected})
+			wExpected := bitio.NewWriter(&bufExpected)
 			tc.optionalHeaderBytesFunc(wExpected, false, false)
 
 			bufActual := bytes.Buffer{}
-			wActual := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &bufActual})
+			wActual := bitio.NewWriter(&bufActual)
 
 			n, err := writePESOptionalHeader(wActual, tc.pesData.Header.OptionalHeader)
 			assert.NoError(t, err)
@@ -488,7 +495,7 @@ func BenchmarkParsePESData(b *testing.B) {
 
 	for ti, tc := range pesTestCases {
 		buf := bytes.Buffer{}
-		w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &buf})
+		w := bitio.NewWriter(&buf)
 		tc.headerBytesFunc(w, true, true)
 		tc.optionalHeaderBytesFunc(w, true, true)
 		tc.bytesFunc(w, true, true)
@@ -499,7 +506,8 @@ func BenchmarkParsePESData(b *testing.B) {
 		b.Run(tc.name, func(b *testing.B) {
 			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {
-				parsePESData(astikit.NewBytesIterator(bss[ti]))
+				r := bitio.NewCountReader(bytes.NewReader(bss[ti]))
+				parsePESData(r, int64(len(bss[ti])*8))
 			}
 		})
 	}

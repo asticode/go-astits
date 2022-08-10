@@ -1,12 +1,13 @@
 package astits
 
 import (
+	"errors"
 	"fmt"
 
-	"github.com/asticode/go-astikit"
+	"github.com/icza/bitio"
 )
 
-// PSI table IDs
+// PSI table IDs.
 const (
 	PSITableTypeBAT     = "BAT"
 	PSITableTypeDIT     = "DIT"
@@ -24,8 +25,10 @@ const (
 	PSITableTypeUnknown = "Unknown"
 )
 
+// PSITableID .
 type PSITableID uint16
 
+// PSITableIDs.
 const (
 	PSITableIDPAT  PSITableID = 0x00
 	PSITableIDPMT  PSITableID = 0x02
@@ -46,45 +49,88 @@ const (
 	PSITableIDNITVariant2 PSITableID = 0x41
 )
 
-// PSIData represents a PSI data
+// PSIData represents a PSI data.
 // https://en.wikipedia.org/wiki/Program-specific_information
 type PSIData struct {
-	PointerField int // Present at the start of the TS packet payload signaled by the payload_unit_start_indicator bit in the TS header. Used to set packet alignment bytes or content before the start of tabled payload data.
+	// PointerField it present at the start of the TS packet
+	// payload signaled by the payload_unit_start_indicator
+	// bit in the TS header. Used to set packet alignment
+	// bytes or content before the start of tabled payload data.
+	PointerField int
 	Sections     []*PSISection
 }
 
-// PSISection represents a PSI section
+// PSISection represents a PSI section.
 type PSISection struct {
-	CRC32  uint32 // A checksum of the entire table excluding the pointer field, pointer filler bytes and the trailing CRC32.
+	// CRC32 checksum of the entire table excluding the pointer
+	// field, pointer filler bytes and the trailing CRC32.
+	CRC32  uint32
 	Header *PSISectionHeader
 	Syntax *PSISectionSyntax
 }
 
-// PSISectionHeader represents a PSI section header
+// PSISectionHeader represents a PSI section header.
 type PSISectionHeader struct {
-	PrivateBit             bool       // The PAT, PMT, and CAT all set this to 0. Other tables set this to 1.
-	SectionLength          uint16     // The number of bytes that follow for the syntax section (with CRC value) and/or table data. These bytes must not exceed a value of 1021.
-	SectionSyntaxIndicator bool       // A flag that indicates if the syntax section follows the section length. The PAT, PMT, and CAT all set this to 1.
-	TableID                PSITableID // Table Identifier, that defines the structure of the syntax section and other contained data. As an exception, if this is the byte that immediately follow previous table section and is set to 0xFF, then it indicates that the repeat of table section end here and the rest of TS data payload shall be stuffed with 0xFF. Consequently the value 0xFF shall not be used for the Table Identifier.
-	TableType              string
+	// PrivateBit The PAT, PMT, and CAT all set this to -1.
+	// Other tables set this to 1.
+	PrivateBit bool
+
+	// SectionLength The number of bytes that follow for the
+	// syntax section (with CRC value) and/or table data.
+	// These bytes must not exceed a value of 1021.
+	SectionLength uint16
+
+	// A flag that indicates if the syntax section
+	// follows the section length. The PAT, PMT,
+	// and CAT all set this to 1.
+	SectionSyntaxIndicator bool
+
+	// TableID that defines the structure of the syntax
+	// section and other contained data. As an exception,
+	// if this is the byte that immediately follow previous
+	// table section and is set to 0xFF, then it indicates
+	// that the repeat of table section end here and the rest of
+	// TS data payload shall be stuffed with 0xFF. Consequently
+	// the value 0xFF shall not be used for the Table Identifier.
+	TableID PSITableID
+
+	TableType string
 }
 
-// PSISectionSyntax represents a PSI section syntax
+// PSISectionSyntax represents a PSI section syntax.
 type PSISectionSyntax struct {
 	Data   *PSISectionSyntaxData
 	Header *PSISectionSyntaxHeader
 }
 
-// PSISectionSyntaxHeader represents a PSI section syntax header
+// PSISectionSyntaxHeader represents a PSI section syntax header.
 type PSISectionSyntaxHeader struct {
-	CurrentNextIndicator bool   // Indicates if data is current in effect or is for future use. If the bit is flagged on, then the data is to be used at the present moment.
-	LastSectionNumber    uint8  // This indicates which table is the last table in the sequence of tables.
-	SectionNumber        uint8  // This is an index indicating which table this is in a related sequence of tables. The first table starts from 0.
-	TableIDExtension     uint16 // Informational only identifier. The PAT uses this for the transport stream identifier and the PMT uses this for the Program number.
-	VersionNumber        uint8  // Syntax version number. Incremented when data is changed and wrapped around on overflow for values greater than 32.
+	// TableIDExtension Informational only identifier.
+	// The PAT uses this for the transport stream identifier
+	// and the PMT uses this for the Program number.
+	TableIDExtension uint16
+
+	// VersionNumber Syntax version number.
+	// Incremented when data is changed and wrapped
+	// around on overflow for values greater than 32.
+	VersionNumber uint8 // 5 bits.
+
+	// CurrentNextIndicator Indicates if data is current in
+	// effect or is for future use. If the bit is flagged on,
+	// then the data is to be used at the present moment.
+	CurrentNextIndicator bool
+
+	// LastSectionNumber indicates which table is
+	// the last table in the sequence of tables.
+	LastSectionNumber uint8
+
+	// SectionNumber is an index indicating which table
+	// this is in a related sequence of tables.
+	// The first table starts from 0.
+	SectionNumber uint8
 }
 
-// PSISectionSyntaxData represents a PSI section syntax data
+// PSISectionSyntaxData represents a PSI section syntax data.
 type PSISectionSyntaxData struct {
 	EIT *EITData
 	NIT *NITData
@@ -94,168 +140,141 @@ type PSISectionSyntaxData struct {
 	TOT *TOTData
 }
 
-// parsePSIData parses a PSI data
-func parsePSIData(i *astikit.BytesIterator) (d *PSIData, err error) {
-	// Init data
-	d = &PSIData{}
+// parsePSIData parses a PSI data.
+func parsePSIData(r *bitio.CountReader) (*PSIData, error) {
+	d := &PSIData{}
 
-	// Get next byte
-	var b byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
+	d.PointerField = int(r.TryReadByte())
 
-	// Pointer field
-	d.PointerField = int(b)
+	// Pointer filler bytes.
+	skip := make([]byte, d.PointerField)
+	TryReadFull(r, skip)
 
-	// Pointer filler bytes
-	i.Skip(d.PointerField)
-
-	// Parse sections
 	var s *PSISection
 	var stop bool
-	for i.HasBytesLeft() && !stop {
-		if s, stop, err = parsePSISection(i); err != nil {
-			err = fmt.Errorf("astits: parsing PSI table failed: %w", err)
-			return
+	var err error
+	for !stop {
+		if s, stop, err = parsePSISection(r); err != nil {
+			err = fmt.Errorf("parsing PSI table failed: %w", err)
+			return nil, err
 		}
 		d.Sections = append(d.Sections, s)
 	}
-	return
+	return d, r.TryError
 }
 
-// parsePSISection parses a PSI section
-func parsePSISection(i *astikit.BytesIterator) (s *PSISection, stop bool, err error) {
-	// Init section
-	s = &PSISection{}
+// ErrPSIInvalidCRC32 .
+var ErrPSIInvalidCRC32 = errors.New("computed CRC32 doesn't match table CRC32")
 
-	// Parse header
-	var offsetStart, offsetSectionsEnd, offsetEnd int
-	if s.Header, offsetStart, _, offsetSectionsEnd, offsetEnd, err = parsePSISectionHeader(i); err != nil {
-		err = fmt.Errorf("astits: parsing PSI section header failed: %w", err)
-		return
+// parsePSISection parses a PSI section.
+func parsePSISection(i *bitio.CountReader) (*PSISection, bool, error) {
+	cr := NewCRC32Reader(i)
+	r := bitio.NewCountReader(cr)
+	r.BitsCount = i.BitsCount
+
+	s := &PSISection{}
+
+	header, offsetSectionsEnd, offsetEnd, err := parsePSISectionHeader(r)
+	if err != nil {
+		return nil, false, fmt.Errorf("parsing PSI section header failed: %w", err)
 	}
+	s.Header = header
 
-	// Check whether we need to stop the parsing
+	// Check whether we need to stop the parsing.
 	if shouldStopPSIParsing(s.Header.TableID) {
-		stop = true
-		return
+		return s, true, nil
 	}
 
-	// Check whether there's a syntax section
-	if s.Header.SectionLength > 0 {
-		// Parse syntax
-		if s.Syntax, err = parsePSISectionSyntax(i, s.Header, offsetSectionsEnd); err != nil {
-			err = fmt.Errorf("astits: parsing PSI section syntax failed: %w", err)
-			return
+	// Check whether there's a syntax section.
+	if s.Header.SectionLength <= 0 {
+		// Go to the end of the section.
+		if offsetEnd > r.BitsCount {
+			skip := make([]byte, (offsetEnd-r.BitsCount)/8)
+			TryReadFull(r, skip)
+		}
+		return s, false, nil
+	}
+
+	if s.Syntax, err = parsePSISectionSyntax(r, s.Header, offsetSectionsEnd); err != nil {
+		return nil, false, fmt.Errorf("parsing PSI section syntax failed: %w", err)
+	}
+
+	if s.Header.TableID.hasCRC32() {
+		computedCRC32 := cr.CRC32()
+
+		// Go to the end of the sections.
+		if offsetSectionsEnd > r.BitsCount {
+			skip := make([]byte, (offsetSectionsEnd-r.BitsCount)/8)
+			TryReadFull(r, skip)
 		}
 
-		// Process CRC32
-		if s.Header.TableID.hasCRC32() {
-			// Seek to the end of the sections
-			i.Seek(offsetSectionsEnd)
+		if s.CRC32, err = parseCRC32(r); err != nil {
+			return nil, false, fmt.Errorf("parsing table CRC32 failed: %w", err)
+		}
 
-			// Parse CRC32
-			if s.CRC32, err = parseCRC32(i); err != nil {
-				err = fmt.Errorf("astits: parsing CRC32 failed: %w", err)
-				return
-			}
-
-			// Get CRC32 data
-			i.Seek(offsetStart)
-			var crc32Data []byte
-			if crc32Data, err = i.NextBytesNoCopy(offsetSectionsEnd - offsetStart); err != nil {
-				err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-				return
-			}
-
-			// Compute CRC32
-			crc32 := computeCRC32(crc32Data)
-
-			// Check CRC32
-			if crc32 != s.CRC32 {
-				err = fmt.Errorf("astits: Table CRC32 %x != computed CRC32 %x", s.CRC32, crc32)
-				return
-			}
+		if computedCRC32 != s.CRC32 {
+			return nil, false, fmt.Errorf("%w computed=%v table=%v",
+				ErrPSIInvalidCRC32, computedCRC32, s.CRC32)
 		}
 	}
 
-	// Seek to the end of the section
-	i.Seek(offsetEnd)
-	return
-}
-
-// parseCRC32 parses a CRC32
-func parseCRC32(i *astikit.BytesIterator) (c uint32, err error) {
-	var bs []byte
-	if bs, err = i.NextBytesNoCopy(4); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
+	if offsetEnd > r.BitsCount {
+		skip := make([]byte, (offsetEnd-r.BitsCount)/8)
+		TryReadFull(r, skip)
 	}
-	c = uint32(bs[0])<<24 | uint32(bs[1])<<16 | uint32(bs[2])<<8 | uint32(bs[3])
-	return
+
+	return s, false, r.TryError
 }
 
-// shouldStopPSIParsing checks whether the PSI parsing should be stopped
+// parseCRC32 parses a CRC32.
+func parseCRC32(r *bitio.CountReader) (uint32, error) {
+	c := uint32(r.TryReadBits(32))
+	return c, r.TryError
+}
+
+// shouldStopPSIParsing checks whether the PSI parsing should be stopped.
 func shouldStopPSIParsing(tableID PSITableID) bool {
 	return tableID == PSITableIDNull ||
 		tableID.isUnknown()
 }
 
-// parsePSISectionHeader parses a PSI section header
-func parsePSISectionHeader(i *astikit.BytesIterator) (h *PSISectionHeader, offsetStart, offsetSectionsStart, offsetSectionsEnd, offsetEnd int, err error) {
-	// Init
+// parsePSISectionHeader parses a PSI section header.
+func parsePSISectionHeader(r *bitio.CountReader) (
+	h *PSISectionHeader,
+	offsetSectionsEnd,
+	offsetEnd int64,
+	err error,
+) {
 	h = &PSISectionHeader{}
-	offsetStart = i.Offset()
 
-	// Get next byte
-	var b byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
+	tableID := r.TryReadByte()
+	h.TableID = PSITableID(tableID)
 
-	// Table ID
-	h.TableID = PSITableID(b)
-
-	// Table type
 	h.TableType = h.TableID.Type()
 
-	// Check whether we need to stop the parsing
+	// Check whether we need to stop the parsing.
 	if shouldStopPSIParsing(h.TableID) {
 		return
 	}
 
-	// Get next bytes
-	var bs []byte
-	if bs, err = i.NextBytesNoCopy(2); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
-	}
-
-	// Section syntax indicator
-	h.SectionSyntaxIndicator = bs[0]&0x80 > 0
-
-	// Private bit
-	h.PrivateBit = bs[0]&0x40 > 0
-
-	// Section length
-	h.SectionLength = uint16(bs[0]&0xf)<<8 | uint16(bs[1])
+	h.SectionSyntaxIndicator = r.TryReadBool()
+	h.PrivateBit = r.TryReadBool()
+	_ = r.TryReadBits(2) // Reserved.
+	h.SectionLength = uint16(r.TryReadBits(12))
 
 	// Offsets
-	offsetSectionsStart = i.Offset()
-	offsetEnd = offsetSectionsStart + int(h.SectionLength)
+	offsetSectionsStart := r.BitsCount
+	offsetEnd = offsetSectionsStart + int64(h.SectionLength*8)
 	offsetSectionsEnd = offsetEnd
 	if h.TableID.hasCRC32() {
-		offsetSectionsEnd -= 4
+		offsetSectionsEnd -= 4 * 8
 	}
-	return
+
+	return h, offsetSectionsEnd, offsetEnd, r.TryError
 }
 
-// PSITableID.Type() returns the psi table type based on the table id
+// Type returns the psi table type based on the table id.
 // Page: 28 | https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
-// (barbashov) the link above can be broken, alternative: https://dvb.org/wp-content/uploads/2019/12/a038_tm1217r37_en300468v1_17_1_-_rev-134_-_si_specification.pdf
 func (t PSITableID) Type() string {
 	switch {
 	case t == PSITableIDBAT:
@@ -289,7 +308,7 @@ func (t PSITableID) Type() string {
 	}
 }
 
-// hasPSISyntaxHeader checks whether the section has a syntax header
+// hasPSISyntaxHeader checks whether the section has a syntax header.
 func (t PSITableID) hasPSISyntaxHeader() bool {
 	return t == PSITableIDPAT ||
 		t == PSITableIDPMT ||
@@ -298,7 +317,7 @@ func (t PSITableID) hasPSISyntaxHeader() bool {
 		(t >= PSITableIDEITStart && t <= PSITableIDEITEnd)
 }
 
-// hasCRC32 checks whether the table has a CRC32
+// hasCRC32 checks whether the table has a CRC32.
 func (t PSITableID) hasCRC32() bool {
 	return t == PSITableIDPAT ||
 		t == PSITableIDPMT ||
@@ -330,136 +349,106 @@ func (t PSITableID) isUnknown() bool {
 	return true
 }
 
-// parsePSISectionSyntax parses a PSI section syntax
-func parsePSISectionSyntax(i *astikit.BytesIterator, h *PSISectionHeader, offsetSectionsEnd int) (s *PSISectionSyntax, err error) {
-	// Init
-	s = &PSISectionSyntax{}
+// parsePSISectionSyntax parses a PSI section syntax.
+func parsePSISectionSyntax(
+	r *bitio.CountReader,
+	h *PSISectionHeader,
+	offsetSectionsEnd int64,
+) (*PSISectionSyntax, error) {
+	s := &PSISectionSyntax{}
+	var err error
 
-	// Header
 	if h.TableID.hasPSISyntaxHeader() {
-		if s.Header, err = parsePSISectionSyntaxHeader(i); err != nil {
-			err = fmt.Errorf("astits: parsing PSI section syntax header failed: %w", err)
-			return
+		s.Header, err = parsePSISectionSyntaxHeader(r)
+		if err != nil {
+			return nil, fmt.Errorf("parsing PSI section syntax header failed: %w", err)
 		}
 	}
 
-	// Parse data
-	if s.Data, err = parsePSISectionSyntaxData(i, h, s.Header, offsetSectionsEnd); err != nil {
-		err = fmt.Errorf("astits: parsing PSI section syntax data failed: %w", err)
-		return
+	s.Data, err = parsePSISectionSyntaxData(r, h, s.Header, offsetSectionsEnd)
+	if err != nil {
+		return nil, fmt.Errorf("parsing PSI section syntax data failed: %w", err)
 	}
-	return
+
+	return s, nil
 }
 
-// parsePSISectionSyntaxHeader parses a PSI section syntax header
-func parsePSISectionSyntaxHeader(i *astikit.BytesIterator) (h *PSISectionSyntaxHeader, err error) {
-	// Init
-	h = &PSISectionSyntaxHeader{}
+// parsePSISectionSyntaxHeader parses a PSI section syntax header.
+func parsePSISectionSyntaxHeader(r *bitio.CountReader) (*PSISectionSyntaxHeader, error) {
+	h := &PSISectionSyntaxHeader{}
 
-	// Get next 2 bytes
-	var bs []byte
-	if bs, err = i.NextBytesNoCopy(2); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
-	}
+	h.TableIDExtension = uint16(r.TryReadBits(16))
 
-	// Table ID extension
-	h.TableIDExtension = uint16(bs[0])<<8 | uint16(bs[1])
+	_ = r.TryReadBits(2) // Reserved.
+	h.VersionNumber = uint8(r.TryReadBits(5))
+	h.CurrentNextIndicator = r.TryReadBool()
 
-	// Get next byte
-	var b byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
+	h.SectionNumber = r.TryReadByte()
 
-	// Version number
-	h.VersionNumber = uint8(b&0x3f) >> 1
-
-	// Current/Next indicator
-	h.CurrentNextIndicator = b&0x1 > 0
-
-	// Get next byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
-
-	// Section number
-	h.SectionNumber = uint8(b)
-
-	// Get next byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
-
-	// Last section number
-	h.LastSectionNumber = uint8(b)
-	return
+	h.LastSectionNumber = r.TryReadByte()
+	return h, r.TryError
 }
 
-// parsePSISectionSyntaxData parses a PSI section data
-func parsePSISectionSyntaxData(i *astikit.BytesIterator, h *PSISectionHeader, sh *PSISectionSyntaxHeader, offsetSectionsEnd int) (d *PSISectionSyntaxData, err error) {
-	// Init
-	d = &PSISectionSyntaxData{}
+// parsePSISectionSyntaxData parses a PSI section data.
+func parsePSISectionSyntaxData(
+	r *bitio.CountReader,
+	h *PSISectionHeader,
+	sh *PSISectionSyntaxHeader,
+	offsetSectionsEnd int64,
+) (*PSISectionSyntaxData, error) {
+	d := &PSISectionSyntaxData{}
+	var err error
 
-	// Switch on table type
+	// Switch on table type.
 	switch h.TableID {
 	case PSITableIDBAT:
-		// TODO Parse BAT
+		// TODO Parse BAT.
 	case PSITableIDDIT:
-		// TODO Parse DIT
+		// TODO Parse DIT.
 	case PSITableIDNITVariant1, PSITableIDNITVariant2:
-		if d.NIT, err = parseNITSection(i, sh.TableIDExtension); err != nil {
-			err = fmt.Errorf("astits: parsing NIT section failed: %w", err)
-			return
+		if d.NIT, err = parseNITSection(r, sh.TableIDExtension); err != nil {
+			return nil, fmt.Errorf("parsing NIT section failed: %w", err)
 		}
 	case PSITableIDPAT:
-		if d.PAT, err = parsePATSection(i, offsetSectionsEnd, sh.TableIDExtension); err != nil {
-			err = fmt.Errorf("astits: parsing PAT section failed: %w", err)
-			return
+		if d.PAT, err = parsePATSection(r, offsetSectionsEnd, sh.TableIDExtension); err != nil {
+			return nil, fmt.Errorf("parsing PAT section failed: %w", err)
 		}
 	case PSITableIDPMT:
-		if d.PMT, err = parsePMTSection(i, offsetSectionsEnd, sh.TableIDExtension); err != nil {
-			err = fmt.Errorf("astits: parsing PMT section failed: %w", err)
-			return
+		if d.PMT, err = parsePMTSection(r, offsetSectionsEnd, sh.TableIDExtension); err != nil {
+			return nil, fmt.Errorf("parsing PMT section failed: %w", err)
 		}
 	case PSITableIDRST:
-		// TODO Parse RST
+		// TODO Parse RST.
 	case PSITableIDSDTVariant1, PSITableIDSDTVariant2:
-		if d.SDT, err = parseSDTSection(i, offsetSectionsEnd, sh.TableIDExtension); err != nil {
-			err = fmt.Errorf("astits: parsing PMT section failed: %w", err)
-			return
+		if d.SDT, err = parseSDTSection(r, offsetSectionsEnd, sh.TableIDExtension); err != nil {
+			return nil, fmt.Errorf("parsing PMT section failed: %w", err)
 		}
 	case PSITableIDSIT:
-		// TODO Parse SIT
+		// TODO Parse SIT.
 	case PSITableIDST:
-		// TODO Parse ST
+		// TODO Parse ST.
 	case PSITableIDTOT:
-		if d.TOT, err = parseTOTSection(i); err != nil {
-			err = fmt.Errorf("astits: parsing TOT section failed: %w", err)
-			return
+		if d.TOT, err = parseTOTSection(r); err != nil {
+			return nil, fmt.Errorf("parsing TOT section failed: %w", err)
 		}
 	case PSITableIDTDT:
-		// TODO Parse TDT
+		// TODO Parse TDT.
 	}
 
 	if h.TableID >= PSITableIDEITStart && h.TableID <= PSITableIDEITEnd {
-		if d.EIT, err = parseEITSection(i, offsetSectionsEnd, sh.TableIDExtension); err != nil {
-			err = fmt.Errorf("astits: parsing EIT section failed: %w", err)
-			return
+		if d.EIT, err = parseEITSection(r, offsetSectionsEnd, sh.TableIDExtension); err != nil {
+			return nil, fmt.Errorf("parsing EIT section failed: %w", err)
 		}
 	}
 
-	return
+	return d, nil
 }
 
-// toData parses the PSI tables and returns a set of DemuxerData
+// toData parses the PSI tables and returns a set of DemuxerData.
 func (d *PSIData) toData(firstPacket *Packet, pid uint16) (ds []*DemuxerData) {
-	// Loop through sections
+	// Loop through sections.
 	for _, s := range d.Sections {
-		// Switch on table type
+		// Switch on table type.
 		switch s.Header.TableID {
 		case PSITableIDNITVariant1, PSITableIDNITVariant2:
 			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, NIT: s.Syntax.Data.NIT, PID: pid})
@@ -473,40 +462,44 @@ func (d *PSIData) toData(firstPacket *Packet, pid uint16) (ds []*DemuxerData) {
 			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PID: pid, TOT: s.Syntax.Data.TOT})
 		}
 		if s.Header.TableID >= PSITableIDEITStart && s.Header.TableID <= PSITableIDEITEnd {
-			ds = append(ds, &DemuxerData{EIT: s.Syntax.Data.EIT, FirstPacket: firstPacket, PID: pid})
+			data := &DemuxerData{
+				EIT:         s.Syntax.Data.EIT,
+				FirstPacket: firstPacket,
+				PID:         pid,
+			}
+			ds = append(ds, data)
 		}
 	}
 	return
 }
 
-func writePSIData(w *astikit.BitsWriter, d *PSIData) (int, error) {
-	b := astikit.NewBitsWriterBatch(w)
-	b.Write(uint8(d.PointerField))
+func writePSIData(w *bitio.Writer, d *PSIData) error {
+	w.TryWriteByte(uint8(d.PointerField))
 	for i := 0; i < d.PointerField; i++ {
-		b.Write(uint8(0x00))
+		w.TryWriteByte(0x00)
 	}
 
 	bytesWritten := 1 + d.PointerField
 
-	if err := b.Err(); err != nil {
-		return 0, err
+	if err := w.TryError; err != nil {
+		return fmt.Errorf("write: %w", w.TryError)
 	}
 
 	for _, s := range d.Sections {
 		n, err := writePSISection(w, s)
 		if err != nil {
-			return 0, err
+			return fmt.Errorf("writing PSI sections failed: %w", err)
 		}
 		bytesWritten += n
 	}
 
-	return bytesWritten, nil
+	return nil
 }
 
 func calcPSISectionLength(s *PSISection) uint16 {
 	ret := uint16(0)
 	if s.Header.TableID.hasPSISyntaxHeader() {
-		ret += 5 // PSI syntax header length
+		ret += 5 // PSI syntax header length.
 	}
 
 	switch s.Header.TableID {
@@ -523,81 +516,83 @@ func calcPSISectionLength(s *PSISection) uint16 {
 	return ret
 }
 
-func writePSISection(w *astikit.BitsWriter, s *PSISection) (int, error) {
-	if s.Header.TableID != PSITableIDPAT && s.Header.TableID != PSITableIDPMT {
-		return 0, fmt.Errorf("writePSISection: table %s is not implemented", s.Header.TableID.Type())
-	}
+// ErrPSIUnsupportedTable .
+var ErrPSIUnsupportedTable = errors.New("unsupported table")
 
-	b := astikit.NewBitsWriterBatch(w)
+func writePSISection(w *bitio.Writer, s *PSISection) (int, error) {
+	if s.Header.TableID != PSITableIDPAT && s.Header.TableID != PSITableIDPMT {
+		return 0, fmt.Errorf("%w: %s", ErrPSIUnsupportedTable, s.Header.TableID.Type())
+	}
 
 	sectionLength := calcPSISectionLength(s)
-	sectionCRC32 := crc32Polynomial
+
+	var cw *CRC32Writer
 
 	if s.Header.TableID.hasCRC32() {
-		w.SetWriteCallback(func(bs []byte) {
-			sectionCRC32 = updateCRC32(sectionCRC32, bs)
-		})
-		defer w.SetWriteCallback(nil)
+		cw = NewCRC32Writer(w)
+		w = bitio.NewWriter(cw)
 	}
 
-	b.Write(uint8(s.Header.TableID))
-	b.Write(s.Header.SectionSyntaxIndicator)
-	b.Write(s.Header.PrivateBit)
-	b.WriteN(uint8(0xff), 2)
-	b.WriteN(sectionLength, 12)
+	w.TryWriteByte(uint8(s.Header.TableID))
+
+	w.TryWriteBool(s.Header.SectionSyntaxIndicator)
+	w.TryWriteBool(s.Header.PrivateBit)
+	w.TryWriteBits(0xff, 2)
+	w.TryWriteBits(uint64(sectionLength), 12)
 	bytesWritten := 3
 
 	if s.Header.SectionLength > 0 {
 		n, err := writePSISectionSyntax(w, s)
 		if err != nil {
-			return 0, err
+			return 0, fmt.Errorf("writing PSI section syntax failed: %w", err)
 		}
 		bytesWritten += n
 
 		if s.Header.TableID.hasCRC32() {
-			b.Write(sectionCRC32)
+			w.TryWriteBits(uint64(cw.CRC32()), 32)
 			bytesWritten += 4
 		}
 	}
 
-	return bytesWritten, b.Err()
+	return bytesWritten, w.TryError
 }
 
-func writePSISectionSyntax(w *astikit.BitsWriter, s *PSISection) (int, error) {
+func writePSISectionSyntax(w *bitio.Writer, s *PSISection) (int, error) {
 	bytesWritten := 0
 	if s.Header.TableID.hasPSISyntaxHeader() {
 		n, err := writePSISectionSyntaxHeader(w, s.Syntax.Header)
 		if err != nil {
-			return 0, err
+			return 0, fmt.Errorf("header: %w", err)
 		}
 		bytesWritten += n
 	}
 
 	n, err := writePSISectionSyntaxData(w, s.Syntax.Data, s.Header.TableID)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("data: %w", err)
 	}
 	bytesWritten += n
 
 	return bytesWritten, nil
 }
 
-func writePSISectionSyntaxHeader(w *astikit.BitsWriter, h *PSISectionSyntaxHeader) (int, error) {
-	b := astikit.NewBitsWriterBatch(w)
+func writePSISectionSyntaxHeader(w *bitio.Writer, h *PSISectionSyntaxHeader) (int, error) {
+	w.TryWriteBits(uint64(h.TableIDExtension), 16)
 
-	b.Write(h.TableIDExtension)
-	b.WriteN(uint8(0xff), 2)
-	b.WriteN(h.VersionNumber, 5)
-	b.Write(h.CurrentNextIndicator)
-	b.Write(h.SectionNumber)
-	b.Write(h.LastSectionNumber)
+	w.TryWriteBits(0xff, 2) // Reserved.
+	w.TryWriteBits(uint64(h.VersionNumber), 5)
+	w.TryWriteBool(h.CurrentNextIndicator)
 
-	return 5, b.Err()
+	w.TryWriteByte(h.SectionNumber)
+
+	w.TryWriteByte(h.LastSectionNumber)
+
+	return 5, w.TryError
 }
 
-func writePSISectionSyntaxData(w *astikit.BitsWriter, d *PSISectionSyntaxData, tableID PSITableID) (int, error) {
+func writePSISectionSyntaxData(w *bitio.Writer, d *PSISectionSyntaxData, tableID PSITableID) (int, error) {
 	switch tableID {
-	// TODO write other table types
+	// TODO write other table types.
 	case PSITableIDPAT:
 		return writePATSection(w, d.PAT)
 	case PSITableIDPMT:

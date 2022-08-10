@@ -3,10 +3,10 @@ package astits
 import (
 	"fmt"
 
-	"github.com/asticode/go-astikit"
+	"github.com/icza/bitio"
 )
 
-// Running statuses
+// Running statuses.
 const (
 	RunningStatusNotRunning          = 1
 	RunningStatusPausing             = 3
@@ -16,93 +16,64 @@ const (
 	RunningStatusUndefined           = 0
 )
 
-// SDTData represents an SDT data
+// SDTData represents an SDT data.
 // Page: 33 | Chapter: 5.2.3 | Link: https://www.dvb.org/resources/public/standards/a38_dvb-si_specification.pdf
-// (barbashov) the link above can be broken, alternative: https://dvb.org/wp-content/uploads/2019/12/a038_tm1217r37_en300468v1_17_1_-_rev-134_-_si_specification.pdf
 type SDTData struct {
 	OriginalNetworkID uint16
 	Services          []*SDTDataService
 	TransportStreamID uint16
 }
 
-// SDTDataService represents an SDT data service
+// SDTDataService represents an SDT data service.
 type SDTDataService struct {
-	Descriptors            []*Descriptor
-	HasEITPresentFollowing bool // When true indicates that EIT present/following information for the service is present in the current TS
-	HasEITSchedule         bool // When true indicates that EIT schedule information for the service is present in the current TS
-	HasFreeCSAMode         bool // When true indicates that access to one or more streams may be controlled by a CA system.
-	RunningStatus          uint8
-	ServiceID              uint16
+	Descriptors []*Descriptor
+
+	// When true indicates that EIT present/following
+	// information for the service is present in the current TS.
+	HasEITPresentFollowing bool
+
+	// When true indicates that EIT schedule information
+	// for the service is present in the current TS.
+	HasEITSchedule bool
+
+	// When true indicates that access to one or
+	// more streams may be controlled by a CA system.
+	HasFreeCSAMode bool
+	RunningStatus  uint8
+	ServiceID      uint16
 }
 
-// parseSDTSection parses an SDT section
-func parseSDTSection(i *astikit.BytesIterator, offsetSectionsEnd int, tableIDExtension uint16) (d *SDTData, err error) {
-	// Create data
-	d = &SDTData{TransportStreamID: tableIDExtension}
+// parseSDTSection parses an SDT section.
+func parseSDTSection(
+	r *bitio.CountReader,
+	offsetSectionsEnd int64,
+	tableIDExtension uint16,
+) (*SDTData, error) {
+	d := &SDTData{TransportStreamID: tableIDExtension}
 
-	// Get next bytes
-	var bs []byte
-	if bs, err = i.NextBytesNoCopy(2); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
-	}
+	d.OriginalNetworkID = uint16(r.TryReadBits(16))
 
-	// Original network ID
-	d.OriginalNetworkID = uint16(bs[0])<<8 | uint16(bs[1])
+	_ = r.TryReadByte() // Reserved.
 
-	// Reserved for future use
-	i.Skip(1)
-
-	// Loop until end of section data is reached
-	for i.Offset() < offsetSectionsEnd {
-		// Create service
+	// Loop until end of section data is reached.
+	for r.BitsCount < offsetSectionsEnd {
 		s := &SDTDataService{}
 
-		// Get next bytes
-		if bs, err = i.NextBytesNoCopy(2); err != nil {
-			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-			return
+		s.ServiceID = uint16(r.TryReadBits(16))
+
+		_ = r.TryReadBits(6) // Reserved.
+		s.HasEITSchedule = r.TryReadBool()
+		s.HasEITPresentFollowing = r.TryReadBool()
+
+		s.RunningStatus = uint8(r.TryReadBits(3))
+		s.HasFreeCSAMode = r.TryReadBool()
+
+		var err error
+		if s.Descriptors, err = parseDescriptors(r); err != nil {
+			return nil, fmt.Errorf("parsing descriptors failed: %w", err)
 		}
 
-		// Service ID
-		s.ServiceID = uint16(bs[0])<<8 | uint16(bs[1])
-
-		// Get next byte
-		var b byte
-		if b, err = i.NextByte(); err != nil {
-			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-			return
-		}
-
-		// EIT schedule flag
-		s.HasEITSchedule = uint8(b&0x2) > 0
-
-		// EIT present/following flag
-		s.HasEITPresentFollowing = uint8(b&0x1) > 0
-
-		// Get next byte
-		if b, err = i.NextByte(); err != nil {
-			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-			return
-		}
-
-		// Running status
-		s.RunningStatus = uint8(b) >> 5
-
-		// Free CA mode
-		s.HasFreeCSAMode = uint8(b&0x10) > 0
-
-		// We need to rewind since the current byte is used by the descriptor as well
-		i.Skip(-1)
-
-		// Descriptors
-		if s.Descriptors, err = parseDescriptors(i); err != nil {
-			err = fmt.Errorf("astits: parsing descriptors failed: %w", err)
-			return
-		}
-
-		// Append service
 		d.Services = append(d.Services, s)
 	}
-	return
+	return d, r.TryError
 }
