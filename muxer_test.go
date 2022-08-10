@@ -5,33 +5,33 @@ import (
 	"context"
 	"testing"
 
-	"github.com/asticode/go-astikit"
+	"github.com/icza/bitio"
 	"github.com/stretchr/testify/assert"
 )
 
 func patExpectedBytes(versionNumber uint8, cc uint8) []byte {
 	buf := bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &buf})
-	w.Write(uint8(syncByte))
-	w.Write("010") // no transport error, payload start, no priority
-	w.WriteN(PIDPAT, 13)
-	w.Write("0001") // no scrambling, no AF, payload present
-	w.WriteN(cc, 4)
+	w := bitio.NewWriter(&buf)
+	w.WriteByte(uint8(syncByte))
+	WriteBinary(w, "010") // no transport error, payload start, no priority
+	w.WriteBits(uint64(PIDPAT), 13)
+	WriteBinary(w, "0001") // no scrambling, no AF, payload present
+	w.WriteBits(uint64(cc), 4)
 
-	w.Write(uint16(0))       // Table ID
-	w.Write("1011")          // Syntax section indicator, private bit, reserved
-	w.WriteN(uint16(13), 12) // Section length
+	w.WriteBits(uint64(0), 16)  // Table ID
+	WriteBinary(w, "1011")      // Syntax section indicator, private bit, reserved
+	w.WriteBits(uint64(13), 12) // Section length
 
-	w.Write(uint16(PSITableIDPAT))
-	w.Write("11")              // Reserved bits
-	w.WriteN(versionNumber, 5) // Version number
-	w.Write("1")               // Current/next indicator
-	w.Write(uint8(0))          // Section number
-	w.Write(uint8(0))          // Last section number
+	w.WriteBits(uint64(PSITableIDPAT), 16)
+	WriteBinary(w, "11")                  // Reserved bits
+	w.WriteBits(uint64(versionNumber), 5) // Version number
+	WriteBinary(w, "1")                   // Current/next indicator
+	w.WriteByte(0)                        // Section number
+	w.WriteByte(0)                        // Last section number
 
-	w.Write(programNumberStart)
-	w.Write("111") // reserved
-	w.WriteN(pmtStartPID, 13)
+	w.WriteBits(uint64(programNumberStart), 16)
+	WriteBinary(w, "111") // reserved
+	w.WriteBits(uint64(pmtStartPID), 13)
 
 	// CRC32
 	if versionNumber == 0 {
@@ -69,36 +69,36 @@ func TestMuxer_generatePAT(t *testing.T) {
 
 func pmtExpectedBytesVideoOnly(versionNumber, cc uint8) []byte {
 	buf := bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &buf})
-	w.Write(uint8(syncByte))
-	w.Write("010") // no transport error, payload start, no priority
-	w.WriteN(pmtStartPID, 13)
-	w.Write("0001") // no scrambling, no AF, payload present
-	w.WriteN(cc, 4)
+	w := bitio.NewWriter(&buf)
+	w.WriteByte(uint8(syncByte))
+	WriteBinary(w, "010") // no transport error, payload start, no priority
+	w.WriteBits(uint64(pmtStartPID), 13)
+	WriteBinary(w, "0001") // no scrambling, no AF, payload present
+	w.WriteBits(uint64(cc), 4)
 
-	w.Write(uint16(PSITableIDPMT)) // Table ID
-	w.Write("1011")                // Syntax section indicator, private bit, reserved
-	w.WriteN(uint16(18), 12)       // Section length
+	w.WriteBits(uint64(PSITableIDPMT), 16) // Table ID
+	WriteBinary(w, "1011")                 // Syntax section indicator, private bit, reserved
+	w.WriteBits(18, 12)                    // Section length
 
-	w.Write(programNumberStart)
-	w.Write("11")              // Reserved bits
-	w.WriteN(versionNumber, 5) // Version number
-	w.Write("1")               // Current/next indicator
-	w.Write(uint8(0))          // Section number
-	w.Write(uint8(0))          // Last section number
+	w.WriteBits(uint64(programNumberStart), 16)
+	WriteBinary(w, "11")                  // Reserved bits
+	w.WriteBits(uint64(versionNumber), 5) // Version number
+	WriteBinary(w, "1")                   // Current/next indicator
+	w.WriteByte(0)                        // Section number
+	w.WriteByte(0)                        // Last section number
 
-	w.Write("111")               // reserved
-	w.WriteN(uint16(0x1234), 13) // PCR PID
+	WriteBinary(w, "111")   // reserved
+	w.WriteBits(0x1234, 13) // PCR PID
 
-	w.Write("1111")         // reserved
-	w.WriteN(uint16(0), 12) // program info length
+	WriteBinary(w, "1111") // reserved
+	w.WriteBits(0, 12)     // program info length
 
-	w.Write(uint8(StreamTypeH264Video))
-	w.Write("111") // reserved
-	w.WriteN(uint16(0x1234), 13)
+	w.WriteByte(uint8(StreamTypeH264Video))
+	WriteBinary(w, "111") // reserved
+	w.WriteBits(0x1234, 13)
 
-	w.Write("1111")         // reserved
-	w.WriteN(uint16(0), 12) // es info length
+	WriteBinary(w, "1111") // reserved
+	w.WriteBits(0, 12)     // es info length
 
 	w.Write([]byte{0x31, 0x48, 0x5b, 0xa2}) // CRC32
 
@@ -109,41 +109,41 @@ func pmtExpectedBytesVideoOnly(versionNumber, cc uint8) []byte {
 
 func pmtExpectedBytesVideoAndAudio(versionNumber uint8, cc uint8) []byte {
 	buf := bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &buf})
-	w.Write(uint8(syncByte))
-	w.Write("010") // no transport error, payload start, no priority
-	w.WriteN(pmtStartPID, 13)
-	w.Write("0001") // no scrambling, no AF, payload present
-	w.WriteN(cc, 4)
+	w := bitio.NewWriter(&buf)
+	w.WriteByte(uint8(syncByte))
+	WriteBinary(w, "010") // no transport error, payload start, no priority
+	w.WriteBits(uint64(pmtStartPID), 13)
+	WriteBinary(w, "0001") // no scrambling, no AF, payload present
+	w.WriteBits(uint64(cc), 4)
 
-	w.Write(uint16(PSITableIDPMT)) // Table ID
-	w.Write("1011")                // Syntax section indicator, private bit, reserved
-	w.WriteN(uint16(23), 12)       // Section length
+	w.WriteBits(uint64(PSITableIDPMT), 16) // Table ID
+	WriteBinary(w, "1011")                 // Syntax section indicator, private bit, reserved
+	w.WriteBits(23, 12)                    // Section length
 
-	w.Write(programNumberStart)
-	w.Write("11")              // Reserved bits
-	w.WriteN(versionNumber, 5) // Version number
-	w.Write("1")               // Current/next indicator
-	w.Write(uint8(0))          // Section number
-	w.Write(uint8(0))          // Last section number
+	w.WriteBits(uint64(programNumberStart), 16)
+	WriteBinary(w, "11")                  // Reserved bits
+	w.WriteBits(uint64(versionNumber), 5) // Version number
+	WriteBinary(w, "1")                   // Current/next indicator
+	w.WriteByte(0)                        // Section number
+	w.WriteByte(0)                        // Last section number
 
-	w.Write("111")               // reserved
-	w.WriteN(uint16(0x1234), 13) // PCR PID
+	WriteBinary(w, "111")   // reserved
+	w.WriteBits(0x1234, 13) // PCR PID
 
-	w.Write("1111")         // reserved
-	w.WriteN(uint16(0), 12) // program info length
+	WriteBinary(w, "1111") // reserved
+	w.WriteBits(0, 12)     // program info length
 
-	w.Write(uint8(StreamTypeH264Video))
-	w.Write("111") // reserved
-	w.WriteN(uint16(0x1234), 13)
-	w.Write("1111")         // reserved
-	w.WriteN(uint16(0), 12) // es info length
+	w.WriteByte(uint8(StreamTypeH264Video))
+	WriteBinary(w, "111") // reserved
+	w.WriteBits(0x1234, 13)
+	WriteBinary(w, "1111") // reserved
+	w.WriteBits(0, 12)     // es info length
 
-	w.Write(uint8(StreamTypeADTS))
-	w.Write("111") // reserved
-	w.WriteN(uint16(0x0234), 13)
-	w.Write("1111")         // reserved
-	w.WriteN(uint16(0), 12) // es info length
+	w.WriteByte(uint8(StreamTypeADTS))
+	WriteBinary(w, "111") // reserved
+	w.WriteBits(0x0234, 13)
+	WriteBinary(w, "1111") // reserved
+	w.WriteBits(0, 12)     // es info length
 
 	// CRC32
 	if versionNumber == 0 {
@@ -248,7 +248,7 @@ func TestMuxer_RemoveElementaryStream(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = muxer.RemoveElementaryStream(0x1234)
-	assert.Equal(t, ErrPIDNotFound, err)
+	assert.ErrorIs(t, err, ErrPIDMissing)
 }
 
 func testPayload() []byte {

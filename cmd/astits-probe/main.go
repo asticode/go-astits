@@ -20,7 +20,7 @@ import (
 	"github.com/pkg/profile"
 )
 
-// Flags
+// Flags.
 var (
 	ctx, cancel     = context.WithCancel(context.Background())
 	cpuProfiling    = flag.Bool("cp", false, "if yes, cpu profiling is enabled")
@@ -30,7 +30,7 @@ var (
 	memoryProfiling = flag.Bool("mp", false, "if yes, memory profiling is enabled")
 )
 
-func main() {
+func main() { //nolint:funlen
 	// Init
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s <data|packets|default>:\n", os.Args[0])
@@ -53,8 +53,8 @@ func main() {
 	// Build the reader
 	var r io.Reader
 	var err error
-	if r, err = buildReader(ctx); err != nil {
-		log.Fatal(fmt.Errorf("astits: parsing input failed: %w", err))
+	if r, err = buildReader(); err != nil {
+		log.Fatal(fmt.Errorf("astits: parsing input failed: %w", err)) // nolint:gocritic
 	}
 
 	// Make sure the reader is closed properly
@@ -63,7 +63,7 @@ func main() {
 	}
 
 	// Create the demuxer
-	var dmx = astits.NewDemuxer(ctx, r)
+	dmx := astits.NewDemuxer(ctx, r)
 
 	// Switch on command
 	switch cmd {
@@ -87,7 +87,7 @@ func main() {
 		// Print
 		switch *format {
 		case "json":
-			var e = json.NewEncoder(os.Stdout)
+			e := json.NewEncoder(os.Stdout)
 			e.SetIndent("", "  ")
 			if err = e.Encode(pgms); err != nil {
 				log.Fatal(fmt.Errorf("astits: json encoding to stdout failed: %w", err))
@@ -116,10 +116,10 @@ func handleSignals() {
 	}()
 }
 
-func buildReader(ctx context.Context) (r io.Reader, err error) {
+func buildReader() (r io.Reader, err error) {
 	// Validate input
-	if len(*inputPath) <= 0 {
-		err = errors.New("use -i to indicate an input path")
+	if len(*inputPath) == 0 {
+		err = errors.New("use -i to indicate an input path") // nolint:goerr113
 		return
 	}
 
@@ -146,7 +146,7 @@ func buildReader(ctx context.Context) (r io.Reader, err error) {
 			err = fmt.Errorf("astits: listening on multicast udp addr %s failed: %w", u.Host, err)
 			return
 		}
-		c.SetReadBuffer(4096)
+		c.SetReadBuffer(4096) // nolint:errcheck
 		r = c
 	default:
 		// Open file
@@ -157,7 +157,7 @@ func buildReader(ctx context.Context) (r io.Reader, err error) {
 		}
 		r = f
 	}
-	return
+	return r, err
 }
 
 func packets(dmx *astits.Demuxer) (err error) {
@@ -167,7 +167,7 @@ func packets(dmx *astits.Demuxer) (err error) {
 	for {
 		// Get next packet
 		if p, err = dmx.NextPacket(); err != nil {
-			if err == astits.ErrNoMorePackets {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			err = fmt.Errorf("astits: getting next packet failed: %w", err)
@@ -190,7 +190,7 @@ func packets(dmx *astits.Demuxer) (err error) {
 	return nil
 }
 
-func data(dmx *astits.Demuxer) (err error) {
+func data(dmx *astits.Demuxer) (err error) { // nolint:funlen,gocognit,gocyclo
 	// Determine which data to log
 	var logAll, logEIT, logNIT, logPAT, logPES, logPMT, logSDT, logTOT bool
 	if _, ok := dataTypes.Map["all"]; ok {
@@ -224,7 +224,7 @@ func data(dmx *astits.Demuxer) (err error) {
 	for {
 		// Get next data
 		if d, err = dmx.NextData(); err != nil {
-			if err == astits.ErrNoMorePackets {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			err = fmt.Errorf("astits: getting next data failed: %w", err)
@@ -232,24 +232,29 @@ func data(dmx *astits.Demuxer) (err error) {
 		}
 
 		// Log data
-		if d.EIT != nil && (logAll || logEIT) {
+		switch {
+		case d.EIT != nil && (logAll || logEIT):
 			log.Printf("EIT: %d\n", d.PID)
 			log.Println(eventsToString(d.EIT.Events))
-		} else if d.NIT != nil && (logAll || logNIT) {
+
+		case d.NIT != nil && (logAll || logNIT):
 			log.Printf("NIT: %d\n", d.PID)
-		} else if d.PAT != nil && (logAll || logPAT) {
+
+		case d.PAT != nil && (logAll || logPAT):
 			log.Printf("PAT: %d\n", d.PID)
 			log.Printf("  Transport Stream ID: %v\n", d.PAT.TransportStreamID)
 			log.Println("  Programs:")
 			for _, p := range d.PAT.Programs {
 				log.Printf("    %+v\n", p)
 			}
-		} else if d.PES != nil && (logAll || logPES) {
+
+		case d.PES != nil && (logAll || logPES):
 			log.Printf("PES: %d\n", d.PID)
 			log.Printf("  Stream ID: %v\n", d.PES.Header.StreamID)
 			log.Printf("  Packet Length: %v\n", d.PES.Header.PacketLength)
 			log.Printf("  Optional Header: %+v\n", d.PES.Header.OptionalHeader)
-		} else if d.PMT != nil && (logAll || logPMT) {
+
+		case d.PMT != nil && (logAll || logPMT):
 			log.Printf("PMT: %d\n", d.PID)
 			log.Printf("  ProgramNumber: %v\n", d.PMT.ProgramNumber)
 			log.Printf("  PCR PID: %v\n", d.PMT.PCRPID)
@@ -261,25 +266,27 @@ func data(dmx *astits.Demuxer) (err error) {
 			for _, d := range d.PMT.ProgramDescriptors {
 				log.Printf("    %+v\n", d)
 			}
-		} else if d.SDT != nil && (logAll || logSDT) {
+
+		case d.SDT != nil && (logAll || logSDT):
 			log.Printf("SDT: %d\n", d.PID)
-		} else if d.TOT != nil && (logAll || logTOT) {
+
+		case d.TOT != nil && (logAll || logTOT):
 			log.Printf("TOT: %d\n", d.PID)
 		}
 	}
-	return
+	return err
 }
 
-func programs(dmx *astits.Demuxer) (o []*Program, err error) {
+func programs(dmx *astits.Demuxer) (o []*Program, err error) { // nolint:funlen,gocognit
 	// Loop through data
 	var d *astits.DemuxerData
-	var pgmsToProcess = make(map[uint16]bool)
-	var pgms = make(map[uint16]*Program)
+	pgmsToProcess := make(map[uint16]bool)
+	pgms := make(map[uint16]*Program)
 	log.Println("Fetching data...")
 	for {
 		// Get next data
 		if d, err = dmx.NextData(); err != nil {
-			if err == astits.ErrNoMorePackets {
+			if errors.Is(err, io.EOF) {
 				err = nil
 				break
 			}
@@ -288,7 +295,7 @@ func programs(dmx *astits.Demuxer) (o []*Program, err error) {
 		}
 
 		// Check data
-		if d.PAT != nil {
+		if d.PAT != nil { //nolint:nestif
 			// Build programs list
 			for _, p := range d.PAT.Programs {
 				// Program number 0 is reserved to NIT
@@ -313,7 +320,7 @@ func programs(dmx *astits.Demuxer) (o []*Program, err error) {
 
 			// Add elementary streams
 			for _, es := range d.PMT.ElementaryStreams {
-				var s = newStream(es.ElementaryPID, es.StreamType)
+				s := newStream(es.ElementaryPID, es.StreamType)
 				for _, d := range es.ElementaryStreamDescriptors {
 					s.Descriptors = append(s.Descriptors, descriptorToString(d))
 				}
@@ -334,10 +341,10 @@ func programs(dmx *astits.Demuxer) (o []*Program, err error) {
 	for _, p := range pgms {
 		o = append(o, p)
 	}
-	return
+	return o, err
 }
 
-// Program represents a program
+// Program represents a program.
 type Program struct {
 	Descriptors []string  `json:"descriptors,omitempty"`
 	ID          uint16    `json:"id,omitempty"`
@@ -345,7 +352,7 @@ type Program struct {
 	Streams     []*Stream `json:"streams,omitempty"`
 }
 
-// Stream represents a stream
+// Stream represents a stream.
 type Stream struct {
 	Descriptors []string          `json:"descriptors,omitempty"`
 	ID          uint16            `json:"id,omitempty"`
@@ -366,7 +373,7 @@ func newStream(id uint16, _type astits.StreamType) *Stream {
 	}
 }
 
-// String implements the Stringer interface
+// String implements the Stringer interface.
 func (p Program) String() (o string) {
 	o = fmt.Sprintf("[%d] - Map ID: %d", p.ID, p.MapID)
 	for _, d := range p.Descriptors {
@@ -378,10 +385,10 @@ func (p Program) String() (o string) {
 	return
 }
 
-// String implements the Stringer interface
+// String implements the Stringer interface.
 func (s Stream) String() (o string) {
 	// Get type
-	var t = fmt.Sprintf("unlisted stream type %d", s.Type)
+	t := fmt.Sprintf("unlisted stream type %d", s.Type)
 	switch s.Type {
 	case astits.StreamTypeMPEG1Audio:
 		t = "MPEG-1 audio"
@@ -414,7 +421,8 @@ func eventsToString(es []*astits.EITDataEvent) string {
 }
 
 func eventToString(idx int, e *astits.EITDataEvent) (s string) {
-	s += fmt.Sprintf("- #%d | id: %d | start: %s | duration: %s | status: %s\n", idx+1, e.EventID, e.StartTime.Format("15:04:05"), e.Duration, runningStatusToString(e.RunningStatus))
+	s += fmt.Sprintf("- #%d | id: %d | start: %s | duration: %s | status: %s\n",
+		idx+1, e.EventID, e.StartTime.Format("15:04:05"), e.Duration, runningStatusToString(e.RunningStatus))
 	var os []string
 	for _, d := range e.Descriptors {
 		os = append(os, "  - "+descriptorToString(d))
@@ -434,16 +442,23 @@ func runningStatusToString(s uint8) string {
 	return "unknown"
 }
 
-func descriptorToString(d *astits.Descriptor) string {
+func descriptorToString(d *astits.Descriptor) string { // nolint:funlen
 	switch d.Tag {
 	case astits.DescriptorTagAC3:
-		return fmt.Sprintf("[AC3] ac3 asvc: %d | bsid: %d | component type: %d | mainid: %d | info: %s", d.AC3.ASVC, d.AC3.BSID, d.AC3.ComponentType, d.AC3.MainID, d.AC3.AdditionalInfo)
+		return fmt.Sprintf("[AC3] ac3 asvc: %d | bsid: %d | component type: %d | mainid: %d | info: %s",
+			d.AC3.ASVC, d.AC3.BSID, d.AC3.ComponentType, d.AC3.MainID, d.AC3.AdditionalInfo)
 	case astits.DescriptorTagComponent:
-		return fmt.Sprintf("[Component] language: %s | text: %s | component tag: %d | component type: %d | stream content: %d | stream content ext: %d", d.Component.ISO639LanguageCode, d.Component.Text, d.Component.ComponentTag, d.Component.ComponentType, d.Component.StreamContent, d.Component.StreamContentExt)
+		return fmt.Sprintf("[Component] language: %s | text: %s |"+
+			" component tag: %d | component type: %d"+
+			" | stream content: %d | stream content ext: %d",
+			d.Component.ISO639LanguageCode, d.Component.Text,
+			d.Component.ComponentTag, d.Component.ComponentType,
+			d.Component.StreamContent, d.Component.StreamContentExt)
 	case astits.DescriptorTagContent:
 		var os []string
 		for _, i := range d.Content.Items {
-			os = append(os, fmt.Sprintf("content nibble 1: %d | content nibble 2: %d | user byte: %d", i.ContentNibbleLevel1, i.ContentNibbleLevel2, i.UserByte))
+			os = append(os, fmt.Sprintf("content nibble 1: %d | content nibble 2: %d | user byte: %d",
+				i.ContentNibbleLevel1, i.ContentNibbleLevel2, i.UserByte))
 		}
 		return "[Content] " + strings.Join(os, " - ")
 	case astits.DescriptorTagExtendedEvent:
@@ -453,7 +468,8 @@ func descriptorToString(d *astits.Descriptor) string {
 		}
 		return s
 	case astits.DescriptorTagISO639LanguageAndAudioType:
-		return fmt.Sprintf("[ISO639 language and audio type] language: %s | audio type: %d", d.ISO639LanguageAndAudioType.Language, d.ISO639LanguageAndAudioType.Type)
+		return fmt.Sprintf("[ISO639 language and audio type] language: %s | audio type: %d",
+			d.ISO639LanguageAndAudioType.Language, d.ISO639LanguageAndAudioType.Type)
 	case astits.DescriptorTagMaximumBitrate:
 		return fmt.Sprintf("[Maximum bitrate] maximum bitrate: %d", d.MaximumBitrate.Bitrate)
 	case astits.DescriptorTagNetworkName:
@@ -469,13 +485,15 @@ func descriptorToString(d *astits.Descriptor) string {
 	case astits.DescriptorTagService:
 		return fmt.Sprintf("[Service] service %s | provider: %s", d.Service.Name, d.Service.Provider)
 	case astits.DescriptorTagShortEvent:
-		return fmt.Sprintf("[Short event] language: %s | name: %s | text: %s", d.ShortEvent.Language, d.ShortEvent.EventName, d.ShortEvent.Text)
+		return fmt.Sprintf("[Short event] language: %s | name: %s | text: %s",
+			d.ShortEvent.Language, d.ShortEvent.EventName, d.ShortEvent.Text)
 	case astits.DescriptorTagStreamIdentifier:
 		return fmt.Sprintf("[Stream identifier] stream identifier component tag: %d", d.StreamIdentifier.ComponentTag)
 	case astits.DescriptorTagSubtitling:
 		var os []string
 		for _, i := range d.Subtitling.Items {
-			os = append(os, fmt.Sprintf("subtitling composition page: %d | ancillary page %d: %s", i.CompositionPageID, i.AncillaryPageID, i.Language))
+			os = append(os, fmt.Sprintf("subtitling composition page: %d | ancillary page %d: %s",
+				i.CompositionPageID, i.AncillaryPageID, i.Language))
 		}
 		return "[Subtitling] " + strings.Join(os, " - ")
 	case astits.DescriptorTagTeletext:

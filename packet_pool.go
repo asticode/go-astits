@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-// packetAccumulator keeps track of packets for a single PID and decides when to flush them
+// packetAccumulator keeps track of packets for a single PID and decides when to flush them.
 type packetAccumulator struct {
 	parser     PacketsParser
 	pid        uint16
@@ -13,7 +13,7 @@ type packetAccumulator struct {
 	q          []*Packet
 }
 
-// newPacketAccumulator creates a new packet queue for a single PID
+// newPacketAccumulator creates a new packet queue for a single PID.
 func newPacketAccumulator(pid uint16, parser PacketsParser, programMap *programMap) *packetAccumulator {
 	return &packetAccumulator{
 		parser:     parser,
@@ -22,21 +22,23 @@ func newPacketAccumulator(pid uint16, parser PacketsParser, programMap *programM
 	}
 }
 
-// add adds a new packet for this PID to the queue
-func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
+// add adds a new packet for this PID to the queue.
+func (b *packetAccumulator) add(p *Packet) []*Packet {
 	mps := b.q
 
-	// Empty buffer if we detect a discontinuity
+	// Empty buffer if we detect a discontinuity.
 	if hasDiscontinuity(mps, p) {
 		mps = []*Packet{}
 	}
 
-	// Throw away packet if it's the same as the previous one
+	// Throw away packet if it's the same as the previous one.
 	if isSameAsPrevious(mps, p) {
-		return
+		return nil
 	}
 
-	// Flush buffer if new payload starts here
+	var ps []*Packet
+
+	// Flush buffer if new payload starts here.
 	if p.Header.PayloadUnitStartIndicator {
 		ps = mps
 		mps = []*Packet{p}
@@ -44,10 +46,10 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 		mps = append(mps, p)
 	}
 
-	// Check if PSI payload is complete
+	// Check if PSI payload is complete.
 	if b.programMap != nil &&
 		(b.pid == PIDPAT || b.programMap.exists(b.pid)) {
-		// TODO Use partial data parsing instead
+		// TODO Use partial data parsing instead.
 		if _, err := parseData(mps, b.parser, b.programMap); err == nil {
 			ps = mps
 			mps = nil
@@ -55,10 +57,10 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 	}
 
 	b.q = mps
-	return
+	return ps
 }
 
-// packetPool represents a queue of packets for each PID in the stream
+// packetPool represents a queue of packets for each PID in the stream.
 type packetPool struct {
 	b map[uint16]*packetAccumulator // Indexed by PID
 	m *sync.Mutex
@@ -67,7 +69,7 @@ type packetPool struct {
 	programMap *programMap
 }
 
-// newPacketPool creates a new packet pool with an optional parser and programMap
+// newPacketPool creates a new packet pool with an optional parser and programMap.
 func newPacketPool(parser PacketsParser, programMap *programMap) *packetPool {
 	return &packetPool{
 		b: make(map[uint16]*packetAccumulator),
@@ -78,33 +80,32 @@ func newPacketPool(parser PacketsParser, programMap *programMap) *packetPool {
 	}
 }
 
-// add adds a new packet to the pool
+// add adds a new packet to the pool.
 func (b *packetPool) add(p *Packet) (ps []*Packet) {
-	// Throw away packet if error indicator
+	// Throw away packet if error indicator.
 	if p.Header.TransportErrorIndicator {
 		return
 	}
 
-	// Throw away packets that don't have a payload until we figure out what we're going to do with them
+	// Throw away packets that don't have a payload until
+	// we figure out what we're going to do with them
 	// TODO figure out what we're going to do with them :D
 	if !p.Header.HasPayload {
 		return
 	}
 
-	// Lock
+	// Make sure accumulator exists.
 	b.m.Lock()
-	defer b.m.Unlock()
-
-	// Make sure accumulator exists
 	if _, ok := b.b[p.Header.PID]; !ok {
 		b.b[p.Header.PID] = newPacketAccumulator(p.Header.PID, b.parser, b.programMap)
 	}
+	b.m.Unlock()
 
-	// Add to the accumulator
+	// Add to the accumulator.
 	return b.b[p.Header.PID].add(p)
 }
 
-// dump dumps the packet pool by looking for the first item with packets inside
+// dump dumps the packet pool by looking for the first item with packets inside.
 func (b *packetPool) dump() (ps []*Packet) {
 	b.m.Lock()
 	defer b.m.Unlock()
@@ -123,14 +124,17 @@ func (b *packetPool) dump() (ps []*Packet) {
 	return
 }
 
-// hasDiscontinuity checks whether a packet is discontinuous with a set of packets
+// hasDiscontinuity checks whether a packet is discontinuous with a set of packets.
 func hasDiscontinuity(ps []*Packet, p *Packet) bool {
 	return (p.Header.HasAdaptationField && p.AdaptationField.DiscontinuityIndicator) ||
 		(len(ps) > 0 && p.Header.HasPayload && p.Header.ContinuityCounter != (ps[len(ps)-1].Header.ContinuityCounter+1)%16) ||
 		(len(ps) > 0 && !p.Header.HasPayload && p.Header.ContinuityCounter != ps[len(ps)-1].Header.ContinuityCounter)
 }
 
-// isSameAsPrevious checks whether a packet is the same as the last packet of a set of packets
+// isSameAsPrevious checks whether a packet is the
+// same as the last packet of a set of packets.
 func isSameAsPrevious(ps []*Packet, p *Packet) bool {
-	return len(ps) > 0 && p.Header.HasPayload && p.Header.ContinuityCounter == ps[len(ps)-1].Header.ContinuityCounter
+	return len(ps) > 0 &&
+		p.Header.HasPayload &&
+		p.Header.ContinuityCounter == ps[len(ps)-1].Header.ContinuityCounter
 }

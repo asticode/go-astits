@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/asticode/go-astikit"
+	"github.com/icza/bitio"
 )
 
-// Audio types
-// Page: 683 | https://books.google.fr/books?id=6dgWB3-rChYC&printsec=frontcover&hl=fr
+// Audio types. Page: 683 | Link:
+// https://books.google.fr/books?id=6dgWB3-rChYC&printsec=frontcover&hl=fr
 const (
 	AudioTypeCleanEffects             = 0x1
 	AudioTypeHearingImpaired          = 0x2
 	AudioTypeVisualImpairedCommentary = 0x3
 )
 
-// Data stream alignments
-// Page: 85 | Chapter:2.6.11 | Link: http://ecee.colorado.edu/~ecen5653/ecen5653/papers/iso13818-1.pdf
+// Data stream alignments. Page: 85 | Chapter:2.6.11 | Link:
+// http://ecee.colorado.edu/~ecen5653/ecen5653/papers/iso13818-1.pdf
 const (
 	DataStreamAligmentAudioSyncWord          = 0x1
 	DataStreamAligmentVideoSliceOrAccessUnit = 0x1
@@ -25,8 +25,8 @@ const (
 	DataStreamAligmentVideoSEQ               = 0x4
 )
 
-// Descriptor tags
-// Chapter: 6.1 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// Descriptor tags. Chapter: 6.1 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 const (
 	DescriptorTagAC3                        = 0x6a
 	DescriptorTagAVCVideo                   = 0x28
@@ -53,20 +53,20 @@ const (
 	DescriptorTagVBITeletext                = 0x46
 )
 
-// Descriptor extension tags
-// Chapter: 6.3 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// Descriptor extension tags. Chapter: 6.3 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 const (
 	DescriptorTagExtensionSupplementaryAudio = 0x6
 )
 
-// Service types
-// Chapter: 6.2.33 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// Service types. Chapter: 6.2.33 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 const (
 	ServiceTypeDigitalTelevisionService = 0x1
 )
 
-// Teletext types
-// Chapter: 6.2.43 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// Teletext types. Chapter: 6.2.43 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 const (
 	TeletextTypeAdditionalInformationPage                    = 0x3
 	TeletextTypeInitialTeletextPage                          = 0x1
@@ -75,8 +75,8 @@ const (
 	TeletextTypeTeletextSubtitlePageForHearingImpairedPeople = 0x5
 )
 
-// VBI data service id
-// Chapter: 6.2.47 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// VBI data service id Chapter: 6.2.47 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 const (
 	VBIDataServiceIDClosedCaptioning     = 0x6
 	VBIDataServiceIDEBUTeletext          = 0x1
@@ -87,44 +87,47 @@ const (
 )
 
 // Descriptor represents a descriptor
-// TODO Handle UTF8
+// TODO Handle UTF8.
 type Descriptor struct {
 	AC3                        *DescriptorAC3
 	AVCVideo                   *DescriptorAVCVideo
 	Component                  *DescriptorComponent
-	Content                    *DescriptorContent
-	DataStreamAlignment        *DescriptorDataStreamAlignment
+	Content                    DescriptorContent
+	DataStreamAlignment        DescriptorDataStreamAlignment
 	EnhancedAC3                *DescriptorEnhancedAC3
 	ExtendedEvent              *DescriptorExtendedEvent
 	Extension                  *DescriptorExtension
 	ISO639LanguageAndAudioType *DescriptorISO639LanguageAndAudioType
 	Length                     uint8
-	LocalTimeOffset            *DescriptorLocalTimeOffset
-	MaximumBitrate             *DescriptorMaximumBitrate
-	NetworkName                *DescriptorNetworkName
-	ParentalRating             *DescriptorParentalRating
-	PrivateDataIndicator       *DescriptorPrivateDataIndicator
-	PrivateDataSpecifier       *DescriptorPrivateDataSpecifier
+	LocalTimeOffset            DescriptorLocalTimeOffset
+	MaximumBitrate             DescriptorMaximumBitrate
+	NetworkName                DescriptorNetworkName
+	ParentalRating             DescriptorParentalRating
+	PrivateDataIndicator       DescriptorPrivateDataIndicator
+	PrivateDataSpecifier       DescriptorPrivateDataSpecifier
 	Registration               *DescriptorRegistration
 	Service                    *DescriptorService
 	ShortEvent                 *DescriptorShortEvent
-	StreamIdentifier           *DescriptorStreamIdentifier
-	Subtitling                 *DescriptorSubtitling
-	Tag                        uint8 // the tag defines the structure of the contained data following the descriptor length.
-	Teletext                   *DescriptorTeletext
-	Unknown                    *DescriptorUnknown
-	UserDefined                []byte
-	VBIData                    *DescriptorVBIData
-	VBITeletext                *DescriptorTeletext
+	StreamIdentifier           DescriptorStreamIdentifier
+	Subtitling                 DescriptorSubtitling
+
+	// the tag defines the structure of the contained
+	// data following the descriptor length.
+	Tag         uint8
+	Teletext    DescriptorTeletext
+	Unknown     *DescriptorUnknown
+	UserDefined []byte
+	VBIData     DescriptorVBIData
+	VBITeletext DescriptorTeletext
 }
 
-// DescriptorAC3 represents an AC3 descriptor
-// Chapter: Annex D | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// DescriptorAC3 represents an AC3 descriptor Chapter: Annex D | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorAC3 struct {
 	AdditionalInfo   []byte
 	ASVC             uint8
 	BSID             uint8
-	ComponentType    uint8
+	ComponentType    uint8 // 4 Bits.
 	HasASVC          bool
 	HasBSID          bool
 	HasComponentType bool
@@ -132,74 +135,46 @@ type DescriptorAC3 struct {
 	MainID           uint8
 }
 
-func newDescriptorAC3(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorAC3, err error) {
-	// Get next byte
-	var b byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
+func newDescriptorAC3(r *bitio.CountReader, offsetEnd int64) (*DescriptorAC3, error) {
+	d := &DescriptorAC3{
+		HasASVC:          r.TryReadBool(),
+		HasBSID:          r.TryReadBool(),
+		HasComponentType: r.TryReadBool(),
+		HasMainID:        r.TryReadBool(),
 	}
+	_ = r.TryReadBits(4) // Reserved.
 
-	// Create descriptor
-	d = &DescriptorAC3{
-		HasASVC:          uint8(b&0x10) > 0,
-		HasBSID:          uint8(b&0x40) > 0,
-		HasComponentType: uint8(b&0x80) > 0,
-		HasMainID:        uint8(b&0x20) > 0,
-	}
-
-	// Component type
 	if d.HasComponentType {
-		if b, err = i.NextByte(); err != nil {
-			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-			return
-		}
-		d.ComponentType = uint8(b)
+		d.ComponentType = r.TryReadByte()
 	}
 
-	// BSID
 	if d.HasBSID {
-		if b, err = i.NextByte(); err != nil {
-			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-			return
-		}
-		d.BSID = uint8(b)
+		d.BSID = r.TryReadByte()
 	}
 
-	// Main ID
 	if d.HasMainID {
-		if b, err = i.NextByte(); err != nil {
-			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-			return
-		}
-		d.MainID = uint8(b)
+		d.MainID = r.TryReadByte()
 	}
 
-	// ASVC
 	if d.HasASVC {
-		if b, err = i.NextByte(); err != nil {
-			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-			return
-		}
-		d.ASVC = uint8(b)
+		d.ASVC = r.TryReadByte()
 	}
 
-	// Additional info
-	if i.Offset() < offsetEnd {
-		if d.AdditionalInfo, err = i.NextBytes(offsetEnd - i.Offset()); err != nil {
-			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-			return
-		}
+	if r.BitsCount/8 < offsetEnd {
+		d.AdditionalInfo = make([]byte, offsetEnd-r.BitsCount/8)
+		TryReadFull(r, d.AdditionalInfo)
 	}
-	return
+
+	return d, r.TryError
 }
 
-// DescriptorAVCVideo represents an AVC video descriptor
-// No doc found unfortunately, basing the implementation on https://github.com/gfto/bitstream/blob/master/mpeg/psi/desc_28.h
+// DescriptorAVCVideo represents an AVC video descriptor.
+// No doc found unfortunately, basing the implementation on
+// https://github.com/gfto/bitstream/blob/master/mpeg/psi/desc_28.h
 type DescriptorAVCVideo struct {
 	AVC24HourPictureFlag bool
 	AVCStillPresent      bool
-	CompatibleFlags      uint8
+	CompatibleFlags      uint8 // 5 bits.
 	ConstraintSet0Flag   bool
 	ConstraintSet1Flag   bool
 	ConstraintSet2Flag   bool
@@ -207,176 +182,96 @@ type DescriptorAVCVideo struct {
 	ProfileIDC           uint8
 }
 
-func newDescriptorAVCVideo(i *astikit.BytesIterator) (d *DescriptorAVCVideo, err error) {
-	// Init
-	d = &DescriptorAVCVideo{}
+func newDescriptorAVCVideo(r *bitio.CountReader) (*DescriptorAVCVideo, error) {
+	d := &DescriptorAVCVideo{}
 
-	// Get next byte
-	var b byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
+	d.ProfileIDC = r.TryReadByte()
 
-	// Profile idc
-	d.ProfileIDC = uint8(b)
+	d.ConstraintSet0Flag = r.TryReadBool()
+	d.ConstraintSet1Flag = r.TryReadBool()
+	d.ConstraintSet2Flag = r.TryReadBool()
+	d.CompatibleFlags = uint8(r.TryReadBits(5))
 
-	// Get next byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
+	d.LevelIDC = r.TryReadByte()
 
-	// Flags
-	d.ConstraintSet0Flag = b&0x80 > 0
-	d.ConstraintSet1Flag = b&0x40 > 0
-	d.ConstraintSet2Flag = b&0x20 > 0
-	d.CompatibleFlags = b & 0x1f
+	d.AVCStillPresent = r.TryReadBool()
+	d.AVC24HourPictureFlag = r.TryReadBool()
+	// Reserved.
+	_ = r.TryReadBits(6)
 
-	// Get next byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
-
-	// Level idc
-	d.LevelIDC = uint8(b)
-
-	// Get next byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
-
-	// AVC still present
-	d.AVCStillPresent = b&0x80 > 0
-
-	// AVC 24 hour picture flag
-	d.AVC24HourPictureFlag = b&0x40 > 0
-	return
+	return d, r.TryError
 }
 
-// DescriptorComponent represents a component descriptor
-// Chapter: 6.2.8 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// DescriptorComponent represents a component descriptor Chapter: 6.2.8 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorComponent struct {
-	ComponentTag       uint8
+	StreamContentExt   uint8 // 4 bits.
+	StreamContent      uint8 // 4 bits.
 	ComponentType      uint8
-	ISO639LanguageCode []byte
-	StreamContent      uint8
-	StreamContentExt   uint8
+	ComponentTag       uint8
+	ISO639LanguageCode []byte // 3 bytes.
 	Text               []byte
 }
 
-func newDescriptorComponent(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorComponent, err error) {
-	// Init
-	d = &DescriptorComponent{}
+func newDescriptorComponent(r *bitio.CountReader, offsetEnd int64) (*DescriptorComponent, error) {
+	d := &DescriptorComponent{}
 
-	// Get next byte
-	var b byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
+	d.StreamContentExt = uint8(r.TryReadBits(4))
+	d.StreamContent = uint8(r.TryReadBits(4))
+
+	d.ComponentType = r.TryReadByte()
+	d.ComponentTag = r.TryReadByte()
+
+	d.ISO639LanguageCode = make([]byte, 3)
+	TryReadFull(r, d.ISO639LanguageCode)
+
+	if r.BitsCount/8 < offsetEnd {
+		d.Text = make([]byte, offsetEnd-r.BitsCount/8)
+		TryReadFull(r, d.Text)
 	}
 
-	// Stream content ext
-	d.StreamContentExt = uint8(b >> 4)
-
-	// Stream content
-	d.StreamContent = uint8(b & 0xf)
-
-	// Get next byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
-
-	// Component type
-	d.ComponentType = uint8(b)
-
-	// Get next byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
-
-	// Component tag
-	d.ComponentTag = uint8(b)
-
-	// ISO639 language code
-	if d.ISO639LanguageCode, err = i.NextBytes(3); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
-	}
-
-	// Text
-	if i.Offset() < offsetEnd {
-		if d.Text, err = i.NextBytes(offsetEnd - i.Offset()); err != nil {
-			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-			return
-		}
-	}
-	return
+	return d, r.TryError
 }
 
-// DescriptorContent represents a content descriptor
-// Chapter: 6.2.9 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// DescriptorContent represents a content descriptor. Chapter: 6.2.9 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorContent struct {
 	Items []*DescriptorContentItem
 }
 
-// DescriptorContentItem represents a content item descriptor
-// Chapter: 6.2.9 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// DescriptorContentItem represents a content item descriptor. Chapter: 6.2.9 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorContentItem struct {
-	ContentNibbleLevel1 uint8
-	ContentNibbleLevel2 uint8
+	ContentNibbleLevel1 uint8 // 4 bits.
+	ContentNibbleLevel2 uint8 // 4 bits.
 	UserByte            uint8
 }
 
-func newDescriptorContent(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorContent, err error) {
-	// Init
-	d = &DescriptorContent{}
+func newDescriptorContent(r *bitio.CountReader, offsetEnd int64) (DescriptorContent, error) {
+	items := []*DescriptorContentItem{}
 
-	// Add items
-	for i.Offset() < offsetEnd {
-		// Get next bytes
-		var bs []byte
-		if bs, err = i.NextBytesNoCopy(2); err != nil {
-			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-			return
-		}
-
-		// Append item
-		d.Items = append(d.Items, &DescriptorContentItem{
-			ContentNibbleLevel1: uint8(bs[0] >> 4),
-			ContentNibbleLevel2: uint8(bs[0] & 0xf),
-			UserByte:            uint8(bs[1]),
+	for r.BitsCount/8 < offsetEnd {
+		items = append(items, &DescriptorContentItem{
+			ContentNibbleLevel1: uint8(r.TryReadBits(4)),
+			ContentNibbleLevel2: uint8(r.TryReadBits(4)),
+			UserByte:            r.TryReadByte(),
 		})
 	}
-	return
+
+	return DescriptorContent{Items: items}, r.TryError
 }
 
-// DescriptorDataStreamAlignment represents a data stream alignment descriptor
-type DescriptorDataStreamAlignment struct {
-	Type uint8
+// DescriptorDataStreamAlignment represents a data stream alignment descriptor.
+type DescriptorDataStreamAlignment uint8
+
+func newDescriptorDataStreamAlignment(r *bitio.CountReader) (DescriptorDataStreamAlignment, error) {
+	typ, err := r.ReadByte()
+	return DescriptorDataStreamAlignment(typ), err
 }
 
-func newDescriptorDataStreamAlignment(i *astikit.BytesIterator) (d *DescriptorDataStreamAlignment, err error) {
-	var b byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
-	d = &DescriptorDataStreamAlignment{Type: uint8(b)}
-	return
-}
-
-// DescriptorEnhancedAC3 represents an enhanced AC3 descriptor
-// Chapter: Annex D | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// DescriptorEnhancedAC3 represents an enhanced AC3 descriptor. Chapter: Annex D | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorEnhancedAC3 struct {
-	AdditionalInfo   []byte
-	ASVC             uint8
-	BSID             uint8
-	ComponentType    uint8
 	HasASVC          bool
 	HasBSID          bool
 	HasComponentType bool
@@ -384,457 +279,298 @@ type DescriptorEnhancedAC3 struct {
 	HasSubStream1    bool
 	HasSubStream2    bool
 	HasSubStream3    bool
-	MainID           uint8
 	MixInfoExists    bool
+	ComponentType    uint8
+	BSID             uint8
+	MainID           uint8
+	ASVC             uint8
 	SubStream1       uint8
 	SubStream2       uint8
 	SubStream3       uint8
+	AdditionalInfo   []byte
 }
 
-func newDescriptorEnhancedAC3(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorEnhancedAC3, err error) {
-	// Get next byte
-	var b byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
+func newDescriptorEnhancedAC3(r *bitio.CountReader, offsetEnd int64) (*DescriptorEnhancedAC3, error) {
+	d := &DescriptorEnhancedAC3{
+		HasASVC:          r.TryReadBool(),
+		HasBSID:          r.TryReadBool(),
+		HasComponentType: r.TryReadBool(),
+		HasMainID:        r.TryReadBool(),
+		HasSubStream1:    r.TryReadBool(),
+		HasSubStream2:    r.TryReadBool(),
+		HasSubStream3:    r.TryReadBool(),
+		MixInfoExists:    r.TryReadBool(),
 	}
 
-	// Create descriptor
-	d = &DescriptorEnhancedAC3{
-		HasASVC:          uint8(b&0x10) > 0,
-		HasBSID:          uint8(b&0x40) > 0,
-		HasComponentType: uint8(b&0x80) > 0,
-		HasMainID:        uint8(b&0x20) > 0,
-		HasSubStream1:    uint8(b&0x4) > 0,
-		HasSubStream2:    uint8(b&0x2) > 0,
-		HasSubStream3:    uint8(b&0x1) > 0,
-		MixInfoExists:    uint8(b&0x8) > 0,
-	}
-
-	// Component type
 	if d.HasComponentType {
-		// Get next byte
-		if b, err = i.NextByte(); err != nil {
-			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-			return
-		}
-		d.ComponentType = uint8(b)
+		d.ComponentType = r.TryReadByte()
 	}
-
-	// BSID
 	if d.HasBSID {
-		// Get next byte
-		if b, err = i.NextByte(); err != nil {
-			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-			return
-		}
-		d.BSID = uint8(b)
+		d.BSID = r.TryReadByte()
 	}
-
-	// Main ID
 	if d.HasMainID {
-		// Get next byte
-		if b, err = i.NextByte(); err != nil {
-			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-			return
-		}
-		d.MainID = uint8(b)
+		d.MainID = r.TryReadByte()
 	}
-
-	// ASVC
 	if d.HasASVC {
-		// Get next byte
-		if b, err = i.NextByte(); err != nil {
-			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-			return
-		}
-		d.ASVC = uint8(b)
+		d.ASVC = r.TryReadByte()
 	}
-
-	// Substream 1
 	if d.HasSubStream1 {
-		// Get next byte
-		if b, err = i.NextByte(); err != nil {
-			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-			return
-		}
-		d.SubStream1 = uint8(b)
+		d.SubStream1 = r.TryReadByte()
 	}
-
-	// Substream 2
 	if d.HasSubStream2 {
-		// Get next byte
-		if b, err = i.NextByte(); err != nil {
-			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-			return
-		}
-		d.SubStream2 = uint8(b)
+		d.SubStream2 = r.TryReadByte()
 	}
-
-	// Substream 3
 	if d.HasSubStream3 {
-		// Get next byte
-		if b, err = i.NextByte(); err != nil {
-			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-			return
-		}
-		d.SubStream3 = uint8(b)
+		d.SubStream3 = r.TryReadByte()
 	}
 
-	// Additional info
-	if i.Offset() < offsetEnd {
-		if d.AdditionalInfo, err = i.NextBytes(offsetEnd - i.Offset()); err != nil {
-			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-			return
-		}
+	if r.BitsCount/8 < offsetEnd {
+		d.AdditionalInfo = make([]byte, offsetEnd-r.BitsCount/8)
+		TryReadFull(r, d.AdditionalInfo)
 	}
-	return
+
+	return d, r.TryError
 }
 
-// DescriptorExtendedEvent represents an extended event descriptor
-// Chapter: 6.2.15 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// DescriptorExtendedEvent represents an extended event descriptor. Chapter: 6.2.15 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorExtendedEvent struct {
-	ISO639LanguageCode   []byte
+	Number               uint8  // 4 bits.
+	LastDescriptorNumber uint8  // 4 bits.
+	ISO639LanguageCode   []byte // 3 bytes.
 	Items                []*DescriptorExtendedEventItem
-	LastDescriptorNumber uint8
-	Number               uint8
 	Text                 []byte
 }
 
-// DescriptorExtendedEventItem represents an extended event item descriptor
-// Chapter: 6.2.15 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// DescriptorExtendedEventItem represents an extended event item descriptor.
+// Chapter: 6.2.15 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorExtendedEventItem struct {
 	Content     []byte
 	Description []byte
 }
 
-func newDescriptorExtendedEvent(i *astikit.BytesIterator) (d *DescriptorExtendedEvent, err error) {
-	// Init
-	d = &DescriptorExtendedEvent{}
+func newDescriptorExtendedEvent(r *bitio.CountReader) (*DescriptorExtendedEvent, error) {
+	d := &DescriptorExtendedEvent{}
 
-	// Get next byte
-	var b byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
+	d.Number = uint8(r.TryReadBits(4))
 
-	// Number
-	d.Number = uint8(b >> 4)
+	d.LastDescriptorNumber = uint8(r.TryReadBits(4))
 
-	// Last descriptor number
-	d.LastDescriptorNumber = uint8(b & 0xf)
+	d.ISO639LanguageCode = make([]byte, 3)
+	TryReadFull(r, d.ISO639LanguageCode)
 
-	// ISO639 language code
-	if d.ISO639LanguageCode, err = i.NextBytes(3); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
-	}
+	itemsLength := r.TryReadByte()
+	offsetEnd := r.BitsCount/8 + int64(itemsLength)
 
-	// Get next byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
-
-	// Items length
-	itemsLength := int(b)
-
-	// Items
-	offsetEnd := i.Offset() + itemsLength
-	for i.Offset() < offsetEnd {
-		// Create item
-		var item *DescriptorExtendedEventItem
-		if item, err = newDescriptorExtendedEventItem(i); err != nil {
-			err = fmt.Errorf("astits: creating extended event item failed: %w", err)
-			return
+	for r.BitsCount/8 < offsetEnd {
+		item, err := newDescriptorExtendedEventItem(r)
+		if err != nil {
+			return nil, fmt.Errorf("creating extended event item failed: %w", err)
 		}
 
-		// Append item
 		d.Items = append(d.Items, item)
 	}
 
-	// Get next byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
+	textLength := r.TryReadByte()
+	d.Text = make([]byte, textLength)
+	TryReadFull(r, d.Text)
 
-	// Text length
-	textLength := int(b)
-
-	// Text
-	if d.Text, err = i.NextBytes(textLength); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
-	}
-	return
+	return d, r.TryError
 }
 
-func newDescriptorExtendedEventItem(i *astikit.BytesIterator) (d *DescriptorExtendedEventItem, err error) {
-	// Init
-	d = &DescriptorExtendedEventItem{}
+func newDescriptorExtendedEventItem(r *bitio.CountReader) (*DescriptorExtendedEventItem, error) {
+	d := &DescriptorExtendedEventItem{}
 
-	// Get next byte
-	var b byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
+	descriptionLength := r.TryReadByte()
+	d.Description = make([]byte, descriptionLength)
+	TryReadFull(r, d.Description)
 
-	// Description length
-	descriptionLength := int(b)
+	contentLength := r.TryReadByte()
+	d.Content = make([]byte, contentLength)
+	TryReadFull(r, d.Content)
 
-	// Description
-	if d.Description, err = i.NextBytes(descriptionLength); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
-	}
-
-	// Get next byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
-
-	// Content length
-	contentLength := int(b)
-
-	// Content
-	if d.Content, err = i.NextBytes(contentLength); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
-	}
-	return
+	return d, r.TryError
 }
 
-// DescriptorExtension represents an extension descriptor
-// Chapter: 6.2.16 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// DescriptorExtension represents an extension descriptor.
+// Chapter: 6.2.16 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorExtension struct {
 	SupplementaryAudio *DescriptorExtensionSupplementaryAudio
 	Tag                uint8
 	Unknown            *[]byte
 }
 
-func newDescriptorExtension(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorExtension, err error) {
-	// Get next byte
-	var b byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
+func newDescriptorExtension(r *bitio.CountReader, offsetEnd int64) (*DescriptorExtension, error) {
+	d := &DescriptorExtension{}
+	d.Tag = r.TryReadByte()
 
-	// Create descriptor
-	d = &DescriptorExtension{Tag: uint8(b)}
-
-	// Switch on tag
+	var err error
 	switch d.Tag {
 	case DescriptorTagExtensionSupplementaryAudio:
-		if d.SupplementaryAudio, err = newDescriptorExtensionSupplementaryAudio(i, offsetEnd); err != nil {
-			err = fmt.Errorf("astits: parsing extension supplementary audio descriptor failed: %w", err)
-			return
+		if d.SupplementaryAudio, err = newDescriptorExtensionSupplementaryAudio(r, offsetEnd); err != nil {
+			return nil, err
 		}
 	default:
-		// Get next bytes
-		var b []byte
-		if b, err = i.NextBytes(offsetEnd - i.Offset()); err != nil {
-			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-			return
-		}
-
-		// Update unknown
-		d.Unknown = &b
+		unknown := make([]byte, offsetEnd-r.BitsCount/8)
+		TryReadFull(r, unknown)
+		d.Unknown = &unknown
 	}
-	return
+	return d, r.TryError
 }
 
-// DescriptorExtensionSupplementaryAudio represents a supplementary audio extension descriptor
-// Chapter: 6.4.10 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// DescriptorExtensionSupplementaryAudio represents
+// a supplementary audio extension descriptor.
+// Chapter: 6.4.10 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorExtensionSupplementaryAudio struct {
-	EditorialClassification uint8
+	EditorialClassification uint8 // 5 bits.
 	HasLanguageCode         bool
-	LanguageCode            []byte
 	MixType                 bool
+	LanguageCode            []byte // 3 bytes.
 	PrivateData             []byte
 }
 
-func newDescriptorExtensionSupplementaryAudio(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorExtensionSupplementaryAudio, err error) {
-	// Get next byte
-	var b byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
+func newDescriptorExtensionSupplementaryAudio(
+	r *bitio.CountReader, offsetEnd int64,
+) (*DescriptorExtensionSupplementaryAudio, error) {
+	d := &DescriptorExtensionSupplementaryAudio{}
 
-	// Init
-	d = &DescriptorExtensionSupplementaryAudio{
-		EditorialClassification: uint8(b >> 2 & 0x1f),
-		HasLanguageCode:         b&0x1 > 0,
-		MixType:                 b&0x80 > 0,
-	}
+	d.MixType = r.TryReadBool()
+	d.EditorialClassification = uint8(r.TryReadBits(5))
+	_ = r.TryReadBool() // Reserved.
+	d.HasLanguageCode = r.TryReadBool()
 
 	// Language code
 	if d.HasLanguageCode {
-		if d.LanguageCode, err = i.NextBytes(3); err != nil {
-			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-			return
-		}
+		d.LanguageCode = make([]byte, 3)
+		TryReadFull(r, d.LanguageCode)
 	}
 
-	// Private data
-	if i.Offset() < offsetEnd {
-		if d.PrivateData, err = i.NextBytes(offsetEnd - i.Offset()); err != nil {
-			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-			return
-		}
+	if r.BitsCount/8 < offsetEnd {
+		d.PrivateData = make([]byte, offsetEnd-r.BitsCount/8)
+		TryReadFull(r, d.PrivateData)
 	}
-	return
+
+	return d, r.TryError
 }
 
 // DescriptorISO639LanguageAndAudioType represents an ISO639 language descriptor
 // https://github.com/gfto/bitstream/blob/master/mpeg/psi/desc_0a.h
-// FIXME (barbashov) according to Chapter 2.6.18 ISO/IEC 13818-1:2015 there could be not one, but multiple such descriptors
+// FIXME (barbashov) according to Chapter 2.6.18 ISO/IEC 13818-1:2015
+// there could be not one, but multiple such descriptors.
 type DescriptorISO639LanguageAndAudioType struct {
 	Language []byte
 	Type     uint8
 }
 
-// In some actual cases, the length is 3 and the language is described in only 2 bytes
-func newDescriptorISO639LanguageAndAudioType(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorISO639LanguageAndAudioType, err error) {
-	// Get next bytes
-	var bs []byte
-	if bs, err = i.NextBytes(offsetEnd - i.Offset()); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
-	}
+// newDescriptorISO639LanguageAndAudioType In some actual cases,
+// the length is 3 and the language is described in only 2 bytes.
+func newDescriptorISO639LanguageAndAudioType(
+	r *bitio.CountReader, offsetEnd int64,
+) (*DescriptorISO639LanguageAndAudioType, error) {
+	offset := uint8(offsetEnd - r.BitsCount/8)
+	language := make([]byte, offset-1)
+	TryReadFull(r, language)
 
-	// Create descriptor
-	d = &DescriptorISO639LanguageAndAudioType{
-		Language: bs[0 : len(bs)-1],
-		Type:     uint8(bs[len(bs)-1]),
+	d := &DescriptorISO639LanguageAndAudioType{
+		Language: language,
+		Type:     r.TryReadByte(),
 	}
-	return
+	return d, r.TryError
 }
 
 // DescriptorLocalTimeOffset represents a local time offset descriptor
-// Chapter: 6.2.20 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
-type DescriptorLocalTimeOffset struct {
-	Items []*DescriptorLocalTimeOffsetItem
-}
+// Chapter: 6.2.20 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+type DescriptorLocalTimeOffset []*DescriptorLocalTimeOffsetItem
 
 // DescriptorLocalTimeOffsetItem represents a local time offset item descriptor
-// Chapter: 6.2.20 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// Chapter: 6.2.20 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorLocalTimeOffsetItem struct {
-	CountryCode             []byte
-	CountryRegionID         uint8
+	CountryCode             []byte // 3 bytes.
+	CountryRegionID         uint8  // 6 bits.
 	LocalTimeOffset         time.Duration
 	LocalTimeOffsetPolarity bool
-	NextTimeOffset          time.Duration
 	TimeOfChange            time.Time
+	NextTimeOffset          time.Duration
 }
 
-func newDescriptorLocalTimeOffset(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorLocalTimeOffset, err error) {
-	// Init
-	d = &DescriptorLocalTimeOffset{}
+func newDescriptorLocalTimeOffset(r *bitio.CountReader, offsetEnd int64) (DescriptorLocalTimeOffset, error) {
+	d := DescriptorLocalTimeOffset{}
 
-	// Add items
-	for i.Offset() < offsetEnd {
-		// Create item
-		itm := &DescriptorLocalTimeOffsetItem{}
+	for r.BitsCount/8 < offsetEnd {
+		item := &DescriptorLocalTimeOffsetItem{}
+		var err error
 
-		// Country code
-		if itm.CountryCode, err = i.NextBytes(3); err != nil {
-			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-			return
+		item.CountryCode = make([]byte, 3)
+		TryReadFull(r, item.CountryCode)
+
+		item.CountryRegionID = uint8(r.TryReadBits(6))
+		_ = r.TryReadBool() // Reserved.
+		item.LocalTimeOffsetPolarity = r.TryReadBool()
+
+		if item.LocalTimeOffset, err = parseDVBDurationMinutes(r); err != nil {
+			return nil, fmt.Errorf("parsing localTimeOffset failed: %w", err)
 		}
 
-		// Get next byte
-		var b byte
-		if b, err = i.NextByte(); err != nil {
-			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-			return
+		if item.TimeOfChange, err = parseDVBTime(r); err != nil {
+			return nil, fmt.Errorf("parsing timeOfChange failed: %w", err)
 		}
 
-		// Country region ID
-		itm.CountryRegionID = uint8(b >> 2)
-
-		// Local time offset polarity
-		itm.LocalTimeOffsetPolarity = b&0x1 > 0
-
-		// Local time offset
-		if itm.LocalTimeOffset, err = parseDVBDurationMinutes(i); err != nil {
-			err = fmt.Errorf("astits: parsing DVB durationminutes failed: %w", err)
-			return
+		if item.NextTimeOffset, err = parseDVBDurationMinutes(r); err != nil {
+			return nil, fmt.Errorf("parsing NextTimeOffset failed: %w", err)
 		}
 
-		// Time of change
-		if itm.TimeOfChange, err = parseDVBTime(i); err != nil {
-			err = fmt.Errorf("astits: parsing DVB time failed: %w", err)
-			return
-		}
-
-		// Next time offset
-		if itm.NextTimeOffset, err = parseDVBDurationMinutes(i); err != nil {
-			err = fmt.Errorf("astits: parsing DVB duration minutes failed: %w", err)
-			return
-		}
-
-		// Append item
-		d.Items = append(d.Items, itm)
+		d = append(d, item)
 	}
-	return
+	return d, r.TryError
 }
 
-// DescriptorMaximumBitrate represents a maximum bitrate descriptor
+// DescriptorMaximumBitrate represents a maximum bitrate descriptor.
+// ISO/IEC 13818-1 Chapter: 2.6.26 .
 type DescriptorMaximumBitrate struct {
-	Bitrate uint32 // In bytes/second
+	Bitrate uint32 // In bytes/second. 22 bits.
 }
 
-func newDescriptorMaximumBitrate(i *astikit.BytesIterator) (d *DescriptorMaximumBitrate, err error) {
-	// Get next bytes
-	var bs []byte
-	if bs, err = i.NextBytesNoCopy(3); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
-	}
+func newDescriptorMaximumBitrate(r *bitio.CountReader) (d DescriptorMaximumBitrate, err error) {
+	r.TryReadBits(2) // Reserved.
 
-	// Create descriptor
-	d = &DescriptorMaximumBitrate{Bitrate: (uint32(bs[0]&0x3f)<<16 | uint32(bs[1])<<8 | uint32(bs[2])) * 50}
-	return
+	bitrate := uint32(r.TryReadBits(22))
+	return DescriptorMaximumBitrate{Bitrate: bitrate}, r.TryError
 }
 
-// DescriptorNetworkName represents a network name descriptor
-// Chapter: 6.2.27 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// DescriptorNetworkName represents a network name descriptor.
+// Chapter: 6.2.27 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorNetworkName struct {
 	Name []byte
 }
 
-func newDescriptorNetworkName(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorNetworkName, err error) {
-	// Create descriptor
-	d = &DescriptorNetworkName{}
-
-	// Name
-	if d.Name, err = i.NextBytes(offsetEnd - i.Offset()); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
-	}
-	return
+func newDescriptorNetworkName(r *bitio.CountReader, offsetEnd int64) (d DescriptorNetworkName, err error) {
+	name := make([]byte, offsetEnd-r.BitsCount/8)
+	TryReadFull(r, name)
+	return DescriptorNetworkName{Name: name}, r.TryError
 }
 
-// DescriptorParentalRating represents a parental rating descriptor
-// Chapter: 6.2.28 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// DescriptorParentalRating represents a parental rating descriptor.
+// Chapter: 6.2.28 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorParentalRating struct {
 	Items []*DescriptorParentalRatingItem
 }
 
-// DescriptorParentalRatingItem represents a parental rating item descriptor
-// Chapter: 6.2.28 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// DescriptorParentalRatingItem represents a parental rating item descriptor.
+// Chapter: 6.2.28 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorParentalRatingItem struct {
-	CountryCode []byte
+	CountryCode []byte // 3 bytes.
 	Rating      uint8
 }
 
-// MinimumAge returns the minimum age for the parental rating
+// MinimumAge returns the minimum age for the parental rating.
 func (d DescriptorParentalRatingItem) MinimumAge() int {
 	// Undefined or user defined ratings
 	if d.Rating == 0 || d.Rating > 0x10 {
@@ -843,618 +579,449 @@ func (d DescriptorParentalRatingItem) MinimumAge() int {
 	return int(d.Rating) + 3
 }
 
-func newDescriptorParentalRating(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorParentalRating, err error) {
-	// Create descriptor
-	d = &DescriptorParentalRating{}
+func newDescriptorParentalRating(r *bitio.CountReader, offsetEnd int64) (DescriptorParentalRating, error) {
+	items := []*DescriptorParentalRatingItem{}
 
-	// Add items
-	for i.Offset() < offsetEnd {
-		// Get next bytes
-		var bs []byte
-		if bs, err = i.NextBytes(4); err != nil {
-			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-			return
-		}
+	for r.BitsCount/8 < offsetEnd {
+		country := make([]byte, 3)
+		TryReadFull(r, country)
 
-		// Append item
-		d.Items = append(d.Items, &DescriptorParentalRatingItem{
-			CountryCode: bs[:3],
-			Rating:      uint8(bs[3]),
+		rating := r.TryReadByte()
+
+		items = append(items, &DescriptorParentalRatingItem{
+			CountryCode: country,
+			Rating:      rating,
 		})
 	}
-	return
+	return DescriptorParentalRating{Items: items}, r.TryError
 }
 
-// DescriptorPrivateDataIndicator represents a private data Indicator descriptor
-type DescriptorPrivateDataIndicator struct {
-	Indicator uint32
+// DescriptorPrivateDataIndicator represents a private data Indicator descriptor.
+type DescriptorPrivateDataIndicator uint32
+
+func newDescriptorPrivateDataIndicator(r *bitio.CountReader) (DescriptorPrivateDataIndicator, error) {
+	data := uint32(r.TryReadBits(32))
+	return DescriptorPrivateDataIndicator(data), r.TryError
 }
 
-func newDescriptorPrivateDataIndicator(i *astikit.BytesIterator) (d *DescriptorPrivateDataIndicator, err error) {
-	// Get next bytes
-	var bs []byte
-	if bs, err = i.NextBytesNoCopy(4); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
-	}
-
-	// Create descriptor
-	d = &DescriptorPrivateDataIndicator{Indicator: uint32(bs[0])<<24 | uint32(bs[1])<<16 | uint32(bs[2])<<8 | uint32(bs[3])}
-	return
-}
-
-// DescriptorPrivateDataSpecifier represents a private data specifier descriptor
+// DescriptorPrivateDataSpecifier represents a private data specifier descriptor.
 type DescriptorPrivateDataSpecifier struct {
 	Specifier uint32
 }
 
-func newDescriptorPrivateDataSpecifier(i *astikit.BytesIterator) (d *DescriptorPrivateDataSpecifier, err error) {
-	// Get next bytes
-	var bs []byte
-	if bs, err = i.NextBytesNoCopy(4); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
-	}
-
-	// Create descriptor
-	d = &DescriptorPrivateDataSpecifier{Specifier: uint32(bs[0])<<24 | uint32(bs[1])<<16 | uint32(bs[2])<<8 | uint32(bs[3])}
-	return
+func newDescriptorPrivateDataSpecifier(r *bitio.CountReader) (DescriptorPrivateDataSpecifier, error) {
+	specifier := uint32(r.TryReadBits(32))
+	return DescriptorPrivateDataSpecifier{Specifier: specifier}, r.TryError
 }
 
-// DescriptorRegistration represents a registration descriptor
-// Page: 84 | http://ecee.colorado.edu/~ecen5653/ecen5653/papers/iso13818-1.pdf
+// DescriptorRegistration represents a registration descriptor.
+// Page: 84 | Link:
+// http://ecee.colorado.edu/~ecen5653/ecen5653/papers/iso13818-1.pdf
 type DescriptorRegistration struct {
-	AdditionalIdentificationInfo []byte
 	FormatIdentifier             uint32
+	AdditionalIdentificationInfo []byte
 }
 
-func newDescriptorRegistration(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorRegistration, err error) {
-	// Get next bytes
-	var bs []byte
-	if bs, err = i.NextBytesNoCopy(4); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
+func newDescriptorRegistration(r *bitio.CountReader, offsetEnd int64) (*DescriptorRegistration, error) {
+	d := &DescriptorRegistration{}
+
+	d.FormatIdentifier = uint32(r.TryReadBits(32))
+
+	if r.BitsCount/8 < offsetEnd {
+		d.AdditionalIdentificationInfo = make([]byte, offsetEnd-r.BitsCount/8)
+		TryReadFull(r, d.AdditionalIdentificationInfo)
 	}
 
-	// Create descriptor
-	d = &DescriptorRegistration{FormatIdentifier: uint32(bs[0])<<24 | uint32(bs[1])<<16 | uint32(bs[2])<<8 | uint32(bs[3])}
-
-	// Additional identification info
-	if i.Offset() < offsetEnd {
-		if d.AdditionalIdentificationInfo, err = i.NextBytes(offsetEnd - i.Offset()); err != nil {
-			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-			return
-		}
-	}
-	return
+	return d, r.TryError
 }
 
-// DescriptorService represents a service descriptor
-// Chapter: 6.2.33 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// DescriptorService represents a service descriptor.
+// Chapter: 6.2.33 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorService struct {
-	Name     []byte
-	Provider []byte
 	Type     uint8
+	Provider []byte
+	Name     []byte
 }
 
-func newDescriptorService(i *astikit.BytesIterator) (d *DescriptorService, err error) {
-	// Get next byte
-	var b byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
+func newDescriptorService(r *bitio.CountReader) (*DescriptorService, error) {
+	d := &DescriptorService{}
 
-	// Create descriptor
-	d = &DescriptorService{Type: uint8(b)}
+	d.Type = r.TryReadByte()
 
-	// Get next byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
+	providerLength := r.TryReadByte()
+	d.Provider = make([]byte, providerLength)
+	TryReadFull(r, d.Provider)
 
-	// Provider length
-	providerLength := int(b)
+	nameLength := r.TryReadByte()
+	d.Name = make([]byte, nameLength)
+	TryReadFull(r, d.Name)
 
-	// Provider
-	if d.Provider, err = i.NextBytes(providerLength); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
-	}
-
-	// Get next byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
-
-	// Name length
-	nameLength := int(b)
-
-	// Name
-	if d.Name, err = i.NextBytes(nameLength); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
-	}
-	return
+	return d, r.TryError
 }
 
-// DescriptorShortEvent represents a short event descriptor
-// Chapter: 6.2.37 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// DescriptorShortEvent represents a short event descriptor.
+// Chapter: 6.2.37 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorShortEvent struct {
+	Language  []byte // 3 bytes.
 	EventName []byte
-	Language  []byte
 	Text      []byte
 }
 
-func newDescriptorShortEvent(i *astikit.BytesIterator) (d *DescriptorShortEvent, err error) {
-	// Create descriptor
-	d = &DescriptorShortEvent{}
+func newDescriptorShortEvent(r *bitio.CountReader) (*DescriptorShortEvent, error) {
+	d := &DescriptorShortEvent{}
 
-	// Language
-	if d.Language, err = i.NextBytes(3); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
-	}
+	d.Language = make([]byte, 3)
+	TryReadFull(r, d.Language)
 
-	// Get next byte
-	var b byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
+	eventLength := r.TryReadByte()
+	d.EventName = make([]byte, eventLength)
+	TryReadFull(r, d.EventName)
 
-	// Event length
-	eventLength := int(b)
+	textLength := r.TryReadByte()
+	d.Text = make([]byte, textLength)
+	TryReadFull(r, d.Text)
 
-	// Event name
-	if d.EventName, err = i.NextBytes(eventLength); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
-	}
-
-	// Get next byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
-
-	// Text length
-	textLength := int(b)
-
-	// Text
-	if d.Text, err = i.NextBytes(textLength); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
-	}
-	return
+	return d, r.TryError
 }
 
-// DescriptorStreamIdentifier represents a stream identifier descriptor
-// Chapter: 6.2.39 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// DescriptorStreamIdentifier represents a stream identifier descriptor.
+// Chapter: 6.2.39 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorStreamIdentifier struct {
 	ComponentTag uint8
 }
 
-func newDescriptorStreamIdentifier(i *astikit.BytesIterator) (d *DescriptorStreamIdentifier, err error) {
-	var b byte
-	if b, err = i.NextByte(); err != nil {
-		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-		return
-	}
-	d = &DescriptorStreamIdentifier{ComponentTag: uint8(b)}
-	return
+func newDescriptorStreamIdentifier(r *bitio.CountReader) (DescriptorStreamIdentifier, error) {
+	identifier, err := r.ReadByte()
+	return DescriptorStreamIdentifier{ComponentTag: identifier}, err
 }
 
-// DescriptorSubtitling represents a subtitling descriptor
-// Chapter: 6.2.41 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// DescriptorSubtitling represents a subtitling descriptor.
+// Chapter: 6.2.41 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorSubtitling struct {
 	Items []*DescriptorSubtitlingItem
 }
 
-// DescriptorSubtitlingItem represents subtitling descriptor item
-// Chapter: 6.2.41 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// DescriptorSubtitlingItem represents subtitling descriptor item.
+// Chapter: 6.2.41 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorSubtitlingItem struct {
-	AncillaryPageID   uint16
-	CompositionPageID uint16
-	Language          []byte
+	Language          []byte // 3 bytes.
 	Type              uint8
+	CompositionPageID uint16
+	AncillaryPageID   uint16
 }
 
-func newDescriptorSubtitling(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorSubtitling, err error) {
-	// Create descriptor
-	d = &DescriptorSubtitling{}
+func newDescriptorSubtitling(r *bitio.CountReader, offsetEnd int64) (DescriptorSubtitling, error) {
+	items := []*DescriptorSubtitlingItem{}
 
-	// Loop
-	for i.Offset() < offsetEnd {
-		// Create item
-		itm := &DescriptorSubtitlingItem{}
+	for r.BitsCount/8 < offsetEnd {
+		item := &DescriptorSubtitlingItem{}
 
-		// Language
-		if itm.Language, err = i.NextBytes(3); err != nil {
-			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-			return
-		}
+		item.Language = make([]byte, 3)
+		TryReadFull(r, item.Language)
 
-		// Get next byte
-		var b byte
-		if b, err = i.NextByte(); err != nil {
-			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-			return
-		}
+		item.Type = r.TryReadByte()
 
-		// Type
-		itm.Type = uint8(b)
+		item.CompositionPageID = uint16(r.TryReadBits(16))
 
-		// Get next bytes
-		var bs []byte
-		if bs, err = i.NextBytesNoCopy(2); err != nil {
-			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-			return
-		}
+		item.AncillaryPageID = uint16(r.TryReadBits(16))
 
-		// Composition page ID
-		itm.CompositionPageID = uint16(bs[0])<<8 | uint16(bs[1])
-
-		// Get next bytes
-		if bs, err = i.NextBytesNoCopy(2); err != nil {
-			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-			return
-		}
-
-		// Ancillary page ID
-		itm.AncillaryPageID = uint16(bs[0])<<8 | uint16(bs[1])
-
-		// Append item
-		d.Items = append(d.Items, itm)
+		items = append(items, item)
 	}
-	return
+
+	return DescriptorSubtitling{Items: items}, r.TryError
 }
 
-// DescriptorTeletext represents a teletext descriptor
-// Chapter: 6.2.43 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// DescriptorTeletext represents a teletext descriptor.
+// Chapter: 6.2.43 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorTeletext struct {
 	Items []*DescriptorTeletextItem
 }
 
-// DescriptorTeletextItem represents a teletext descriptor item
-// Chapter: 6.2.43 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// DescriptorTeletextItem represents a teletext descriptor item.
+// Chapter: 6.2.43 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorTeletextItem struct {
 	Language []byte
-	Magazine uint8
+	Type     uint8 // 5 bits.
+	Magazine uint8 // 3 bits.
 	Page     uint8
-	Type     uint8
 }
 
-func newDescriptorTeletext(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorTeletext, err error) {
-	// Create descriptor
-	d = &DescriptorTeletext{}
+func newDescriptorTeletext(r *bitio.CountReader, offsetEnd int64) (DescriptorTeletext, error) {
+	items := []*DescriptorTeletextItem{}
 
-	// Loop
-	for i.Offset() < offsetEnd {
-		// Create item
-		itm := &DescriptorTeletextItem{}
+	for r.BitsCount/8 < offsetEnd {
+		item := &DescriptorTeletextItem{}
 
-		// Language
-		if itm.Language, err = i.NextBytes(3); err != nil {
-			err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-			return
-		}
+		item.Language = make([]byte, 3)
+		TryReadFull(r, item.Language)
 
-		// Get next byte
-		var b byte
-		if b, err = i.NextByte(); err != nil {
-			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-			return
-		}
+		item.Type = uint8(r.TryReadBits(5))
 
-		// Type
-		itm.Type = uint8(b) >> 3
+		item.Magazine = uint8(r.TryReadBits(3))
 
-		// Magazine
-		itm.Magazine = uint8(b & 0x7)
+		b := r.TryReadByte()
 
-		// Get next byte
-		if b, err = i.NextByte(); err != nil {
-			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-			return
-		}
+		// Optimization?
+		item.Page = b>>4*10 + b&0xf
+		// w.TryWriteBits(item.Page/10, 4)
+		// w.TryWriteBits(item.Page%10, 4)
 
-		// Page
-		itm.Page = uint8(b)>>4*10 + uint8(b&0xf)
-
-		// Append item
-		d.Items = append(d.Items, itm)
+		items = append(items, item)
 	}
-	return
+	return DescriptorTeletext{Items: items}, r.TryError
 }
 
+// DescriptorUnknown .
 type DescriptorUnknown struct {
-	Content []byte
 	Tag     uint8
+	Content []byte
 }
 
-func newDescriptorUnknown(i *astikit.BytesIterator, tag, length uint8) (d *DescriptorUnknown, err error) {
-	// Create descriptor
-	d = &DescriptorUnknown{Tag: tag}
+func newDescriptorUnknown(r *bitio.CountReader, tag, length uint8) (*DescriptorUnknown, error) {
+	d := &DescriptorUnknown{Tag: tag}
 
-	// Get next bytes
-	if d.Content, err = i.NextBytes(int(length)); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
-	}
-	return
+	d.Content = make([]byte, length)
+	TryReadFull(r, d.Content)
+	return d, r.TryError
 }
 
-// DescriptorVBIData represents a VBI data descriptor
-// Chapter: 6.2.47 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
-type DescriptorVBIData struct {
-	Services []*DescriptorVBIDataService
-}
+// DescriptorVBIData represents a VBI data descriptor.
+// Chapter: 6.2.47 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+type DescriptorVBIData []*DescriptorVBIDataService
 
-// DescriptorVBIDataService represents a vbi data service descriptor
-// Chapter: 6.2.47 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// DescriptorVBIDataService represents a vbi data service descriptor.
+// Chapter: 6.2.47 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorVBIDataService struct {
 	DataServiceID uint8
 	Descriptors   []*DescriptorVBIDataDescriptor
 }
 
-// DescriptorVBIDataItem represents a vbi data descriptor item
-// Chapter: 6.2.47 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+// DescriptorVBIDataDescriptor represents a vbi data descriptor item.
+// Chapter: 6.2.47 | Link:
+// https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorVBIDataDescriptor struct {
 	FieldParity bool
-	LineOffset  uint8
+	LineOffset  uint8 // 5 bits.
 }
 
-func newDescriptorVBIData(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorVBIData, err error) {
-	// Create descriptor
-	d = &DescriptorVBIData{}
+func newDescriptorVBIData(r *bitio.CountReader, offsetEnd int64) DescriptorVBIData {
+	d := DescriptorVBIData{}
 
-	// Loop
-	for i.Offset() < offsetEnd {
-		// Create service
+	for r.BitsCount/8 < offsetEnd {
 		srv := &DescriptorVBIDataService{}
 
-		// Get next byte
-		var b byte
-		if b, err = i.NextByte(); err != nil {
-			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-			return
-		}
+		srv.DataServiceID = r.TryReadByte()
 
-		// Data service ID
-		srv.DataServiceID = uint8(b)
+		dataServiceDescriptorLength := r.TryReadByte()
 
-		// Get next byte
-		if b, err = i.NextByte(); err != nil {
-			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-			return
-		}
-
-		// Data service descriptor length
-		dataServiceDescriptorLength := int(b)
-
-		// Data service descriptor
-		offsetDataEnd := i.Offset() + dataServiceDescriptorLength
-		for i.Offset() < offsetDataEnd {
+		offsetDataEnd := r.BitsCount/8 + int64(dataServiceDescriptorLength)
+		for r.BitsCount/8 < offsetDataEnd {
 			if srv.DataServiceID == VBIDataServiceIDClosedCaptioning ||
 				srv.DataServiceID == VBIDataServiceIDEBUTeletext ||
 				srv.DataServiceID == VBIDataServiceIDInvertedTeletext ||
 				srv.DataServiceID == VBIDataServiceIDMonochrome442Samples ||
 				srv.DataServiceID == VBIDataServiceIDVPS ||
 				srv.DataServiceID == VBIDataServiceIDWSS {
-				// Get next byte
-				if b, err = i.NextByte(); err != nil {
-					err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-					return
-				}
+				_ = r.TryReadBits(2) // Reserved.
 
-				// Append data
 				srv.Descriptors = append(srv.Descriptors, &DescriptorVBIDataDescriptor{
-					FieldParity: b&0x20 > 0,
-					LineOffset:  uint8(b & 0x1f),
+					FieldParity: r.TryReadBool(),
+					LineOffset:  uint8(r.TryReadBits(5)),
 				})
 			}
 		}
-
-		// Append service
-		d.Services = append(d.Services, srv)
+		d = append(d, srv)
 	}
-	return
+
+	return d
 }
 
-// parseDescriptors parses descriptors
-func parseDescriptors(i *astikit.BytesIterator) (o []*Descriptor, err error) {
-	// Get next 2 bytes
-	var bs []byte
-	if bs, err = i.NextBytesNoCopy(2); err != nil {
-		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-		return
+// parseDescriptors parses descriptors.
+func parseDescriptors(r *bitio.CountReader) ([]*Descriptor, error) {
+	var o []*Descriptor
+
+	length := int64(r.TryReadBits(12))
+
+	if length <= 0 {
+		return o, nil
 	}
 
-	// Get length
-	length := int(uint16(bs[0]&0xf)<<8 | uint16(bs[1]))
+	offsetEnd := r.BitsCount/8 + length
+	for r.BitsCount/8 < offsetEnd {
+		d := &Descriptor{
+			Tag:    r.TryReadByte(),
+			Length: r.TryReadByte(),
+		}
 
-	// Loop
-	if length > 0 {
-		offsetEnd := i.Offset() + length
-		for i.Offset() < offsetEnd {
-			// Get next 2 bytes
-			if bs, err = i.NextBytesNoCopy(2); err != nil {
-				err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-				return
+		if r.TryError != nil {
+			return nil, r.TryError
+		}
+
+		if d.Length <= 0 {
+			continue
+		}
+
+		// Parse data.
+		// Unfortunately there's no way to be sure the real descriptor
+		// length is the same as the one indicated previously therefore
+		// we must fetch bytes in descriptor functions and seek at the end.
+		offsetDescriptorEnd := r.BitsCount/8 + int64(d.Length)
+
+		// User defined
+		if d.Tag >= 0x80 && d.Tag <= 0xfe {
+			d.UserDefined = make([]byte, d.Length)
+			TryReadFull(r, d.UserDefined)
+
+			// Make sure we move to the end of the descriptor
+			// since its content may be corrupted.
+			if offsetDescriptorEnd > r.BitsCount/8 {
+				skip := make([]byte, offsetDescriptorEnd-r.BitsCount/8)
+				TryReadFull(r, skip)
 			}
 
-			// Create descriptor
-			d := &Descriptor{
-				Length: uint8(bs[1]),
-				Tag:    uint8(bs[0]),
-			}
-
-			// Parse data
-			if d.Length > 0 {
-				// Unfortunately there's no way to be sure the real descriptor length is the same as the one indicated
-				// previously therefore we must fetch bytes in descriptor functions and seek at the end
-				offsetDescriptorEnd := i.Offset() + int(d.Length)
-
-				// User defined
-				if d.Tag >= 0x80 && d.Tag <= 0xfe {
-					// Get next bytes
-					if d.UserDefined, err = i.NextBytes(int(d.Length)); err != nil {
-						err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
-						return
-					}
-				} else {
-					// Switch on tag
-					switch d.Tag {
-					case DescriptorTagAC3:
-						if d.AC3, err = newDescriptorAC3(i, offsetDescriptorEnd); err != nil {
-							err = fmt.Errorf("astits: parsing AC3 descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagAVCVideo:
-						if d.AVCVideo, err = newDescriptorAVCVideo(i); err != nil {
-							err = fmt.Errorf("astits: parsing AVC Video descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagComponent:
-						if d.Component, err = newDescriptorComponent(i, offsetDescriptorEnd); err != nil {
-							err = fmt.Errorf("astits: parsing Component descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagContent:
-						if d.Content, err = newDescriptorContent(i, offsetDescriptorEnd); err != nil {
-							err = fmt.Errorf("astits: parsing Content descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagDataStreamAlignment:
-						if d.DataStreamAlignment, err = newDescriptorDataStreamAlignment(i); err != nil {
-							err = fmt.Errorf("astits: parsing Data Stream Alignment descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagEnhancedAC3:
-						if d.EnhancedAC3, err = newDescriptorEnhancedAC3(i, offsetDescriptorEnd); err != nil {
-							err = fmt.Errorf("astits: parsing Enhanced AC3 descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagExtendedEvent:
-						if d.ExtendedEvent, err = newDescriptorExtendedEvent(i); err != nil {
-							err = fmt.Errorf("astits: parsing Extended event descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagExtension:
-						if d.Extension, err = newDescriptorExtension(i, offsetDescriptorEnd); err != nil {
-							err = fmt.Errorf("astits: parsing Extension descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagISO639LanguageAndAudioType:
-						if d.ISO639LanguageAndAudioType, err = newDescriptorISO639LanguageAndAudioType(i, offsetDescriptorEnd); err != nil {
-							err = fmt.Errorf("astits: parsing ISO639 Language and Audio Type descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagLocalTimeOffset:
-						if d.LocalTimeOffset, err = newDescriptorLocalTimeOffset(i, offsetDescriptorEnd); err != nil {
-							err = fmt.Errorf("astits: parsing Local Time Offset descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagMaximumBitrate:
-						if d.MaximumBitrate, err = newDescriptorMaximumBitrate(i); err != nil {
-							err = fmt.Errorf("astits: parsing Maximum Bitrate descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagNetworkName:
-						if d.NetworkName, err = newDescriptorNetworkName(i, offsetDescriptorEnd); err != nil {
-							err = fmt.Errorf("astits: parsing Network Name descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagParentalRating:
-						if d.ParentalRating, err = newDescriptorParentalRating(i, offsetDescriptorEnd); err != nil {
-							err = fmt.Errorf("astits: parsing Parental Rating descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagPrivateDataIndicator:
-						if d.PrivateDataIndicator, err = newDescriptorPrivateDataIndicator(i); err != nil {
-							err = fmt.Errorf("astits: parsing Private Data Indicator descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagPrivateDataSpecifier:
-						if d.PrivateDataSpecifier, err = newDescriptorPrivateDataSpecifier(i); err != nil {
-							err = fmt.Errorf("astits: parsing Private Data Specifier descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagRegistration:
-						if d.Registration, err = newDescriptorRegistration(i, offsetDescriptorEnd); err != nil {
-							err = fmt.Errorf("astits: parsing Registration descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagService:
-						if d.Service, err = newDescriptorService(i); err != nil {
-							err = fmt.Errorf("astits: parsing Service descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagShortEvent:
-						if d.ShortEvent, err = newDescriptorShortEvent(i); err != nil {
-							err = fmt.Errorf("astits: parsing Short Event descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagStreamIdentifier:
-						if d.StreamIdentifier, err = newDescriptorStreamIdentifier(i); err != nil {
-							err = fmt.Errorf("astits: parsing Stream Identifier descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagSubtitling:
-						if d.Subtitling, err = newDescriptorSubtitling(i, offsetDescriptorEnd); err != nil {
-							err = fmt.Errorf("astits: parsing Subtitling descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagTeletext:
-						if d.Teletext, err = newDescriptorTeletext(i, offsetDescriptorEnd); err != nil {
-							err = fmt.Errorf("astits: parsing Teletext descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagVBIData:
-						if d.VBIData, err = newDescriptorVBIData(i, offsetDescriptorEnd); err != nil {
-							err = fmt.Errorf("astits: parsing VBI Date descriptor failed: %w", err)
-							return
-						}
-					case DescriptorTagVBITeletext:
-						if d.VBITeletext, err = newDescriptorTeletext(i, offsetDescriptorEnd); err != nil {
-							err = fmt.Errorf("astits: parsing VBI Teletext descriptor failed: %w", err)
-							return
-						}
-					default:
-						if d.Unknown, err = newDescriptorUnknown(i, d.Tag, d.Length); err != nil {
-							err = fmt.Errorf("astits: parsing unknown descriptor failed: %w", err)
-							return
-						}
-					}
-				}
-
-				// Seek in iterator to make sure we move to the end of the descriptor since its content may be
-				// corrupted
-				i.Seek(offsetDescriptorEnd)
-			}
 			o = append(o, d)
+			continue
+		}
+
+		err := parseDescriptor(d, r, offsetDescriptorEnd)
+		if err != nil {
+			return nil, err
+		}
+
+		o = append(o, d)
+	}
+	return o, r.TryError
+}
+
+func parseDescriptor( //nolint:funlen,gocognit,gocyclo
+	d *Descriptor,
+	r *bitio.CountReader,
+	offsetDescriptorEnd int64,
+) error {
+	var err error
+
+	switch d.Tag {
+	case DescriptorTagAC3:
+		if d.AC3, err = newDescriptorAC3(r, offsetDescriptorEnd); err != nil {
+			return fmt.Errorf("parsing AC3 descriptor failed: %w", err)
+		}
+	case DescriptorTagAVCVideo:
+		if d.AVCVideo, err = newDescriptorAVCVideo(r); err != nil {
+			return fmt.Errorf("parsing AVC Video descriptor failed: %w", err)
+		}
+	case DescriptorTagComponent:
+		if d.Component, err = newDescriptorComponent(r, offsetDescriptorEnd); err != nil {
+			return fmt.Errorf("parsing Component descriptor failed: %w", err)
+		}
+	case DescriptorTagContent:
+		if d.Content, err = newDescriptorContent(r, offsetDescriptorEnd); err != nil {
+			return fmt.Errorf("parsing Content descriptor failed: %w", err)
+		}
+	case DescriptorTagDataStreamAlignment:
+		if d.DataStreamAlignment, err = newDescriptorDataStreamAlignment(r); err != nil {
+			return fmt.Errorf("parsing Data Stream Alignment descriptor failed: %w", err)
+		}
+	case DescriptorTagEnhancedAC3:
+		if d.EnhancedAC3, err = newDescriptorEnhancedAC3(r, offsetDescriptorEnd); err != nil {
+			return fmt.Errorf("parsing Enhanced AC3 descriptor failed: %w", err)
+		}
+	case DescriptorTagExtendedEvent:
+		if d.ExtendedEvent, err = newDescriptorExtendedEvent(r); err != nil {
+			return fmt.Errorf("parsing Extended event descriptor failed: %w", err)
+		}
+	case DescriptorTagExtension:
+		if d.Extension, err = newDescriptorExtension(r, offsetDescriptorEnd); err != nil {
+			return fmt.Errorf("parsing Extension descriptor failed: %w", err)
+		}
+	case DescriptorTagISO639LanguageAndAudioType:
+		if d.ISO639LanguageAndAudioType, err = newDescriptorISO639LanguageAndAudioType(r, offsetDescriptorEnd); err != nil {
+			return fmt.Errorf("parsing ISO639 Language and Audio Type descriptor failed: %w", err)
+		}
+	case DescriptorTagLocalTimeOffset:
+		if d.LocalTimeOffset, err = newDescriptorLocalTimeOffset(r, offsetDescriptorEnd); err != nil {
+			return fmt.Errorf("parsing Local Time Offset descriptor failed: %w", err)
+		}
+	case DescriptorTagMaximumBitrate:
+		if d.MaximumBitrate, err = newDescriptorMaximumBitrate(r); err != nil {
+			return fmt.Errorf("parsing Maximum Bitrate descriptor failed: %w", err)
+		}
+	case DescriptorTagNetworkName:
+		if d.NetworkName, err = newDescriptorNetworkName(r, offsetDescriptorEnd); err != nil {
+			return fmt.Errorf("parsing Network Name descriptor failed: %w", err)
+		}
+	case DescriptorTagParentalRating:
+		if d.ParentalRating, err = newDescriptorParentalRating(r, offsetDescriptorEnd); err != nil {
+			return fmt.Errorf("parsing Parental Rating descriptor failed: %w", err)
+		}
+	case DescriptorTagPrivateDataIndicator:
+		if d.PrivateDataIndicator, err = newDescriptorPrivateDataIndicator(r); err != nil {
+			return fmt.Errorf("parsing Private Data Indicator descriptor failed: %w", err)
+		}
+	case DescriptorTagPrivateDataSpecifier:
+		if d.PrivateDataSpecifier, err = newDescriptorPrivateDataSpecifier(r); err != nil {
+			return fmt.Errorf("parsing Private Data Specifier descriptor failed: %w", err)
+		}
+	case DescriptorTagRegistration:
+		if d.Registration, err = newDescriptorRegistration(r, offsetDescriptorEnd); err != nil {
+			return fmt.Errorf("parsing Registration descriptor failed: %w", err)
+		}
+	case DescriptorTagService:
+		if d.Service, err = newDescriptorService(r); err != nil {
+			return fmt.Errorf("parsing Service descriptor failed: %w", err)
+		}
+	case DescriptorTagShortEvent:
+		if d.ShortEvent, err = newDescriptorShortEvent(r); err != nil {
+			return fmt.Errorf("parsing Short Event descriptor failed: %w", err)
+		}
+	case DescriptorTagStreamIdentifier:
+		if d.StreamIdentifier, err = newDescriptorStreamIdentifier(r); err != nil {
+			return fmt.Errorf("parsing Stream Identifier descriptor failed: %w", err)
+		}
+	case DescriptorTagSubtitling:
+		if d.Subtitling, err = newDescriptorSubtitling(r, offsetDescriptorEnd); err != nil {
+			return fmt.Errorf("parsing Subtitling descriptor failed: %w", err)
+		}
+	case DescriptorTagTeletext:
+		if d.Teletext, err = newDescriptorTeletext(r, offsetDescriptorEnd); err != nil {
+			return fmt.Errorf("parsing Teletext descriptor failed: %w", err)
+		}
+	case DescriptorTagVBIData:
+		d.VBIData = newDescriptorVBIData(r, offsetDescriptorEnd)
+	case DescriptorTagVBITeletext:
+		if d.VBITeletext, err = newDescriptorTeletext(r, offsetDescriptorEnd); err != nil {
+			return fmt.Errorf("parsing VBI Teletext descriptor failed: %w", err)
+		}
+	default:
+		if d.Unknown, err = newDescriptorUnknown(r, d.Tag, d.Length); err != nil {
+			return fmt.Errorf("parsing unknown descriptor failed: %w", err)
 		}
 	}
-	return
+
+	// Make sure we move to the end of the descriptor
+	// since its content may be corrupted.
+	if offsetDescriptorEnd > r.BitsCount/8 {
+		seek := make([]byte, offsetDescriptorEnd-r.BitsCount/8)
+		TryReadFull(r, seek)
+	}
+
+	return nil
 }
 
 func calcDescriptorUserDefinedLength(d []byte) uint8 {
 	return uint8(len(d))
 }
 
-func writeDescriptorUserDefined(w *astikit.BitsWriter, d []byte) error {
-	b := astikit.NewBitsWriterBatch(w)
-
-	b.Write(d)
-
-	return b.Err()
-}
-
 func calcDescriptorAC3Length(d *DescriptorAC3) uint8 {
-	ret := 1 // flags
+	ret := 1 // flags.
 
 	if d.HasComponentType {
 		ret++
@@ -1474,105 +1041,92 @@ func calcDescriptorAC3Length(d *DescriptorAC3) uint8 {
 	return uint8(ret)
 }
 
-func writeDescriptorAC3(w *astikit.BitsWriter, d *DescriptorAC3) error {
-	b := astikit.NewBitsWriterBatch(w)
-
-	b.Write(d.HasComponentType)
-	b.Write(d.HasBSID)
-	b.Write(d.HasMainID)
-	b.Write(d.HasASVC)
-	b.WriteN(uint8(0xff), 4)
+func writeDescriptorAC3(w *bitio.Writer, d *DescriptorAC3) error {
+	w.TryWriteBool(d.HasComponentType)
+	w.TryWriteBool(d.HasBSID)
+	w.TryWriteBool(d.HasMainID)
+	w.TryWriteBool(d.HasASVC)
+	w.TryWriteBits(0xff, 4) // Reserved.
 
 	if d.HasComponentType {
-		b.Write(d.ComponentType)
+		w.TryWriteByte(d.ComponentType)
 	}
 	if d.HasBSID {
-		b.Write(d.BSID)
+		w.TryWriteByte(d.BSID)
 	}
 	if d.HasMainID {
-		b.Write(d.MainID)
+		w.TryWriteByte(d.MainID)
 	}
 	if d.HasASVC {
-		b.Write(d.ASVC)
+		w.TryWriteByte(d.ASVC)
 	}
-	b.Write(d.AdditionalInfo)
+	w.TryWrite(d.AdditionalInfo)
 
-	return b.Err()
+	return w.TryError
 }
 
 func calcDescriptorAVCVideoLength(d *DescriptorAVCVideo) uint8 {
 	return 4
 }
 
-func writeDescriptorAVCVideo(w *astikit.BitsWriter, d *DescriptorAVCVideo) error {
-	b := astikit.NewBitsWriterBatch(w)
+func writeDescriptorAVCVideo(w *bitio.Writer, d *DescriptorAVCVideo) error {
+	w.TryWriteByte(d.ProfileIDC)
 
-	b.Write(d.ProfileIDC)
+	w.TryWriteBool(d.ConstraintSet0Flag)
+	w.TryWriteBool(d.ConstraintSet1Flag)
+	w.TryWriteBool(d.ConstraintSet2Flag)
+	w.TryWriteBits(uint64(d.CompatibleFlags), 5)
 
-	b.Write(d.ConstraintSet0Flag)
-	b.Write(d.ConstraintSet1Flag)
-	b.Write(d.ConstraintSet2Flag)
-	b.WriteN(d.CompatibleFlags, 5)
+	w.TryWriteByte(d.LevelIDC)
 
-	b.Write(d.LevelIDC)
+	w.TryWriteBool(d.AVCStillPresent)
+	w.TryWriteBool(d.AVC24HourPictureFlag)
+	w.TryWriteBits(uint64(0xff), 6) // Reserved.
 
-	b.Write(d.AVCStillPresent)
-	b.Write(d.AVC24HourPictureFlag)
-	b.WriteN(uint8(0xff), 6)
-
-	return b.Err()
+	return w.TryError
 }
 
 func calcDescriptorComponentLength(d *DescriptorComponent) uint8 {
 	return uint8(6 + len(d.Text))
 }
 
-func writeDescriptorComponent(w *astikit.BitsWriter, d *DescriptorComponent) error {
-	b := astikit.NewBitsWriterBatch(w)
+func writeDescriptorComponent(w *bitio.Writer, d *DescriptorComponent) error {
+	w.TryWriteBits(uint64(d.StreamContentExt), 4)
+	w.TryWriteBits(uint64(d.StreamContent), 4)
 
-	b.WriteN(d.StreamContentExt, 4)
-	b.WriteN(d.StreamContent, 4)
+	w.TryWriteByte(d.ComponentType)
+	w.TryWriteByte(d.ComponentTag)
 
-	b.Write(d.ComponentType)
-	b.Write(d.ComponentTag)
+	w.TryWrite(d.ISO639LanguageCode)
 
-	b.WriteBytesN(d.ISO639LanguageCode, 3, 0)
+	w.TryWrite(d.Text)
 
-	b.Write(d.Text)
-
-	return b.Err()
+	return w.TryError
 }
 
-func calcDescriptorContentLength(d *DescriptorContent) uint8 {
+func calcDescriptorContentLength(d DescriptorContent) uint8 {
 	return uint8(2 * len(d.Items))
 }
 
-func writeDescriptorContent(w *astikit.BitsWriter, d *DescriptorContent) error {
-	b := astikit.NewBitsWriterBatch(w)
-
+func writeDescriptorContent(w *bitio.Writer, d DescriptorContent) error {
 	for _, item := range d.Items {
-		b.WriteN(item.ContentNibbleLevel1, 4)
-		b.WriteN(item.ContentNibbleLevel2, 4)
-		b.Write(item.UserByte)
+		w.TryWriteBits(uint64(item.ContentNibbleLevel1), 4)
+		w.TryWriteBits(uint64(item.ContentNibbleLevel2), 4)
+		w.TryWriteByte(item.UserByte)
 	}
-
-	return b.Err()
+	return w.TryError
 }
 
-func calcDescriptorDataStreamAlignmentLength(d *DescriptorDataStreamAlignment) uint8 {
+func calcDescriptorDataStreamAlignmentLength(d DescriptorDataStreamAlignment) uint8 {
 	return 1
 }
 
-func writeDescriptorDataStreamAlignment(w *astikit.BitsWriter, d *DescriptorDataStreamAlignment) error {
-	b := astikit.NewBitsWriterBatch(w)
-
-	b.Write(d.Type)
-
-	return b.Err()
+func writeDescriptorDataStreamAlignment(w *bitio.Writer, d DescriptorDataStreamAlignment) error {
+	return w.WriteByte(uint8(d))
 }
 
 func calcDescriptorEnhancedAC3Length(d *DescriptorEnhancedAC3) uint8 {
-	ret := 1 // flags
+	ret := 1 // flags.
 
 	if d.HasComponentType {
 		ret++
@@ -1601,88 +1155,84 @@ func calcDescriptorEnhancedAC3Length(d *DescriptorEnhancedAC3) uint8 {
 	return uint8(ret)
 }
 
-func writeDescriptorEnhancedAC3(w *astikit.BitsWriter, d *DescriptorEnhancedAC3) error {
-	b := astikit.NewBitsWriterBatch(w)
-
-	b.Write(d.HasComponentType)
-	b.Write(d.HasBSID)
-	b.Write(d.HasMainID)
-	b.Write(d.HasASVC)
-	b.Write(d.MixInfoExists)
-	b.Write(d.HasSubStream1)
-	b.Write(d.HasSubStream2)
-	b.Write(d.HasSubStream3)
+func writeDescriptorEnhancedAC3(w *bitio.Writer, d *DescriptorEnhancedAC3) error {
+	w.TryWriteBool(d.HasComponentType)
+	w.TryWriteBool(d.HasBSID)
+	w.TryWriteBool(d.HasMainID)
+	w.TryWriteBool(d.HasASVC)
+	w.TryWriteBool(d.MixInfoExists)
+	w.TryWriteBool(d.HasSubStream1)
+	w.TryWriteBool(d.HasSubStream2)
+	w.TryWriteBool(d.HasSubStream3)
 
 	if d.HasComponentType {
-		b.Write(d.ComponentType)
+		w.TryWriteByte(d.ComponentType)
 	}
 	if d.HasBSID {
-		b.Write(d.BSID)
+		w.TryWriteByte(d.BSID)
 	}
 	if d.HasMainID {
-		b.Write(d.MainID)
+		w.TryWriteByte(d.MainID)
 	}
 	if d.HasASVC {
-		b.Write(d.ASVC)
+		w.TryWriteByte(d.ASVC)
 	}
 	if d.HasSubStream1 {
-		b.Write(d.SubStream1)
+		w.TryWriteByte(d.SubStream1)
 	}
 	if d.HasSubStream2 {
-		b.Write(d.SubStream2)
+		w.TryWriteByte(d.SubStream2)
 	}
 	if d.HasSubStream3 {
-		b.Write(d.SubStream3)
+		w.TryWriteByte(d.SubStream3)
 	}
 
-	b.Write(d.AdditionalInfo)
+	w.TryWrite(d.AdditionalInfo)
 
-	return b.Err()
+	return w.TryError
 }
 
 func calcDescriptorExtendedEventLength(d *DescriptorExtendedEvent) (descriptorLength, lengthOfItems uint8) {
-	ret := 1 + 3 + 1 // numbers, language and items length
+	ret := 1 + 3 + 1 // numbers, language and items length.
 
 	itemsRet := 0
 	for _, item := range d.Items {
-		itemsRet += 1 // description length
+		itemsRet++ // description length
 		itemsRet += len(item.Description)
-		itemsRet += 1 // content length
+		itemsRet++ // content length
 		itemsRet += len(item.Content)
 	}
 
 	ret += itemsRet
 
-	ret += 1 // text length
+	ret++ // text length
 	ret += len(d.Text)
 
 	return uint8(ret), uint8(itemsRet)
 }
 
-func writeDescriptorExtendedEvent(w *astikit.BitsWriter, d *DescriptorExtendedEvent) error {
-	b := astikit.NewBitsWriterBatch(w)
-
+func writeDescriptorExtendedEvent(w *bitio.Writer, d *DescriptorExtendedEvent) error {
 	var lengthOfItems uint8
 
 	_, lengthOfItems = calcDescriptorExtendedEventLength(d)
 
-	b.WriteN(d.Number, 4)
-	b.WriteN(d.LastDescriptorNumber, 4)
+	w.TryWriteBits(uint64(d.Number), 4)
+	w.TryWriteBits(uint64(d.LastDescriptorNumber), 4)
 
-	b.WriteBytesN(d.ISO639LanguageCode, 3, 0)
+	w.TryWrite(d.ISO639LanguageCode)
 
-	b.Write(lengthOfItems)
+	w.TryWriteByte(lengthOfItems)
 	for _, item := range d.Items {
-		b.Write(uint8(len(item.Description)))
-		b.Write(item.Description)
-		b.Write(uint8(len(item.Content)))
-		b.Write(item.Content)
+		w.TryWriteByte(uint8(len(item.Description)))
+		w.TryWrite(item.Description)
+		w.TryWriteByte(uint8(len(item.Content)))
+		w.TryWrite(item.Content)
 	}
 
-	b.Write(uint8(len(d.Text)))
-	b.Write(d.Text)
+	w.TryWriteByte(uint8(len(d.Text)))
+	w.TryWrite(d.Text)
 
-	return b.Err()
+	return w.TryError
 }
 
 func calcDescriptorExtensionSupplementaryAudioLength(d *DescriptorExtensionSupplementaryAudio) int {
@@ -1695,7 +1245,7 @@ func calcDescriptorExtensionSupplementaryAudioLength(d *DescriptorExtensionSuppl
 }
 
 func calcDescriptorExtensionLength(d *DescriptorExtension) uint8 {
-	ret := 1 // tag
+	ret := 1 // tag.
 
 	switch d.Tag {
 	case DescriptorTagExtensionSupplementaryAudio:
@@ -1709,27 +1259,25 @@ func calcDescriptorExtensionLength(d *DescriptorExtension) uint8 {
 	return uint8(ret)
 }
 
-func writeDescriptorExtensionSupplementaryAudio(w *astikit.BitsWriter, d *DescriptorExtensionSupplementaryAudio) error {
-	b := astikit.NewBitsWriterBatch(w)
-
-	b.Write(d.MixType)
-	b.WriteN(d.EditorialClassification, 5)
-	b.Write(true) // reserved
-	b.Write(d.HasLanguageCode)
+func writeDescriptorExtensionSupplementaryAudio(w *bitio.Writer, d *DescriptorExtensionSupplementaryAudio) error {
+	w.TryWriteBool(d.MixType)
+	w.TryWriteBits(uint64(d.EditorialClassification), 5)
+	w.TryWriteBool(true) // Reserved.
+	w.TryWriteBool(d.HasLanguageCode)
 
 	if d.HasLanguageCode {
-		b.WriteBytesN(d.LanguageCode, 3, 0)
+		w.TryWrite(d.LanguageCode)
 	}
 
-	b.Write(d.PrivateData)
+	w.TryWrite(d.PrivateData)
 
-	return b.Err()
+	return w.TryError
 }
 
-func writeDescriptorExtension(w *astikit.BitsWriter, d *DescriptorExtension) error {
-	b := astikit.NewBitsWriterBatch(w)
-
-	b.Write(d.Tag)
+func writeDescriptorExtension(w *bitio.Writer, d *DescriptorExtension) error {
+	if err := w.WriteByte(d.Tag); err != nil {
+		return err
+	}
 
 	switch d.Tag {
 	case DescriptorTagExtensionSupplementaryAudio:
@@ -1739,129 +1287,108 @@ func writeDescriptorExtension(w *astikit.BitsWriter, d *DescriptorExtension) err
 		}
 	default:
 		if d.Unknown != nil {
-			b.Write(*d.Unknown)
+			if _, err := w.Write(*d.Unknown); err != nil {
+				return err
+			}
 		}
 	}
-
-	return b.Err()
+	return nil
 }
 
 func calcDescriptorISO639LanguageAndAudioTypeLength(d *DescriptorISO639LanguageAndAudioType) uint8 {
-	return 3 + 1 // language code + type
+	return 3 + 1 // language code + type.
 }
 
-func writeDescriptorISO639LanguageAndAudioType(w *astikit.BitsWriter, d *DescriptorISO639LanguageAndAudioType) error {
-	b := astikit.NewBitsWriterBatch(w)
+func writeDescriptorISO639LanguageAndAudioType(w *bitio.Writer, d *DescriptorISO639LanguageAndAudioType) error {
+	w.TryWrite(d.Language)
+	w.TryWriteByte(d.Type)
 
-	b.WriteBytesN(d.Language, 3, 0)
-	b.Write(d.Type)
-
-	return b.Err()
+	return w.TryError
 }
 
-func calcDescriptorLocalTimeOffsetLength(d *DescriptorLocalTimeOffset) uint8 {
-	return uint8(13 * len(d.Items))
+func calcDescriptorLocalTimeOffsetLength(d DescriptorLocalTimeOffset) uint8 {
+	return uint8(13 * len(d))
 }
 
-func writeDescriptorLocalTimeOffset(w *astikit.BitsWriter, d *DescriptorLocalTimeOffset) error {
-	b := astikit.NewBitsWriterBatch(w)
+func writeDescriptorLocalTimeOffset(w *bitio.Writer, d DescriptorLocalTimeOffset) error {
+	for _, item := range d {
+		w.TryWrite(item.CountryCode)
 
-	for _, item := range d.Items {
-		b.WriteBytesN(item.CountryCode, 3, 0)
+		w.TryWriteBits(uint64(item.CountryRegionID), 6)
+		w.TryWriteBits(0xff, 1) // Reserved.
+		w.TryWriteBool(item.LocalTimeOffsetPolarity)
 
-		b.WriteN(item.CountryRegionID, 6)
-		b.WriteN(uint8(0xff), 1)
-		b.Write(item.LocalTimeOffsetPolarity)
-
-		if _, err := writeDVBDurationMinutes(w, item.LocalTimeOffset); err != nil {
-			return err
+		if err := writeDVBDurationMinutes(w, item.LocalTimeOffset); err != nil {
+			return fmt.Errorf("writing LocalTimeOffset failed: %w", err)
 		}
 		if _, err := writeDVBTime(w, item.TimeOfChange); err != nil {
-			return err
+			return fmt.Errorf("writing TimeOfChange failed: %w", err)
 		}
-		if _, err := writeDVBDurationMinutes(w, item.NextTimeOffset); err != nil {
-			return err
+		if err := writeDVBDurationMinutes(w, item.NextTimeOffset); err != nil {
+			return fmt.Errorf("writing NextTimeOffset failed: %w", err)
 		}
 	}
 
-	return b.Err()
+	return w.TryError
 }
 
-func calcDescriptorMaximumBitrateLength(d *DescriptorMaximumBitrate) uint8 {
+func calcDescriptorMaximumBitrateLength(d DescriptorMaximumBitrate) uint8 {
 	return 3
 }
 
-func writeDescriptorMaximumBitrate(w *astikit.BitsWriter, d *DescriptorMaximumBitrate) error {
-	b := astikit.NewBitsWriterBatch(w)
+func writeDescriptorMaximumBitrate(w *bitio.Writer, d DescriptorMaximumBitrate) error {
+	w.TryWriteBits(0xff, 2) // Reserved.
+	w.TryWriteBits(uint64(d.Bitrate), 22)
 
-	b.WriteN(uint8(0xff), 2)
-	b.WriteN(uint32(d.Bitrate/50), 22)
-
-	return b.Err()
+	return w.TryError
 }
 
-func calcDescriptorNetworkNameLength(d *DescriptorNetworkName) uint8 {
-	return uint8(len(d.Name))
+func calcDescriptorNetworkNameLength(name DescriptorNetworkName) uint8 {
+	return uint8(len(name.Name))
 }
 
-func writeDescriptorNetworkName(w *astikit.BitsWriter, d *DescriptorNetworkName) error {
-	b := astikit.NewBitsWriterBatch(w)
-
-	b.Write(d.Name)
-
-	return b.Err()
+func writeDescriptorNetworkName(w *bitio.Writer, d DescriptorNetworkName) error {
+	_, err := w.Write(d.Name)
+	return err
 }
 
-func calcDescriptorParentalRatingLength(d *DescriptorParentalRating) uint8 {
+func calcDescriptorParentalRatingLength(d DescriptorParentalRating) uint8 {
 	return uint8(4 * len(d.Items))
 }
 
-func writeDescriptorParentalRating(w *astikit.BitsWriter, d *DescriptorParentalRating) error {
-	b := astikit.NewBitsWriterBatch(w)
-
+func writeDescriptorParentalRating(w *bitio.Writer, d DescriptorParentalRating) error {
 	for _, item := range d.Items {
-		b.WriteBytesN(item.CountryCode, 3, 0)
-		b.Write(item.Rating)
+		w.TryWrite(item.CountryCode)
+		w.TryWriteByte(item.Rating)
 	}
-
-	return b.Err()
+	return w.TryError
 }
 
-func calcDescriptorPrivateDataIndicatorLength(d *DescriptorPrivateDataIndicator) uint8 {
+func calcDescriptorPrivateDataIndicatorLength(d DescriptorPrivateDataIndicator) uint8 {
 	return 4
 }
 
-func writeDescriptorPrivateDataIndicator(w *astikit.BitsWriter, d *DescriptorPrivateDataIndicator) error {
-	b := astikit.NewBitsWriterBatch(w)
-
-	b.Write(d.Indicator)
-
-	return b.Err()
+func writeDescriptorPrivateDataIndicator(w *bitio.Writer, d DescriptorPrivateDataIndicator) error {
+	return w.WriteBits(uint64(d), 32)
 }
 
-func calcDescriptorPrivateDataSpecifierLength(d *DescriptorPrivateDataSpecifier) uint8 {
+func calcDescriptorPrivateDataSpecifierLength(d DescriptorPrivateDataSpecifier) uint8 {
 	return 4
 }
 
-func writeDescriptorPrivateDataSpecifier(w *astikit.BitsWriter, d *DescriptorPrivateDataSpecifier) error {
-	b := astikit.NewBitsWriterBatch(w)
-
-	b.Write(d.Specifier)
-
-	return b.Err()
+func writeDescriptorPrivateDataSpecifier(w *bitio.Writer, d DescriptorPrivateDataSpecifier) error {
+	return w.WriteBits(uint64(d.Specifier), 32)
 }
 
 func calcDescriptorRegistrationLength(d *DescriptorRegistration) uint8 {
 	return uint8(4 + len(d.AdditionalIdentificationInfo))
 }
 
-func writeDescriptorRegistration(w *astikit.BitsWriter, d *DescriptorRegistration) error {
-	b := astikit.NewBitsWriterBatch(w)
+func writeDescriptorRegistration(w *bitio.Writer, d *DescriptorRegistration) error {
+	w.TryWriteBits(uint64(d.FormatIdentifier), 32)
+	w.TryWrite(d.AdditionalIdentificationInfo)
 
-	b.Write(d.FormatIdentifier)
-	b.Write(d.AdditionalIdentificationInfo)
-
-	return b.Err()
+	return w.TryError
 }
 
 func calcDescriptorServiceLength(d *DescriptorService) uint8 {
@@ -1871,95 +1398,79 @@ func calcDescriptorServiceLength(d *DescriptorService) uint8 {
 	return uint8(ret)
 }
 
-func writeDescriptorService(w *astikit.BitsWriter, d *DescriptorService) error {
-	b := astikit.NewBitsWriterBatch(w)
+func writeDescriptorService(w *bitio.Writer, d *DescriptorService) error {
+	w.TryWriteByte(d.Type)
+	w.TryWriteByte(uint8(len(d.Provider)))
+	w.TryWrite(d.Provider)
+	w.TryWriteByte(uint8(len(d.Name)))
+	w.TryWrite(d.Name)
 
-	b.Write(d.Type)
-	b.Write(uint8(len(d.Provider)))
-	b.Write(d.Provider)
-	b.Write(uint8(len(d.Name)))
-	b.Write(d.Name)
-
-	return b.Err()
+	return w.TryError
 }
 
 func calcDescriptorShortEventLength(d *DescriptorShortEvent) uint8 {
-	ret := 3 + 1 + 1 // language code and lengths
+	ret := 3 + 1 + 1 // Language code and lengths.
 	ret += len(d.EventName)
 	ret += len(d.Text)
 	return uint8(ret)
 }
 
-func writeDescriptorShortEvent(w *astikit.BitsWriter, d *DescriptorShortEvent) error {
-	b := astikit.NewBitsWriterBatch(w)
+func writeDescriptorShortEvent(w *bitio.Writer, d *DescriptorShortEvent) error {
+	w.TryWrite(d.Language)
 
-	b.WriteBytesN(d.Language, 3, 0)
+	w.TryWriteByte(uint8(len(d.EventName)))
+	w.TryWrite(d.EventName)
 
-	b.Write(uint8(len(d.EventName)))
-	b.Write(d.EventName)
+	w.TryWriteByte(uint8(len(d.Text)))
+	w.TryWrite(d.Text)
 
-	b.Write(uint8(len(d.Text)))
-	b.Write(d.Text)
-
-	return b.Err()
+	return w.TryError
 }
 
-func calcDescriptorStreamIdentifierLength(d *DescriptorStreamIdentifier) uint8 {
+func calcDescriptorStreamIdentifierLength(d DescriptorStreamIdentifier) uint8 {
 	return 1
 }
 
-func writeDescriptorStreamIdentifier(w *astikit.BitsWriter, d *DescriptorStreamIdentifier) error {
-	b := astikit.NewBitsWriterBatch(w)
-
-	b.Write(d.ComponentTag)
-
-	return b.Err()
+func writeDescriptorStreamIdentifier(w *bitio.Writer, d DescriptorStreamIdentifier) error {
+	return w.WriteByte(d.ComponentTag)
 }
 
-func calcDescriptorSubtitlingLength(d *DescriptorSubtitling) uint8 {
+func calcDescriptorSubtitlingLength(d DescriptorSubtitling) uint8 {
 	return uint8(8 * len(d.Items))
 }
 
-func writeDescriptorSubtitling(w *astikit.BitsWriter, d *DescriptorSubtitling) error {
-	b := astikit.NewBitsWriterBatch(w)
-
+func writeDescriptorSubtitling(w *bitio.Writer, d DescriptorSubtitling) error {
 	for _, item := range d.Items {
-		b.WriteBytesN(item.Language, 3, 0)
-		b.Write(item.Type)
-		b.Write(item.CompositionPageID)
-		b.Write(item.AncillaryPageID)
+		w.TryWrite(item.Language)
+		w.TryWriteByte(item.Type)
+		w.TryWriteBits(uint64(item.CompositionPageID), 16)
+		w.TryWriteBits(uint64(item.AncillaryPageID), 16)
 	}
-
-	return b.Err()
+	return w.TryError
 }
 
-func calcDescriptorTeletextLength(d *DescriptorTeletext) uint8 {
+func calcDescriptorTeletextLength(d DescriptorTeletext) uint8 {
 	return uint8(5 * len(d.Items))
 }
 
-func writeDescriptorTeletext(w *astikit.BitsWriter, d *DescriptorTeletext) error {
-	b := astikit.NewBitsWriterBatch(w)
-
+func writeDescriptorTeletext(w *bitio.Writer, d DescriptorTeletext) error {
 	for _, item := range d.Items {
-		b.WriteBytesN(item.Language, 3, 0)
-		b.WriteN(item.Type, 5)
-		b.WriteN(item.Magazine, 3)
-		b.WriteN(item.Page/10, 4)
-		b.WriteN(item.Page%10, 4)
+		w.TryWrite(item.Language)
+		w.TryWriteBits(uint64(item.Type), 5)
+		w.TryWriteBits(uint64(item.Magazine), 3)
+		w.TryWriteBits(uint64(item.Page/10), 4)
+		w.TryWriteBits(uint64(item.Page%10), 4)
 	}
-
-	return b.Err()
+	return w.TryError
 }
 
-func calcDescriptorVBIDataLength(d *DescriptorVBIData) uint8 {
-	return uint8(3 * len(d.Services))
+func calcDescriptorVBIDataLength(d DescriptorVBIData) uint8 {
+	return uint8(3 * len(d))
 }
 
-func writeDescriptorVBIData(w *astikit.BitsWriter, d *DescriptorVBIData) error {
-	b := astikit.NewBitsWriterBatch(w)
-
-	for _, item := range d.Services {
-		b.Write(item.DataServiceID)
+func writeDescriptorVBIData(w *bitio.Writer, d DescriptorVBIData) error {
+	for _, item := range d {
+		w.TryWriteByte(item.DataServiceID)
 
 		if item.DataServiceID == VBIDataServiceIDClosedCaptioning ||
 			item.DataServiceID == VBIDataServiceIDEBUTeletext ||
@@ -1967,36 +1478,32 @@ func writeDescriptorVBIData(w *astikit.BitsWriter, d *DescriptorVBIData) error {
 			item.DataServiceID == VBIDataServiceIDMonochrome442Samples ||
 			item.DataServiceID == VBIDataServiceIDVPS ||
 			item.DataServiceID == VBIDataServiceIDWSS {
-
-			b.Write(uint8(len(item.Descriptors))) // each descriptor is 1 byte
+			w.TryWriteByte(uint8(len(item.Descriptors))) // Each descriptor is 1 byte.
 			for _, desc := range item.Descriptors {
-				b.WriteN(uint8(0xff), 2)
-				b.Write(desc.FieldParity)
-				b.WriteN(desc.LineOffset, 5)
+				w.TryWriteBits(0xff, 2) // Reserved.
+				w.TryWriteBool(desc.FieldParity)
+				w.TryWriteBits(uint64(desc.LineOffset), 5)
 			}
 		} else {
-			// let's put one reserved byte
-			b.Write(uint8(1))
-			b.Write(uint8(0xff))
+			// Let's put one reserved byte.
+			w.TryWriteByte(1)
+			w.TryWriteByte(0xff)
 		}
 	}
 
-	return b.Err()
+	return w.TryError
 }
 
 func calcDescriptorUnknownLength(d *DescriptorUnknown) uint8 {
 	return uint8(len(d.Content))
 }
 
-func writeDescriptorUnknown(w *astikit.BitsWriter, d *DescriptorUnknown) error {
-	b := astikit.NewBitsWriterBatch(w)
-
-	b.Write(d.Content)
-
-	return b.Err()
+func writeDescriptorUnknown(w *bitio.Writer, d *DescriptorUnknown) error {
+	_, err := w.Write(d.Content)
+	return err
 }
 
-func calcDescriptorLength(d *Descriptor) uint8 {
+func calcDescriptorLength(d *Descriptor) uint8 { //nolint:funlen
 	if d.Tag >= 0x80 && d.Tag <= 0xfe {
 		return calcDescriptorUserDefinedLength(d.UserDefined)
 	}
@@ -2054,21 +1561,20 @@ func calcDescriptorLength(d *Descriptor) uint8 {
 	return calcDescriptorUnknownLength(d.Unknown)
 }
 
-func writeDescriptor(w *astikit.BitsWriter, d *Descriptor) (int, error) {
-	b := astikit.NewBitsWriterBatch(w)
+func writeDescriptor(w *bitio.Writer, d *Descriptor) (int, error) { //nolint:funlen
 	length := calcDescriptorLength(d)
 
-	b.Write(d.Tag)
-	b.Write(length)
-
-	if err := b.Err(); err != nil {
-		return 0, err
+	w.TryWriteByte(d.Tag)
+	w.TryWriteByte(length)
+	if w.TryError != nil {
+		return 0, w.TryError
 	}
 
 	written := int(length) + 2
 
 	if d.Tag >= 0x80 && d.Tag <= 0xfe {
-		return written, writeDescriptorUserDefined(w, d.UserDefined)
+		_, err := w.Write(d.UserDefined)
+		return written, err
 	}
 
 	switch d.Tag {
@@ -2126,13 +1632,13 @@ func writeDescriptor(w *astikit.BitsWriter, d *Descriptor) (int, error) {
 func calcDescriptorsLength(ds []*Descriptor) uint16 {
 	length := uint16(0)
 	for _, d := range ds {
-		length += 2 // tag and length
+		length += 2 // Tag and length.
 		length += uint16(calcDescriptorLength(d))
 	}
 	return length
 }
 
-func writeDescriptors(w *astikit.BitsWriter, ds []*Descriptor) (int, error) {
+func writeDescriptors(w *bitio.Writer, ds []*Descriptor) (int, error) {
 	written := 0
 
 	for _, d := range ds {
@@ -2146,17 +1652,21 @@ func writeDescriptors(w *astikit.BitsWriter, ds []*Descriptor) (int, error) {
 	return written, nil
 }
 
-func writeDescriptorsWithLength(w *astikit.BitsWriter, ds []*Descriptor) (int, error) {
+func writeDescriptorsWithLength(w *bitio.Writer, ds []*Descriptor) (int, error) {
 	length := calcDescriptorsLength(ds)
-	b := astikit.NewBitsWriterBatch(w)
 
-	b.WriteN(uint8(0xff), 4) // reserved
-	b.WriteN(length, 12)     // program_info_length
+	w.TryWriteBits(0xff, 4)            // Reserved.
+	w.TryWriteBits(uint64(length), 12) // program_info_length.
 
-	if err := b.Err(); err != nil {
-		return 0, err
+	if w.TryError != nil {
+		return 0, w.TryError
 	}
 
 	written, err := writeDescriptors(w, ds)
-	return written + 2, err // 2 for length
+	if err != nil {
+		return 0, fmt.Errorf("writing descriptors failed: %w", err)
+	}
+
+	written += 2
+	return written, nil
 }

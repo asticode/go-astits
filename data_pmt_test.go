@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/asticode/go-astikit"
+	"github.com/icza/bitio"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,29 +21,30 @@ var pmt = &PMTData{
 
 func pmtBytes() []byte {
 	buf := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	w.Write("111")                       // Reserved bits
-	w.Write("1010101010101")             // PCR PID
-	w.Write("1111")                      // Reserved
-	descriptorsBytes(w)                  // Program descriptors
-	w.Write(uint8(StreamTypeMPEG1Audio)) // Stream #1 stream type
-	w.Write("111")                       // Stream #1 reserved
-	w.Write("0101010101010")             // Stream #1 PID
-	w.Write("1111")                      // Stream #1 reserved
-	descriptorsBytes(w)                  // Stream #1 descriptors
+	w := bitio.NewWriter(buf)
+	WriteBinary(w, "111")                    // Reserved bits
+	WriteBinary(w, "1010101010101")          // PCR PID
+	WriteBinary(w, "1111")                   // Reserved
+	descriptorsBytes(w)                      // Program descriptors
+	w.WriteByte(uint8(StreamTypeMPEG1Audio)) // Stream #1 stream type
+	WriteBinary(w, "111")                    // Stream #1 reserved
+	WriteBinary(w, "0101010101010")          // Stream #1 PID
+	WriteBinary(w, "1111")                   // Stream #1 reserved
+	descriptorsBytes(w)                      // Stream #1 descriptors
 	return buf.Bytes()
 }
 
 func TestParsePMTSection(t *testing.T) {
-	var b = pmtBytes()
-	d, err := parsePMTSection(astikit.NewBytesIterator(b), len(b), uint16(1))
+	b := pmtBytes()
+	r := bitio.NewCountReader(bytes.NewReader(b))
+	d, err := parsePMTSection(r, int64(len(b)*8), uint16(1))
 	assert.Equal(t, d, pmt)
 	assert.NoError(t, err)
 }
 
 func TestWritePMTSection(t *testing.T) {
 	buf := bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &buf})
+	w := bitio.NewWriter(&buf)
 	n, err := writePMTSection(w, pmt)
 	assert.NoError(t, err)
 	assert.Equal(t, n, buf.Len())
@@ -55,7 +56,8 @@ func BenchmarkParsePMTSection(b *testing.B) {
 	bs := pmtBytes()
 
 	for i := 0; i < b.N; i++ {
-		parsePMTSection(astikit.NewBytesIterator(bs), len(bs), uint16(1))
+		r := bitio.NewCountReader(bytes.NewReader(bs))
+		parsePMTSection(r, int64(len(bs)), uint16(1))
 	}
 }
 
@@ -64,7 +66,7 @@ func BenchmarkWritePMTSection(b *testing.B) {
 
 	bw := &bytes.Buffer{}
 	bw.Grow(1024)
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: bw})
+	w := bitio.NewWriter(bw)
 
 	for i := 0; i < b.N; i++ {
 		bw.Reset()

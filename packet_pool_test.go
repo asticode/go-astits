@@ -7,11 +7,33 @@ import (
 )
 
 func TestHasDiscontinuity(t *testing.T) {
-	assert.False(t, hasDiscontinuity([]*Packet{{Header: &PacketHeader{ContinuityCounter: 15}}}, &Packet{Header: &PacketHeader{ContinuityCounter: 0, HasPayload: true}}))
-	assert.False(t, hasDiscontinuity([]*Packet{{Header: &PacketHeader{ContinuityCounter: 15}}}, &Packet{Header: &PacketHeader{ContinuityCounter: 15}}))
-	assert.True(t, hasDiscontinuity([]*Packet{{Header: &PacketHeader{ContinuityCounter: 15}}}, &Packet{AdaptationField: &PacketAdaptationField{DiscontinuityIndicator: true}, Header: &PacketHeader{ContinuityCounter: 0, HasAdaptationField: true, HasPayload: true}}))
-	assert.True(t, hasDiscontinuity([]*Packet{{Header: &PacketHeader{ContinuityCounter: 15}}}, &Packet{Header: &PacketHeader{ContinuityCounter: 1, HasPayload: true}}))
-	assert.True(t, hasDiscontinuity([]*Packet{{Header: &PacketHeader{ContinuityCounter: 15}}}, &Packet{Header: &PacketHeader{ContinuityCounter: 0}}))
+	assert.False(
+		t, hasDiscontinuity(
+			[]*Packet{{Header: &PacketHeader{ContinuityCounter: 15}}},
+			&Packet{Header: &PacketHeader{ContinuityCounter: 0, HasPayload: true}}))
+
+	assert.False(
+		t, hasDiscontinuity(
+			[]*Packet{{Header: &PacketHeader{ContinuityCounter: 15}}},
+			&Packet{Header: &PacketHeader{ContinuityCounter: 15}}))
+
+	assert.True(
+		t, hasDiscontinuity(
+			[]*Packet{{Header: &PacketHeader{ContinuityCounter: 15}}},
+			&Packet{
+				AdaptationField: &PacketAdaptationField{DiscontinuityIndicator: true},
+				Header:          &PacketHeader{ContinuityCounter: 0, HasAdaptationField: true, HasPayload: true},
+			}))
+
+	assert.True(
+		t, hasDiscontinuity(
+			[]*Packet{{Header: &PacketHeader{ContinuityCounter: 15}}},
+			&Packet{Header: &PacketHeader{ContinuityCounter: 1, HasPayload: true}}))
+
+	assert.True(
+		t, hasDiscontinuity(
+			[]*Packet{{Header: &PacketHeader{ContinuityCounter: 15}}},
+			&Packet{Header: &PacketHeader{ContinuityCounter: 0}}))
 }
 
 func TestIsSameAsPrevious(t *testing.T) {

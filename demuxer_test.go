@@ -10,7 +10,7 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/asticode/go-astikit"
+	"github.com/icza/bitio"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -46,7 +46,7 @@ func TestDemuxerNextPacket(t *testing.T) {
 
 	// Valid
 	buf := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+	w := bitio.NewWriter(buf)
 	b1, p1 := packet(*packetHeader, *packetAdaptationField, []byte("1"), true)
 	w.Write(b1)
 	b2, p2 := packet(*packetHeader, *packetAdaptationField, []byte("2"), true)
@@ -66,13 +66,13 @@ func TestDemuxerNextPacket(t *testing.T) {
 
 	// EOF
 	_, err = dmx.NextPacket()
-	assert.EqualError(t, err, ErrNoMorePackets.Error())
+	assert.ErrorIs(t, err, io.EOF)
 }
 
 func TestDemuxerNextData(t *testing.T) {
 	// Init
 	buf := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+	w := bitio.NewWriter(buf)
 	b := psiBytes()
 	b1, _ := packet(PacketHeader{ContinuityCounter: uint8(0), PayloadUnitStartIndicator: true, PID: PIDPAT}, PacketAdaptationField{}, b[:147], true)
 	w.Write(b1)
@@ -98,12 +98,12 @@ func TestDemuxerNextData(t *testing.T) {
 
 	// No more packets
 	_, err = dmx.NextData()
-	assert.EqualError(t, err, ErrNoMorePackets.Error())
+	assert.ErrorIs(t, err, io.EOF)
 }
 
 func TestDemuxerNextDataUnknownDataPackets(t *testing.T) {
 	buf := &bytes.Buffer{}
-	bufWriter := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+	bufWriter := bitio.NewWriter(buf)
 
 	// Packet that isn't a data packet (PSI or PES)
 	b1, _ := packet(PacketHeader{
@@ -119,7 +119,7 @@ func TestDemuxerNextDataUnknownDataPackets(t *testing.T) {
 		DemuxerOptPacketSize(188))
 	d, err := dmx.NextData()
 	assert.Equal(t, (*DemuxerData)(nil), d)
-	assert.EqualError(t, err, ErrNoMorePackets.Error())
+	assert.ErrorIs(t, err, io.EOF)
 }
 
 func TestDemuxerNextDataPATPMT(t *testing.T) {
@@ -174,7 +174,7 @@ func BenchmarkDemuxer_NextData(b *testing.B) {
 	b.ReportAllocs()
 
 	buf := &bytes.Buffer{}
-	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
+	w := bitio.NewWriter(buf)
 	bs := psiBytes()
 	b1, _ := packet(PacketHeader{ContinuityCounter: uint8(0), PayloadUnitStartIndicator: true, PID: PIDPAT}, PacketAdaptationField{}, bs[:147], true)
 	w.Write(b1)

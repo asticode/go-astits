@@ -3,8 +3,10 @@ package main
 import (
 	"bufio"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path"
@@ -23,7 +25,7 @@ type muxerOut struct {
 	w *bufio.Writer
 }
 
-func main() {
+func main() { // nolint:funlen,gocognit,gocyclo
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Split TS file into multiple files each holding one elementary stream")
 		fmt.Fprintf(flag.CommandLine.Output(), "%s INPUT_FILE [FLAGS]:\n", os.Args[0])
@@ -41,7 +43,7 @@ func main() {
 
 	_, err = os.Stat(*outDir)
 	if !os.IsNotExist(err) {
-		log.Fatalf("can't write to `%s': already exists", *outDir)
+		log.Fatalf("can't write to `%s': already exists", *outDir) // nolint:gocritic
 	}
 
 	if err = os.MkdirAll(*outDir, os.ModePerm); err != nil {
@@ -69,7 +71,7 @@ func main() {
 	for {
 		d, err := demux.NextData()
 		if err != nil {
-			if err == astits.ErrNoMorePackets {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			log.Fatalf("%v", err)
@@ -81,7 +83,7 @@ func main() {
 			continue
 		}
 
-		if d.PMT != nil {
+		if d.PMT != nil { // nolint:nestif
 			pmts[d.PMT.ProgramNumber] = d.PMT
 
 			gotAllPMTs = true
@@ -191,7 +193,8 @@ func main() {
 	}
 
 	timeDiff := time.Since(timeStarted)
-	log.Printf("%d bytes written at rate %.02f mb/s", bytesWritten, (float64(bytesWritten)/1024.0/1024.0)/timeDiff.Seconds())
+	log.Printf("%d bytes written at rate %.02f mb/s", bytesWritten,
+		(float64(bytesWritten)/1024.0/1024.0)/timeDiff.Seconds())
 
 	for _, f := range outfiles {
 		if err = f.w.Flush(); err != nil {

@@ -2,13 +2,13 @@ package astits
 
 import "sync"
 
-// programMap represents a program ids map
+// programMap represents a program ids map.
 type programMap struct {
 	m *sync.Mutex
-	p map[uint16]uint16 // map[ProgramMapID]ProgramNumber
+	p map[uint16]uint16 // map[ProgramMapID]ProgramNumber.
 }
 
-// newProgramMap creates a new program ids map
+// newProgramMap creates a new program ids map.
 func newProgramMap() *programMap {
 	return &programMap{
 		m: &sync.Mutex{},
@@ -16,7 +16,7 @@ func newProgramMap() *programMap {
 	}
 }
 
-// exists checks whether the program with this pid exists
+// exists checks whether the program with this pid exists.
 func (m programMap) exists(pid uint16) (ok bool) {
 	m.m.Lock()
 	defer m.m.Unlock()
@@ -24,17 +24,11 @@ func (m programMap) exists(pid uint16) (ok bool) {
 	return
 }
 
-// set sets a new program id
+// set sets a new program id.
 func (m programMap) set(pid, number uint16) {
 	m.m.Lock()
 	defer m.m.Unlock()
 	m.p[pid] = number
-}
-
-func (m programMap) unset(pid uint16) {
-	m.m.Lock()
-	defer m.m.Unlock()
-	delete(m.p, pid)
 }
 
 func (m programMap) toPATData() *PATData {

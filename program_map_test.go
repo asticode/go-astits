@@ -11,6 +11,4 @@ func TestProgramMap(t *testing.T) {
 	assert.False(t, pm.exists(1))
 	pm.set(1, 1)
 	assert.True(t, pm.exists(1))
-	pm.unset(1)
-	assert.False(t, pm.exists(1))
 }
