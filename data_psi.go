@@ -462,18 +462,42 @@ func (d *PSIData) toData(firstPacket *Packet, pid uint16) (ds []*DemuxerData) {
 		// Switch on table type
 		switch s.Header.TableID {
 		case PSITableIDNITVariant1, PSITableIDNITVariant2:
-			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, NIT: s.Syntax.Data.NIT, PID: pid})
+			var nit *NITData
+			if s.Syntax != nil {
+				nit = s.Syntax.Data.NIT
+			}
+			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, NIT: nit, PID: pid})
 		case PSITableIDPAT:
-			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PAT: s.Syntax.Data.PAT, PID: pid})
+			var pat *PATData
+			if s.Syntax != nil {
+				pat = s.Syntax.Data.PAT
+			}
+			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PAT: pat, PID: pid})
 		case PSITableIDPMT:
-			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PID: pid, PMT: s.Syntax.Data.PMT})
+			var pmt *PMTData
+			if s.Syntax != nil {
+				pmt = s.Syntax.Data.PMT
+			}
+			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PID: pid, PMT: pmt})
 		case PSITableIDSDTVariant1, PSITableIDSDTVariant2:
-			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PID: pid, SDT: s.Syntax.Data.SDT})
+			var sdt *SDTData
+			if s.Syntax != nil {
+				sdt = s.Syntax.Data.SDT
+			}
+			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PID: pid, SDT: sdt})
 		case PSITableIDTOT:
-			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PID: pid, TOT: s.Syntax.Data.TOT})
+			var tot *TOTData
+			if s.Syntax != nil {
+				tot = s.Syntax.Data.TOT
+			}
+			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PID: pid, TOT: tot})
 		}
 		if s.Header.TableID >= PSITableIDEITStart && s.Header.TableID <= PSITableIDEITEnd {
-			ds = append(ds, &DemuxerData{EIT: s.Syntax.Data.EIT, FirstPacket: firstPacket, PID: pid})
+			var eit *EITData
+			if s.Syntax != nil {
+				eit = s.Syntax.Data.EIT
+			}
+			ds = append(ds, &DemuxerData{EIT: eit, FirstPacket: firstPacket, PID: pid})
 		}
 	}
 	return
