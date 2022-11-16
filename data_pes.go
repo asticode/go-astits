@@ -131,7 +131,7 @@ func parsePESData(i *astikit.BytesIterator) (d *PESData, err error) {
 
 	// Validation
 	if dataEnd < dataStart {
-		err = fmt.Errorf("astits: parsing PES header failed: data end %d is before data start %d", dataEnd, dataStart)
+		err = fmt.Errorf("astits: data end %d is before data start %d", dataEnd, dataStart)
 		return
 	}
 

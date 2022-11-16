@@ -459,45 +459,26 @@ func parsePSISectionSyntaxData(i *astikit.BytesIterator, h *PSISectionHeader, sh
 func (d *PSIData) toData(firstPacket *Packet, pid uint16) (ds []*DemuxerData) {
 	// Loop through sections
 	for _, s := range d.Sections {
+		// No data
+		if s.Syntax == nil || s.Syntax.Data == nil {
+			continue
+		}
+
 		// Switch on table type
 		switch s.Header.TableID {
 		case PSITableIDNITVariant1, PSITableIDNITVariant2:
-			var nit *NITData
-			if s.Syntax != nil {
-				nit = s.Syntax.Data.NIT
-			}
-			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, NIT: nit, PID: pid})
+			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, NIT: s.Syntax.Data.NIT, PID: pid})
 		case PSITableIDPAT:
-			var pat *PATData
-			if s.Syntax != nil {
-				pat = s.Syntax.Data.PAT
-			}
-			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PAT: pat, PID: pid})
+			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PAT: s.Syntax.Data.PAT, PID: pid})
 		case PSITableIDPMT:
-			var pmt *PMTData
-			if s.Syntax != nil {
-				pmt = s.Syntax.Data.PMT
-			}
-			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PID: pid, PMT: pmt})
+			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PID: pid, PMT: s.Syntax.Data.PMT})
 		case PSITableIDSDTVariant1, PSITableIDSDTVariant2:
-			var sdt *SDTData
-			if s.Syntax != nil {
-				sdt = s.Syntax.Data.SDT
-			}
-			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PID: pid, SDT: sdt})
+			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PID: pid, SDT: s.Syntax.Data.SDT})
 		case PSITableIDTOT:
-			var tot *TOTData
-			if s.Syntax != nil {
-				tot = s.Syntax.Data.TOT
-			}
-			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PID: pid, TOT: tot})
+			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PID: pid, TOT: s.Syntax.Data.TOT})
 		}
 		if s.Header.TableID >= PSITableIDEITStart && s.Header.TableID <= PSITableIDEITEnd {
-			var eit *EITData
-			if s.Syntax != nil {
-				eit = s.Syntax.Data.EIT
-			}
-			ds = append(ds, &DemuxerData{EIT: eit, FirstPacket: firstPacket, PID: pid})
+			ds = append(ds, &DemuxerData{EIT: s.Syntax.Data.EIT, FirstPacket: firstPacket, PID: pid})
 		}
 	}
 	return
