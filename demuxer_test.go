@@ -194,3 +194,16 @@ func BenchmarkDemuxer_NextData(b *testing.B) {
 		}
 	}
 }
+
+func FuzzDemuxer(f *testing.F) {
+	f.Fuzz(func(t *testing.T, b []byte) {
+		r := bytes.NewReader(b)
+		dmx := NewDemuxer(context.Background(), r, DemuxerOptPacketSize(188))
+		for {
+			_, err := dmx.NextData()
+			if err == ErrNoMorePackets {
+				break
+			}
+		}
+	})
+}
