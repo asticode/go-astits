@@ -196,7 +196,6 @@ func BenchmarkDemuxer_NextData(b *testing.B) {
 }
 
 func FuzzDemuxer(f *testing.F) {
-	f.Add([]byte("content"))
 	f.Fuzz(func(t *testing.T, b []byte) {
 		r := bytes.NewReader(b)
 		dmx := NewDemuxer(context.Background(), r, DemuxerOptPacketSize(188))
