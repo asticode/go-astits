@@ -63,7 +63,7 @@ func main() {
 	}
 
 	// Create the demuxer
-	var dmx = astits.NewDemuxer(ctx, r)
+	var dmx = astits.NewDemuxer(ctx, r, astits.DemuxerOptLogger(log.Default()))
 
 	// Switch on command
 	switch cmd {
@@ -106,7 +106,9 @@ func handleSignals() {
 	signal.Notify(ch)
 	go func() {
 		for s := range ch {
-			log.Printf("Received signal %s\n", s)
+			if s != syscall.SIGURG {
+				log.Printf("Received signal %s\n", s)
+			}
 			switch s {
 			case syscall.SIGABRT, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM:
 				cancel()

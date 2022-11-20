@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
+	"github.com/asticode/go-astikit"
 )
 
 // Sync byte
@@ -23,6 +25,7 @@ var (
 type Demuxer struct {
 	ctx              context.Context
 	dataBuffer       []*DemuxerData
+	l                astikit.CompleteLogger
 	optPacketSize    int
 	optPacketsParser PacketsParser
 	packetBuffer     *packetBuffer
@@ -40,6 +43,7 @@ func NewDemuxer(ctx context.Context, r io.Reader, opts ...func(*Demuxer)) (d *De
 	// Init
 	d = &Demuxer{
 		ctx:        ctx,
+		l:          astikit.AdaptStdLogger(nil),
 		programMap: newProgramMap(),
 		r:          r,
 	}
@@ -51,6 +55,13 @@ func NewDemuxer(ctx context.Context, r io.Reader, opts ...func(*Demuxer)) (d *De
 	}
 
 	return
+}
+
+// DemuxerOptLogger returns the option to set the logger
+func DemuxerOptLogger(l astikit.StdLogger) func(*Demuxer) {
+	return func(d *Demuxer) {
+		d.l = astikit.AdaptStdLogger(l)
+	}
 }
 
 // DemuxerOptPacketSize returns the option to set the packet size
@@ -121,8 +132,9 @@ func (dmx *Demuxer) NextData() (d *DemuxerData, err error) {
 					// Parse data
 					var errParseData error
 					if ds, errParseData = parseData(ps, dmx.optPacketsParser, dmx.programMap); errParseData != nil {
-						// We need to silence this error as there may be some incomplete data here
+						// Log error as there may be some incomplete data here
 						// We still want to try to parse all packets, in case final data is complete
+						dmx.l.Error(fmt.Errorf("astits: parsing data failed: %w", errParseData))
 						continue
 					}
 
