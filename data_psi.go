@@ -459,6 +459,11 @@ func parsePSISectionSyntaxData(i *astikit.BytesIterator, h *PSISectionHeader, sh
 func (d *PSIData) toData(firstPacket *Packet, pid uint16) (ds []*DemuxerData) {
 	// Loop through sections
 	for _, s := range d.Sections {
+		// No data
+		if s.Syntax == nil || s.Syntax.Data == nil {
+			continue
+		}
+
 		// Switch on table type
 		switch s.Header.TableID {
 		case PSITableIDNITVariant1, PSITableIDNITVariant2:
