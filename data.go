@@ -1,6 +1,7 @@
 package astits
 
 import (
+	"encoding/binary"
 	"fmt"
 
 	"github.com/asticode/go-astikit"
@@ -114,4 +115,57 @@ func isPESPayload(i []byte) bool {
 
 	// Check prefix
 	return uint32(i[0])<<16|uint32(i[1])<<8|uint32(i[2]) == 1
+}
+
+// isPSIComplete checks whether we have sufficient amount of packets to parse PSI
+func isPSIComplete(ps []*Packet) bool {
+	// Get payload length
+	var l int
+	for _, p := range ps {
+		l += len(p.Payload)
+	}
+
+	// Append payload
+	var payload = make([]byte, l)
+	var o int
+	for _, p := range ps {
+		o += copy(payload[o:], p.Payload)
+	}
+
+	// Create reader
+	i := astikit.NewBytesIterator(payload)
+
+	// Get next byte
+	b, err := i.NextByte()
+	if err != nil {
+		return false
+	}
+
+	// Pointer filler bytes
+	i.Skip(int(b))
+
+	for i.HasBytesLeft() {
+
+		// Get PSI table ID
+		b, err = i.NextByte()
+		if err != nil {
+			return false
+		}
+
+		// Check whether we need to stop the parsing
+		if shouldStopPSIParsing(PSITableID(b)) {
+			break
+		}
+
+		// Get PSI section length
+		var bs []byte
+		bs, err = i.NextBytesNoCopy(2)
+		if err != nil {
+			return false
+		}
+
+		i.Skip(int(binary.BigEndian.Uint16(bs) & 0x0fff))
+	}
+
+	return i.Len() >= i.Offset()
 }
