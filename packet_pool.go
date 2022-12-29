@@ -28,7 +28,7 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 
 	// Empty buffer if we detect a discontinuity
 	if hasDiscontinuity(mps, p) {
-		mps = []*Packet{}
+		mps = make([]*Packet, 0, cap(mps))
 	}
 
 	// Throw away packet if it's the same as the previous one
@@ -39,19 +39,17 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 	// Flush buffer if new payload starts here
 	if p.Header.PayloadUnitStartIndicator {
 		ps = mps
-		mps = []*Packet{p}
-	} else {
-		mps = append(mps, p)
+		mps = make([]*Packet, 0, cap(mps))
 	}
+
+	mps = append(mps, p)
 
 	// Check if PSI payload is complete
 	if b.programMap != nil &&
-		(b.pid == PIDPAT || b.programMap.exists(b.pid)) {
-		// TODO Use partial data parsing instead
-		if _, err := parseData(mps, b.parser, b.programMap); err == nil {
-			ps = mps
-			mps = nil
-		}
+		(b.pid == PIDPAT || b.programMap.exists(b.pid)) &&
+		isPSIComplete(mps) {
+		ps = mps
+		mps = nil
 	}
 
 	b.q = mps
