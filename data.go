@@ -50,15 +50,21 @@ func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerDa
 
 	// Get payload length
 	var l int
-	for _, p := range ps {
-		l += len(p.Payload)
+	for i := range ps {
+		l += len(ps[i].Payload)
 	}
 
 	// Append payload
-	var payload = make([]byte, l)
-	var c int
-	for _, p := range ps {
-		c += copy(payload[c:], p.Payload)
+	var payload []byte
+
+	if len(ps) > 1 {
+		payload = make([]byte, l)
+		o := copy(payload, ps[0].Payload)
+		for i := range ps[1:] {
+			o += copy(payload[o:], ps[i+1].Payload)
+		}
+	} else {
+		payload = ps[0].Payload
 	}
 
 	// Create reader
@@ -118,18 +124,33 @@ func isPESPayload(i []byte) bool {
 }
 
 // isPSIComplete checks whether we have sufficient amount of packets to parse PSI
-func isPSIComplete(ps []*Packet) bool {
+func isPSIComplete(ps []*Packet, prs PacketsParser) bool {
+	// Use custom parser first
+	if prs != nil {
+		if _, skip, err := prs(ps); err != nil {
+			return false
+		} else if skip {
+			return true
+		}
+	}
+
 	// Get payload length
 	var l int
-	for _, p := range ps {
-		l += len(p.Payload)
+	for i := range ps {
+		l += len(ps[i].Payload)
 	}
 
 	// Append payload
-	var payload = make([]byte, l)
-	var o int
-	for _, p := range ps {
-		o += copy(payload[o:], p.Payload)
+	var payload []byte
+
+	if len(ps) > 1 {
+		payload = make([]byte, l)
+		o := copy(payload, ps[0].Payload)
+		for i := range ps[1:] {
+			o += copy(payload[o:], ps[i+1].Payload)
+		}
+	} else {
+		payload = ps[0].Payload
 	}
 
 	// Create reader

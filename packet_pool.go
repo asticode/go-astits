@@ -47,7 +47,7 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 	// Check if PSI payload is complete
 	if b.programMap != nil &&
 		(b.pid == PIDPAT || b.programMap.exists(b.pid)) &&
-		isPSIComplete(mps) {
+		isPSIComplete(mps, b.parser) {
 		ps = mps
 		mps = nil
 	}
@@ -94,12 +94,14 @@ func (b *packetPool) add(p *Packet) (ps []*Packet) {
 	defer b.m.Unlock()
 
 	// Make sure accumulator exists
-	if _, ok := b.b[p.Header.PID]; !ok {
-		b.b[p.Header.PID] = newPacketAccumulator(p.Header.PID, b.parser, b.programMap)
+	acc, ok := b.b[p.Header.PID]
+	if !ok {
+		acc = newPacketAccumulator(p.Header.PID, b.parser, b.programMap)
+		b.b[p.Header.PID] = acc
 	}
 
 	// Add to the accumulator
-	return b.b[p.Header.PID].add(p)
+	return acc.add(p)
 }
 
 // dump dumps the packet pool by looking for the first item with packets inside
@@ -123,12 +125,13 @@ func (b *packetPool) dump() (ps []*Packet) {
 
 // hasDiscontinuity checks whether a packet is discontinuous with a set of packets
 func hasDiscontinuity(ps []*Packet, p *Packet) bool {
-	return (p.Header.HasAdaptationField && p.AdaptationField.DiscontinuityIndicator) ||
-		(len(ps) > 0 && p.Header.HasPayload && p.Header.ContinuityCounter != (ps[len(ps)-1].Header.ContinuityCounter+1)%16) ||
-		(len(ps) > 0 && !p.Header.HasPayload && p.Header.ContinuityCounter != ps[len(ps)-1].Header.ContinuityCounter)
+	l := len(ps)
+	return (p.Header.HasAdaptationField && p.AdaptationField.DiscontinuityIndicator) || (l > 0 && ((p.Header.HasPayload && p.Header.ContinuityCounter != (ps[l-1].Header.ContinuityCounter+1)%16) ||
+		(!p.Header.HasPayload && p.Header.ContinuityCounter != ps[l-1].Header.ContinuityCounter)))
 }
 
 // isSameAsPrevious checks whether a packet is the same as the last packet of a set of packets
 func isSameAsPrevious(ps []*Packet, p *Packet) bool {
-	return len(ps) > 0 && p.Header.HasPayload && p.Header.ContinuityCounter == ps[len(ps)-1].Header.ContinuityCounter
+	l := len(ps)
+	return l > 0 && p.Header.HasPayload && p.Header.ContinuityCounter == ps[l-1].Header.ContinuityCounter
 }
