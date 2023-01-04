@@ -59,9 +59,10 @@ func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerDa
 
 	if len(ps) > 1 {
 		payload = make([]byte, l)
-		o := copy(payload, ps[0].Payload)
-		for i := range ps[1:] {
-			o += copy(payload[o:], ps[i+1].Payload)
+		var o int
+		for i := range ps {
+			copy(payload[o:], ps[i].Payload)
+			o += len(ps[i].Payload)
 		}
 	} else {
 		payload = ps[0].Payload
@@ -145,9 +146,10 @@ func isPSIComplete(ps []*Packet, prs PacketsParser) bool {
 
 	if len(ps) > 1 {
 		payload = make([]byte, l)
-		o := copy(payload, ps[0].Payload)
-		for i := range ps[1:] {
-			o += copy(payload[o:], ps[i+1].Payload)
+		var o int
+		for i := range ps {
+			copy(payload[o:], ps[i].Payload)
+			o += len(ps[i].Payload)
 		}
 	} else {
 		payload = ps[0].Payload
