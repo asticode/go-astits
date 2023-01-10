@@ -137,14 +137,14 @@ func parsePacketHeader(i *astikit.BytesIterator) (h PacketHeader, err error) {
 
 	// Create header
 	return PacketHeader{
-		ContinuityCounter:          bs[2] & 0xf,
+		ContinuityCounter:          uint8(bs[2] & 0xf),
 		HasAdaptationField:         bs[2]&0x20 > 0,
 		HasPayload:                 bs[2]&0x10 > 0,
 		PayloadUnitStartIndicator:  bs[0]&0x40 > 0,
 		PID:                        uint16(bs[0]&0x1f)<<8 | uint16(bs[1]),
 		TransportErrorIndicator:    bs[0]&0x80 > 0,
 		TransportPriority:          bs[0]&0x20 > 0,
-		TransportScramblingControl: bs[2] >> 6 & 0x3,
+		TransportScramblingControl: uint8(bs[2]) >> 6 & 0x3,
 	}, nil
 }
 
@@ -281,7 +281,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 					}
 
 					// Splice type
-					a.AdaptationExtensionField.SpliceType = b & 0xf0 >> 4
+					a.AdaptationExtensionField.SpliceType = uint8(b&0xf0) >> 4
 
 					// We need to rewind since the current byte is used by the DTS next access unit as well
 					i.Skip(-1)
