@@ -118,16 +118,7 @@ func isPESPayload(i []byte) bool {
 }
 
 // isPSIComplete checks whether we have sufficient amount of packets to parse PSI
-func isPSIComplete(ps []*Packet, prs PacketsParser) bool {
-	// Use custom parser first
-	if prs != nil {
-		if _, skip, err := prs(ps); err != nil {
-			return false
-		} else if skip {
-			return true
-		}
-	}
-
+func isPSIComplete(ps []*Packet) bool {
 	// Get payload length
 	var l int
 	for _, p := range ps {
@@ -136,9 +127,9 @@ func isPSIComplete(ps []*Packet, prs PacketsParser) bool {
 
 	// Append payload
 	var payload = make([]byte, l)
-	var c int
+	var o int
 	for _, p := range ps {
-		c += copy(payload[c:], p.Payload)
+		o += copy(payload[o:], p.Payload)
 	}
 
 	// Create reader

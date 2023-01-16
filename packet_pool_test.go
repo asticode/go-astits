@@ -21,7 +21,7 @@ func TestIsSameAsPrevious(t *testing.T) {
 }
 
 func TestPacketPool(t *testing.T) {
-	b := newPacketPool(nil, nil)
+	b := newPacketPool(nil)
 	ps := b.add(&Packet{Header: PacketHeader{ContinuityCounter: 0, HasPayload: true, PID: 1}})
 	assert.Len(t, ps, 0)
 	ps = b.add(&Packet{Header: PacketHeader{ContinuityCounter: 1, HasPayload: true, PayloadUnitStartIndicator: true, PID: 1}})
