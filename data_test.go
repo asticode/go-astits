@@ -25,7 +25,7 @@ func TestParseData(t *testing.T) {
 	assert.Equal(t, cds, ds)
 
 	// Do nothing for CAT
-	ps = []*Packet{{Header: &PacketHeader{PID: PIDCAT}}}
+	ps = []*Packet{{Header: PacketHeader{PID: PIDCAT}}}
 	ds, err = parseData(ps, nil, pm)
 	assert.NoError(t, err)
 	assert.Empty(t, ds)
@@ -34,11 +34,11 @@ func TestParseData(t *testing.T) {
 	p := pesWithHeaderBytes()
 	ps = []*Packet{
 		{
-			Header:  &PacketHeader{PID: uint16(256)},
+			Header:  PacketHeader{PID: uint16(256)},
 			Payload: p[:33],
 		},
 		{
-			Header:  &PacketHeader{PID: uint16(256)},
+			Header:  PacketHeader{PID: uint16(256)},
 			Payload: p[33:],
 		},
 	}
@@ -51,11 +51,11 @@ func TestParseData(t *testing.T) {
 	p = psiBytes()
 	ps = []*Packet{
 		{
-			Header:  &PacketHeader{PID: uint16(256)},
+			Header:  PacketHeader{PID: uint16(256)},
 			Payload: p[:33],
 		},
 		{
-			Header:  &PacketHeader{PID: uint16(256)},
+			Header:  PacketHeader{PID: uint16(256)},
 			Payload: p[33:],
 		},
 	}

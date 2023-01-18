@@ -4,22 +4,22 @@ import "sync"
 
 // programMap represents a program ids map
 type programMap struct {
-	m *sync.Mutex
+	m *sync.RWMutex
 	p map[uint16]uint16 // map[ProgramMapID]ProgramNumber
 }
 
 // newProgramMap creates a new program ids map
 func newProgramMap() *programMap {
 	return &programMap{
-		m: &sync.Mutex{},
+		m: &sync.RWMutex{},
 		p: make(map[uint16]uint16),
 	}
 }
 
 // exists checks whether the program with this pid exists
 func (m programMap) exists(pid uint16) (ok bool) {
-	m.m.Lock()
-	defer m.m.Unlock()
+	m.m.RLock()
+	defer m.m.RUnlock()
 	_, ok = m.p[pid]
 	return
 }
@@ -38,11 +38,11 @@ func (m programMap) unset(pid uint16) {
 }
 
 func (m programMap) toPATData() *PATData {
-	m.m.Lock()
-	defer m.m.Unlock()
+	m.m.RLock()
+	defer m.m.RUnlock()
 
 	d := &PATData{
-		Programs:          []*PATProgram{},
+		Programs:          make([]*PATProgram, 0, len(m.p)),
 		TransportStreamID: uint16(PSITableIDPAT),
 	}
 

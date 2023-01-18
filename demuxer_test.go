@@ -47,9 +47,9 @@ func TestDemuxerNextPacket(t *testing.T) {
 	// Valid
 	buf := &bytes.Buffer{}
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	b1, p1 := packet(*packetHeader, *packetAdaptationField, []byte("1"), true)
+	b1, p1 := packet(packetHeader, *packetAdaptationField, []byte("1"), true)
 	w.Write(b1)
-	b2, p2 := packet(*packetHeader, *packetAdaptationField, []byte("2"), true)
+	b2, p2 := packet(packetHeader, *packetAdaptationField, []byte("2"), true)
 	w.Write(b2)
 	dmx = NewDemuxer(context.Background(), bytes.NewReader(buf.Bytes()))
 
@@ -156,7 +156,7 @@ func TestDemuxerNextDataPATPMT(t *testing.T) {
 func TestDemuxerRewind(t *testing.T) {
 	r := bytes.NewReader([]byte("content"))
 	dmx := NewDemuxer(context.Background(), r)
-	dmx.packetPool.add(&Packet{Header: &PacketHeader{PID: 1}})
+	dmx.packetPool.add(&Packet{Header: PacketHeader{PID: 1}})
 	dmx.dataBuffer = append(dmx.dataBuffer, &DemuxerData{})
 	b := make([]byte, 2)
 	_, err := r.Read(b)

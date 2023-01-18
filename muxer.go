@@ -186,7 +186,7 @@ func (m *Muxer) WriteData(d *MuxerData) (int, error) {
 	for payloadBytesWritten < len(d.PES.Data) {
 		pktLen := 1 + mpegTsPacketHeaderSize // sync byte + header
 		pkt := Packet{
-			Header: &PacketHeader{
+			Header: PacketHeader{
 				ContinuityCounter:         uint8(ctx.cc.inc()),
 				HasAdaptationField:        writeAf,
 				HasPayload:                false,
@@ -360,7 +360,7 @@ func (m *Muxer) generatePAT() error {
 	wPacket := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &m.patBytes})
 
 	pkt := Packet{
-		Header: &PacketHeader{
+		Header: PacketHeader{
 			HasPayload:                true,
 			PayloadUnitStartIndicator: true,
 			PID:                       PIDPAT,
@@ -428,7 +428,7 @@ func (m *Muxer) generatePMT() error {
 	wPacket := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &m.pmtBytes})
 
 	pkt := Packet{
-		Header: &PacketHeader{
+		Header: PacketHeader{
 			HasPayload:                true,
 			PayloadUnitStartIndicator: true,
 			PID:                       pmtStartPID, // FIXME multiple programs support
