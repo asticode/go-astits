@@ -45,12 +45,12 @@ func TestParsePacket(t *testing.T) {
 	buf := &bytes.Buffer{}
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write(uint16(1)) // Invalid sync byte
-	_, err := parsePacket(astikit.NewBytesIterator(buf.Bytes()))
+	_, err := parsePacket(astikit.NewBytesIterator(buf.Bytes()), nil)
 	assert.EqualError(t, err, ErrPacketMustStartWithASyncByte.Error())
 
 	// Valid
 	b, ep := packet(packetHeader, *packetAdaptationField, []byte("payload"), true)
-	p, err := parsePacket(astikit.NewBytesIterator(b))
+	p, err := parsePacket(astikit.NewBytesIterator(b), nil)
 	assert.NoError(t, err)
 	assert.Equal(t, p, ep)
 }
@@ -89,7 +89,7 @@ func TestWritePacket_HeaderOnly(t *testing.T) {
 	// we can't just compare bytes returned by packetShort since they're not completely correct,
 	//  so we just cross-check writePacket with parsePacket
 	i := astikit.NewBytesIterator(buf.Bytes())
-	p, err := parsePacket(i)
+	p, err := parsePacket(i, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, ep, p)
 }
@@ -258,6 +258,6 @@ func BenchmarkParsePacket(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		b.ReportAllocs()
-		parsePacket(astikit.NewBytesIterator(bs))
+		parsePacket(astikit.NewBytesIterator(bs), nil)
 	}
 }

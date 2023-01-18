@@ -74,7 +74,7 @@ type PacketAdaptationExtensionField struct {
 }
 
 // parsePacket parses a packet
-func parsePacket(i *astikit.BytesIterator) (p *Packet, err error) {
+func parsePacket(i *astikit.BytesIterator, flt PacketFilter) (p *Packet, err error) {
 	// Get next byte
 	var b byte
 	if b, err = i.NextByte(); err != nil {
@@ -89,25 +89,32 @@ func parsePacket(i *astikit.BytesIterator) (p *Packet, err error) {
 	}
 
 	// Create packet
-	p = &Packet{}
+	var pkt Packet
 
 	// In case packet size is bigger than 188 bytes, we don't care for the first bytes
 	i.Seek(i.Len() - MpegTsPacketSize + 1)
 	offsetStart := i.Offset()
 
 	// Parse header
-	if p.Header, err = parsePacketHeader(i); err != nil {
+	if pkt.Header, err = parsePacketHeader(i); err != nil {
 		err = fmt.Errorf("astits: parsing packet header failed: %w", err)
 		return
 	}
 
 	// Parse adaptation field
-	if p.Header.HasAdaptationField {
-		if p.AdaptationField, err = parsePacketAdaptationField(i); err != nil {
+	if pkt.Header.HasAdaptationField {
+		if pkt.AdaptationField, err = parsePacketAdaptationField(i); err != nil {
 			err = fmt.Errorf("astits: parsing packet adaptation field failed: %w", err)
 			return
 		}
 	}
+
+	// Use optional packet filter
+	if flt != nil && flt(pkt) {
+		return
+	}
+
+	p = &pkt
 
 	// Build payload
 	if p.Header.HasPayload {

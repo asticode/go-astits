@@ -11,15 +11,17 @@ import (
 // packetBuffer represents a packet buffer
 type packetBuffer struct {
 	packetSize       int
+	filter           PacketFilter
 	r                io.Reader
 	packetReadBuffer []byte
 }
 
 // newPacketBuffer creates a new packet buffer
-func newPacketBuffer(r io.Reader, packetSize int) (pb *packetBuffer, err error) {
+func newPacketBuffer(r io.Reader, packetSize int, filter PacketFilter) (pb *packetBuffer, err error) {
 	// Init
 	pb = &packetBuffer{
 		packetSize: packetSize,
+		filter:     filter,
 		r:          r,
 	}
 
@@ -121,19 +123,23 @@ func (pb *packetBuffer) next() (p *Packet, err error) {
 		pb.packetReadBuffer = make([]byte, pb.packetSize)
 	}
 
-	if _, err = io.ReadFull(pb.r, pb.packetReadBuffer); err != nil {
-		if err == io.EOF || err == io.ErrUnexpectedEOF {
-			err = ErrNoMorePackets
-		} else {
-			err = fmt.Errorf("astits: reading %d bytes failed: %w", pb.packetSize, err)
+	// We must return some results to user even if current packet has been filtered
+	for p == nil {
+		if _, err = io.ReadFull(pb.r, pb.packetReadBuffer); err != nil {
+			if err == io.EOF || err == io.ErrUnexpectedEOF {
+				err = ErrNoMorePackets
+			} else {
+				err = fmt.Errorf("astits: reading %d bytes failed: %w", pb.packetSize, err)
+			}
+			return
 		}
-		return
+
+		// Parse packet
+		if p, err = parsePacket(astikit.NewBytesIterator(pb.packetReadBuffer), pb.filter); err != nil {
+			err = fmt.Errorf("astits: building packet failed: %w", err)
+			return
+		}
 	}
 
-	// Parse packet
-	if p, err = parsePacket(astikit.NewBytesIterator(pb.packetReadBuffer)); err != nil {
-		err = fmt.Errorf("astits: building packet failed: %w", err)
-		return
-	}
 	return
 }
