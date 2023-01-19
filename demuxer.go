@@ -43,7 +43,7 @@ type PacketsParser func(ps []*Packet) (ds []*DemuxerData, skip bool, err error)
 
 // PacketFilter executed right before pushing byte-payload to Packet-object. PacketHeader and PacketAdaptationField still be present
 // Use the skip to filter-out unwanted packets from pipeline. NextPacket() will return next unfiltered packet in query
-type PacketFilter func(p Packet) (skip bool)
+type PacketFilter func(p *Packet) (skip bool)
 
 // NewDemuxer creates a new transport stream based on a reader
 func NewDemuxer(ctx context.Context, r io.Reader, opts ...func(*Demuxer)) (d *Demuxer) {
