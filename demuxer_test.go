@@ -36,7 +36,6 @@ func TestDemuxerNew(t *testing.T) {
 	assert.Equal(t, ps, dmx.optPacketSize)
 	assert.Equal(t, fmt.Sprintf("%p", pp), fmt.Sprintf("%p", dmx.optPacketsParser))
 	assert.Equal(t, fmt.Sprintf("%p", sp), fmt.Sprintf("%p", dmx.optPacketSkipper))
-
 }
 
 func TestDemuxerNextPacket(t *testing.T) {

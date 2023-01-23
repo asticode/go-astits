@@ -124,7 +124,7 @@ func (pb *packetBuffer) next() (p *Packet, err error) {
 		pb.packetReadBuffer = make([]byte, pb.packetSize)
 	}
 
-	// We must return some results to user even if current packet has been filtered
+	// Loop to make sure we return a packet even if first packets are skipped
 	for p == nil {
 		if _, err = io.ReadFull(pb.r, pb.packetReadBuffer); err != nil {
 			if err == io.EOF || err == io.ErrUnexpectedEOF {

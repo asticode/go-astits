@@ -41,7 +41,8 @@ type Demuxer struct {
 // Use the skip returned argument to indicate whether the default process should still be executed on the set of packets
 type PacketsParser func(ps []*Packet) (ds []*DemuxerData, skip bool, err error)
 
-// Use this option if you need to filter out unwanted packets from your pipeline. NextPacket() will return the next unfiltered packet if any.
+// PacketSkipper represents an object capable of skipping a packet before parsing its payload. Its header and adaptation field is parsed and provided to the object.
+// Use this option if you need to filter out unwanted packets from your pipeline. NextPacket() will return the next unskipped packet if any.
 type PacketSkipper func(p *Packet) (skip bool)
 
 // NewDemuxer creates a new transport stream based on a reader
@@ -84,7 +85,7 @@ func DemuxerOptPacketsParser(p PacketsParser) func(*Demuxer) {
 	}
 }
 
-// DemuxerOptPacketSkipper returns the option to set the packet filter
+// DemuxerOptPacketSkipper returns the option to set the packet skipper
 func DemuxerOptPacketSkipper(s PacketSkipper) func(*Demuxer) {
 	return func(d *Demuxer) {
 		d.optPacketSkipper = s
