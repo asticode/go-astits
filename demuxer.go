@@ -23,20 +23,27 @@ var (
 // http://seidl.cs.vsb.cz/download/dvb/DVB_Poster.pdf
 // http://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.13.01_40/en_300468v011301o.pdf
 type Demuxer struct {
-	ctx              context.Context
-	dataBuffer       []*DemuxerData
-	l                astikit.CompleteLogger
+	ctx        context.Context
+	dataBuffer []*DemuxerData
+	l          astikit.CompleteLogger
+
 	optPacketSize    int
 	optPacketsParser PacketsParser
-	packetBuffer     *packetBuffer
-	packetPool       *packetPool
-	programMap       *programMap
-	r                io.Reader
+	optPacketSkipper PacketSkipper
+
+	packetBuffer *packetBuffer
+	packetPool   *packetPool
+	programMap   *programMap
+	r            io.Reader
 }
 
 // PacketsParser represents an object capable of parsing a set of packets containing a unique payload spanning over those packets
 // Use the skip returned argument to indicate whether the default process should still be executed on the set of packets
 type PacketsParser func(ps []*Packet) (ds []*DemuxerData, skip bool, err error)
+
+// PacketSkipper represents an object capable of skipping a packet before parsing its payload. Its header and adaptation field is parsed and provided to the object.
+// Use this option if you need to filter out unwanted packets from your pipeline. NextPacket() will return the next unskipped packet if any.
+type PacketSkipper func(p *Packet) (skip bool)
 
 // NewDemuxer creates a new transport stream based on a reader
 func NewDemuxer(ctx context.Context, r io.Reader, opts ...func(*Demuxer)) (d *Demuxer) {
@@ -78,6 +85,13 @@ func DemuxerOptPacketsParser(p PacketsParser) func(*Demuxer) {
 	}
 }
 
+// DemuxerOptPacketSkipper returns the option to set the packet skipper
+func DemuxerOptPacketSkipper(s PacketSkipper) func(*Demuxer) {
+	return func(d *Demuxer) {
+		d.optPacketSkipper = s
+	}
+}
+
 // NextPacket retrieves the next packet
 func (dmx *Demuxer) NextPacket() (p *Packet, err error) {
 	// Check ctx error
@@ -89,7 +103,7 @@ func (dmx *Demuxer) NextPacket() (p *Packet, err error) {
 
 	// Create packet buffer if not exists
 	if dmx.packetBuffer == nil {
-		if dmx.packetBuffer, err = newPacketBuffer(dmx.r, dmx.optPacketSize); err != nil {
+		if dmx.packetBuffer, err = newPacketBuffer(dmx.r, dmx.optPacketSize, dmx.optPacketSkipper); err != nil {
 			err = fmt.Errorf("astits: creating packet buffer failed: %w", err)
 			return
 		}
