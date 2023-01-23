@@ -2,6 +2,7 @@ package astits
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 
@@ -11,17 +12,17 @@ import (
 // packetBuffer represents a packet buffer
 type packetBuffer struct {
 	packetSize       int
-	filter           PacketFilter
+	s                PacketSkipper
 	r                io.Reader
 	packetReadBuffer []byte
 }
 
 // newPacketBuffer creates a new packet buffer
-func newPacketBuffer(r io.Reader, packetSize int, filter PacketFilter) (pb *packetBuffer, err error) {
+func newPacketBuffer(r io.Reader, packetSize int, s PacketSkipper) (pb *packetBuffer, err error) {
 	// Init
 	pb = &packetBuffer{
 		packetSize: packetSize,
-		filter:     filter,
+		s:          s,
 		r:          r,
 	}
 
@@ -135,9 +136,11 @@ func (pb *packetBuffer) next() (p *Packet, err error) {
 		}
 
 		// Parse packet
-		if p, err = parsePacket(astikit.NewBytesIterator(pb.packetReadBuffer), pb.filter); err != nil {
-			err = fmt.Errorf("astits: building packet failed: %w", err)
-			return
+		if p, err = parsePacket(astikit.NewBytesIterator(pb.packetReadBuffer), pb.s); err != nil {
+			if !errors.Is(err, errSkippedPacket) {
+				err = fmt.Errorf("astits: building packet failed: %w", err)
+				return
+			}
 		}
 	}
 

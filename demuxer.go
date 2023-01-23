@@ -29,7 +29,7 @@ type Demuxer struct {
 
 	optPacketSize    int
 	optPacketsParser PacketsParser
-	optPacketFilter  PacketFilter
+	optPacketSkipper PacketSkipper
 
 	packetBuffer *packetBuffer
 	packetPool   *packetPool
@@ -41,9 +41,8 @@ type Demuxer struct {
 // Use the skip returned argument to indicate whether the default process should still be executed on the set of packets
 type PacketsParser func(ps []*Packet) (ds []*DemuxerData, skip bool, err error)
 
-// PacketFilter executed right before pushing byte-payload to Packet-object. PacketHeader and PacketAdaptationField still be present
-// Use the skip to filter-out unwanted packets from pipeline. NextPacket() will return next unfiltered packet in query
-type PacketFilter func(p *Packet) (skip bool)
+// Use this option if you need to filter out unwanted packets from your pipeline. NextPacket() will return the next unfiltered packet if any.
+type PacketSkipper func(p *Packet) (skip bool)
 
 // NewDemuxer creates a new transport stream based on a reader
 func NewDemuxer(ctx context.Context, r io.Reader, opts ...func(*Demuxer)) (d *Demuxer) {
@@ -85,10 +84,10 @@ func DemuxerOptPacketsParser(p PacketsParser) func(*Demuxer) {
 	}
 }
 
-// DemuxerOptPacketFilter returns the option to set the packet filter
-func DemuxerOptPacketFilter(p PacketFilter) func(*Demuxer) {
+// DemuxerOptPacketSkipper returns the option to set the packet filter
+func DemuxerOptPacketSkipper(s PacketSkipper) func(*Demuxer) {
 	return func(d *Demuxer) {
-		d.optPacketFilter = p
+		d.optPacketSkipper = s
 	}
 }
 
@@ -103,7 +102,7 @@ func (dmx *Demuxer) NextPacket() (p *Packet, err error) {
 
 	// Create packet buffer if not exists
 	if dmx.packetBuffer == nil {
-		if dmx.packetBuffer, err = newPacketBuffer(dmx.r, dmx.optPacketSize, dmx.optPacketFilter); err != nil {
+		if dmx.packetBuffer, err = newPacketBuffer(dmx.r, dmx.optPacketSize, dmx.optPacketSkipper); err != nil {
 			err = fmt.Errorf("astits: creating packet buffer failed: %w", err)
 			return
 		}

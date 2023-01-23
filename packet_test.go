@@ -53,6 +53,10 @@ func TestParsePacket(t *testing.T) {
 	p, err := parsePacket(astikit.NewBytesIterator(b), nil)
 	assert.NoError(t, err)
 	assert.Equal(t, p, ep)
+
+	// Skip
+	_, err = parsePacket(astikit.NewBytesIterator(b), func(p *Packet) bool { return true })
+	assert.EqualError(t, err, errSkippedPacket.Error())
 }
 
 func TestPayloadOffset(t *testing.T) {

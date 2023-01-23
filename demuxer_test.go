@@ -31,9 +31,12 @@ func hexToBytes(in string) []byte {
 func TestDemuxerNew(t *testing.T) {
 	ps := 1
 	pp := func(ps []*Packet) (ds []*DemuxerData, skip bool, err error) { return }
-	dmx := NewDemuxer(context.Background(), nil, DemuxerOptPacketSize(ps), DemuxerOptPacketsParser(pp))
+	sp := func(p *Packet) bool { return true }
+	dmx := NewDemuxer(context.Background(), nil, DemuxerOptPacketSize(ps), DemuxerOptPacketsParser(pp), DemuxerOptPacketSkipper(sp))
 	assert.Equal(t, ps, dmx.optPacketSize)
 	assert.Equal(t, fmt.Sprintf("%p", pp), fmt.Sprintf("%p", dmx.optPacketsParser))
+	assert.Equal(t, fmt.Sprintf("%p", sp), fmt.Sprintf("%p", dmx.optPacketSkipper))
+
 }
 
 func TestDemuxerNextPacket(t *testing.T) {
