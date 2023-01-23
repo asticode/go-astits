@@ -1,6 +1,7 @@
 package astits
 
 import (
+	"errors"
 	"fmt"
 	"github.com/asticode/go-astikit"
 )
@@ -18,6 +19,8 @@ const (
 	mpegTsPacketHeaderSize = 3
 	pcrBytesSize           = 6
 )
+
+var errSkippedPacket = errors.New("astits: skipped packet")
 
 // Packet represents a packet
 // https://en.wikipedia.org/wiki/MPEG_transport_stream
@@ -74,7 +77,7 @@ type PacketAdaptationExtensionField struct {
 }
 
 // parsePacket parses a packet
-func parsePacket(i *astikit.BytesIterator) (p *Packet, err error) {
+func parsePacket(i *astikit.BytesIterator, s PacketSkipper) (p *Packet, err error) {
 	// Get next byte
 	var b byte
 	if b, err = i.NextByte(); err != nil {
@@ -107,6 +110,11 @@ func parsePacket(i *astikit.BytesIterator) (p *Packet, err error) {
 			err = fmt.Errorf("astits: parsing packet adaptation field failed: %w", err)
 			return
 		}
+	}
+
+	// Skip packet
+	if s != nil && s(p) {
+		return nil, errSkippedPacket
 	}
 
 	// Build payload
