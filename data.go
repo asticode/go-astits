@@ -3,6 +3,8 @@ package astits
 import (
 	"encoding/binary"
 	"fmt"
+	"golang.org/x/exp/slices"
+	"sync"
 
 	"github.com/asticode/go-astikit"
 )
@@ -14,6 +16,13 @@ const (
 	PIDTSDT uint16 = 0x2    // Transport Stream Description Table (TSDT) contains descriptors related to the overall transport stream
 	PIDNull uint16 = 0x1fff // Null Packet (used for fixed bandwidth padding)
 )
+
+var poolOfData = sync.Pool{
+	New: func() interface{} {
+		d := make([]byte, 0, 1024)
+		return &d
+	},
+}
 
 // DemuxerData represents a data parsed by Demuxer
 type DemuxerData struct {
@@ -37,6 +46,9 @@ type MuxerData struct {
 
 // parseData parses a payload spanning over multiple packets and returns a set of data
 func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerData, err error) {
+	// Return packet slice to pool after parsing is complete
+	defer poolOfPacketSlices.Put(&ps)
+
 	// Use custom parser first
 	if prs != nil {
 		var skip bool
@@ -54,8 +66,11 @@ func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerDa
 		l += len(p.Payload)
 	}
 
+	// Get slice for payload from pool than grow and reset it as needed
+	payload := slices.Grow(*(poolOfData.Get().(*[]byte)), l)[:l]
+	defer poolOfData.Put(&payload)
+
 	// Append payload
-	var payload = make([]byte, l)
 	var c int
 	for _, p := range ps {
 		c += copy(payload[c:], p.Payload)
@@ -66,6 +81,12 @@ func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerDa
 
 	// Parse PID
 	pid := ps[0].Header.PID
+
+	// Copy first packet headers, so we can safely deallocate original payload
+	fp := &Packet{
+		Header:          ps[0].Header,
+		AdaptationField: ps[0].AdaptationField,
+	}
 
 	// Parse payload
 	if pid == PIDCAT {
@@ -80,7 +101,7 @@ func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerDa
 		}
 
 		// Append data
-		ds = psiData.toData(ps[0], pid)
+		ds = psiData.toData(fp, pid)
 	} else if isPESPayload(payload) {
 		// Parse PES data
 		var pesData *PESData
@@ -90,11 +111,13 @@ func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerDa
 		}
 
 		// Append data
-		ds = append(ds, &DemuxerData{
-			FirstPacket: ps[0],
-			PES:         pesData,
-			PID:         pid,
-		})
+		ds = []*DemuxerData{
+			{
+				FirstPacket: fp,
+				PES:         pesData,
+				PID:         pid,
+			},
+		}
 	}
 	return
 }
@@ -125,8 +148,11 @@ func isPSIComplete(ps []*Packet) bool {
 		l += len(p.Payload)
 	}
 
+	// Get slice for payload from pool than grow and reset it as needed
+	payload := slices.Grow(*(poolOfData.Get().(*[]byte)), l)[:l]
+	defer poolOfData.Put(&payload)
+
 	// Append payload
-	var payload = make([]byte, l)
 	var o int
 	for _, p := range ps {
 		o += copy(payload[o:], p.Payload)

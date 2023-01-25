@@ -44,7 +44,12 @@ func TestParseData(t *testing.T) {
 	}
 	ds, err = parseData(ps, nil, pm)
 	assert.NoError(t, err)
-	assert.Equal(t, []*DemuxerData{{FirstPacket: ps[0], PES: pesWithHeader(), PID: uint16(256)}}, ds)
+	assert.Equal(t, []*DemuxerData{
+		{
+			FirstPacket: &Packet{Header: ps[0].Header, AdaptationField: ps[0].AdaptationField},
+			PES:         pesWithHeader(),
+			PID:         uint16(256),
+		}}, ds)
 
 	// PSI
 	pm.set(uint16(256), uint16(1))
@@ -61,7 +66,10 @@ func TestParseData(t *testing.T) {
 	}
 	ds, err = parseData(ps, nil, pm)
 	assert.NoError(t, err)
-	assert.Equal(t, psi.toData(ps[0], uint16(256)), ds)
+	assert.Equal(t, psi.toData(
+		&Packet{Header: ps[0].Header, AdaptationField: ps[0].AdaptationField},
+		uint16(256),
+	), ds)
 }
 
 func TestIsPSIPayload(t *testing.T) {

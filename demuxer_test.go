@@ -95,7 +95,10 @@ func TestDemuxerNextData(t *testing.T) {
 			ds = append(ds, d)
 		}
 	}
-	assert.Equal(t, psi.toData(p, PIDPAT), ds)
+	assert.Equal(t, psi.toData(
+		&Packet{Header: p.Header, AdaptationField: p.AdaptationField},
+		PIDPAT,
+	), ds)
 	assert.Equal(t, map[uint16]uint16{0x3: 0x2, 0x5: 0x4}, dmx.programMap.p)
 
 	// No more packets
@@ -184,11 +187,10 @@ func BenchmarkDemuxer_NextData(b *testing.B) {
 	w.Write(b2)
 
 	r := bytes.NewReader(buf.Bytes())
+	dmx := NewDemuxer(context.Background(), r)
 
 	for i := 0; i < b.N; i++ {
 		r.Seek(0, io.SeekStart)
-		dmx := NewDemuxer(context.Background(), r)
-
 		for _, s := range psi.Sections {
 			if !s.Header.TableID.isUnknown() {
 				dmx.NextData()
