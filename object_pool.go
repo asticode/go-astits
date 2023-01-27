@@ -2,45 +2,55 @@ package astits
 
 import "sync"
 
-var poolOfPacketSlices = &packetSlicesPool{
+// poolOfPacketSlice global variable is used to ease access to pool from any place of the code
+var poolOfPacketSlice = &poolPacketSlice{
 	sp: sync.Pool{
 		New: func() interface{} {
-			// Prepare slice of somewhat sensible initial size to minimise calls to runtime.growslice
+			// Prepare the slice of somewhat sensible initial size to minimise calls to runtime.growslice
 			ps := make([]*Packet, 0, 64)
 			return &ps
 		},
 	},
 }
 
-type packetSlicesPool struct {
-	sp sync.Pool
-}
-
-func (psp *packetSlicesPool) get() []*Packet {
-	// Reset slice length to use with append
-	return (*(psp.sp.Get().(*[]*Packet)))[:0]
-}
-
-func (psp *packetSlicesPool) put(ps []*Packet) {
-	psp.sp.Put(&ps)
-}
-
-var poolOfData = &tempDataPool{
+// poolOfTempPayload global variable is used to ease access to pool from any place of the code
+var poolOfTempPayload = &poolTempPayload{
 	sp: sync.Pool{
 		New: func() interface{} {
-			// Prepare slice of somewhat sensible initial size to minimise calls to runtime.growslice
+			// Prepare the slice of somewhat sensible initial size to minimize calls to runtime.growslice
 			d := make([]byte, 0, 1024)
 			return &d
 		},
 	},
 }
 
-type tempDataPool struct {
+// poolPacketSlice is a pool of packet references slices
+// you should use it whenever this kind of object created or destroyed
+type poolPacketSlice struct {
 	sp sync.Pool
 }
 
-func (tdp *tempDataPool) get(size int) (payload []byte) {
-	payload = *(tdp.sp.Get().(*[]byte))
+// get returns the slice of packet references of a zero length and some capacity
+func (pps *poolPacketSlice) get() []*Packet {
+	// Reset slice length to use with append
+	return (*(pps.sp.Get().(*[]*Packet)))[:0]
+}
+
+// put returns reference to packet slice back to pool
+// don't use packet slice after a call to put
+func (pps *poolPacketSlice) put(ps []*Packet) {
+	pps.sp.Put(&ps)
+}
+
+// poolTempPayload is a pool for temporary payload in parseData()
+// don't use it anywhere else to avoid pool pollution
+type poolTempPayload struct {
+	sp sync.Pool
+}
+
+// get returns the byte slice of a 'size' length
+func (ptp *poolTempPayload) get(size int) (payload []byte) {
+	payload = *(ptp.sp.Get().(*[]byte))
 	// Reset slice length or grow it to requested size to use with copy
 	if cap(payload) >= size {
 		payload = payload[:size]
@@ -51,6 +61,8 @@ func (tdp *tempDataPool) get(size int) (payload []byte) {
 	return
 }
 
-func (tdp *tempDataPool) put(payload []byte) {
-	tdp.sp.Put(&payload)
+// put returns reference to the payload slice back to pool
+// don't use the payload after a call to put
+func (ptp *poolTempPayload) put(payload []byte) {
+	ptp.sp.Put(&payload)
 }

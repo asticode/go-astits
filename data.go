@@ -37,7 +37,7 @@ type MuxerData struct {
 // parseData parses a payload spanning over multiple packets and returns a set of data
 func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerData, err error) {
 	// Return packet slice to pool after parsing is complete
-	defer poolOfPacketSlices.put(ps)
+	defer poolOfPacketSlice.put(ps)
 
 	// Use custom parser first
 	if prs != nil {
@@ -56,9 +56,9 @@ func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerDa
 		l += len(p.Payload)
 	}
 
-	// Get slice for payload from pool than grow and reset it as needed
-	payload := poolOfData.get(l)
-	defer poolOfData.put(payload)
+	// Get the slice for payload from pool
+	payload := poolOfTempPayload.get(l)
+	defer poolOfTempPayload.put(payload)
 
 	// Append payload
 	var c int
@@ -138,9 +138,9 @@ func isPSIComplete(ps []*Packet) bool {
 		l += len(p.Payload)
 	}
 
-	// Get slice for payload from pool than grow and reset it as needed
-	payload := poolOfData.get(l)
-	defer poolOfData.put(payload)
+	// Get the slice for payload from pool
+	payload := poolOfTempPayload.get(l)
+	defer poolOfTempPayload.put(payload)
 
 	// Append payload
 	var o int
