@@ -3,9 +3,6 @@ package astits
 import (
 	"encoding/binary"
 	"fmt"
-	"golang.org/x/exp/slices"
-	"sync"
-
 	"github.com/asticode/go-astikit"
 )
 
@@ -16,13 +13,6 @@ const (
 	PIDTSDT uint16 = 0x2    // Transport Stream Description Table (TSDT) contains descriptors related to the overall transport stream
 	PIDNull uint16 = 0x1fff // Null Packet (used for fixed bandwidth padding)
 )
-
-var poolOfData = sync.Pool{
-	New: func() interface{} {
-		d := make([]byte, 0, 1024)
-		return &d
-	},
-}
 
 // DemuxerData represents a data parsed by Demuxer
 type DemuxerData struct {
@@ -47,7 +37,7 @@ type MuxerData struct {
 // parseData parses a payload spanning over multiple packets and returns a set of data
 func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerData, err error) {
 	// Return packet slice to pool after parsing is complete
-	defer poolOfPacketSlices.Put(&ps)
+	defer poolOfPacketSlices.put(ps)
 
 	// Use custom parser first
 	if prs != nil {
@@ -67,8 +57,8 @@ func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerDa
 	}
 
 	// Get slice for payload from pool than grow and reset it as needed
-	payload := slices.Grow(*(poolOfData.Get().(*[]byte)), l)[:l]
-	defer poolOfData.Put(&payload)
+	payload := poolOfData.get(l)
+	defer poolOfData.put(payload)
 
 	// Append payload
 	var c int
@@ -149,8 +139,8 @@ func isPSIComplete(ps []*Packet) bool {
 	}
 
 	// Get slice for payload from pool than grow and reset it as needed
-	payload := slices.Grow(*(poolOfData.Get().(*[]byte)), l)[:l]
-	defer poolOfData.Put(&payload)
+	payload := poolOfData.get(l)
+	defer poolOfData.put(payload)
 
 	// Append payload
 	var o int

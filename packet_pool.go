@@ -1,18 +1,8 @@
 package astits
 
 import (
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
-	"sync"
+	"sort"
 )
-
-var poolOfPacketSlices = sync.Pool{
-	New: func() interface{} {
-		// Prepare slice of somewhat sensible initial size to minimise calls to runtime.growslice
-		ps := make([]*Packet, 0, 64)
-		return &ps
-	},
-}
 
 // packetAccumulator keeps track of packets for a single PID and decides when to flush them
 type packetAccumulator struct {
@@ -39,7 +29,7 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 		if cap(mps) > 0 {
 			mps = mps[:0]
 		} else {
-			mps = (*(poolOfPacketSlices.Get().(*[]*Packet)))[:0]
+			mps = poolOfPacketSlices.get()
 		}
 	}
 
@@ -52,7 +42,7 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 	if p.Header.PayloadUnitStartIndicator {
 		ps = mps
 		// Get new slice from pool and reset it
-		mps = (*(poolOfPacketSlices.Get().(*[]*Packet)))[:0]
+		mps = poolOfPacketSlices.get()
 	}
 
 	mps = append(mps, p)
@@ -111,11 +101,14 @@ func (b *packetPool) add(p *Packet) (ps []*Packet) {
 
 // dump dumps the packet pool by looking for the first item with packets inside
 func (b *packetPool) dump() (ps []*Packet) {
-	keys := maps.Keys(b.b)
-	slices.Sort(keys)
+	var keys []int
+	for k := range b.b {
+		keys = append(keys, int(k))
+	}
+	sort.Ints(keys)
 	for _, k := range keys {
-		ps = b.b[k].q
-		delete(b.b, k)
+		ps = b.b[uint32(k)].q
+		delete(b.b, uint32(k))
 		if len(ps) > 0 {
 			return
 		}
