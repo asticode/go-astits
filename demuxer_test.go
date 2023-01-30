@@ -99,7 +99,7 @@ func TestDemuxerNextData(t *testing.T) {
 		&Packet{Header: p.Header, AdaptationField: p.AdaptationField},
 		PIDPAT,
 	), ds)
-	assert.Equal(t, map[uint16]uint16{0x3: 0x2, 0x5: 0x4}, dmx.programMap.p)
+	assert.Equal(t, map[uint32]uint16{0x3: 0x2, 0x5: 0x4}, dmx.programMap.p)
 
 	// No more packets
 	_, err = dmx.NextData()

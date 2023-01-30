@@ -45,7 +45,7 @@ type Muxer struct {
 	buf       bytes.Buffer
 	bufWriter *astikit.BitsWriter
 
-	esContexts              map[uint16]*esContext
+	esContexts              map[uint32]*esContext
 	tablesRetransmitCounter int
 }
 
@@ -90,7 +90,7 @@ func NewMuxer(ctx context.Context, w io.Writer, opts ...func(*Muxer)) *Muxer {
 		patCC: newWrappingCounter(0b1111),
 		pmtCC: newWrappingCounter(0b1111),
 
-		esContexts: map[uint16]*esContext{},
+		esContexts: map[uint32]*esContext{},
 	}
 
 	m.bufWriter = astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &m.buf})
@@ -125,7 +125,7 @@ func (m *Muxer) AddElementaryStream(es PMTElementaryStream) error {
 
 	m.pmt.ElementaryStreams = append(m.pmt.ElementaryStreams, &es)
 
-	m.esContexts[es.ElementaryPID] = newEsContext(&es)
+	m.esContexts[uint32(es.ElementaryPID)] = newEsContext(&es)
 	// invalidate pmt cache
 	m.pmtBytes.Reset()
 	m.pmtUpdated = true
@@ -146,7 +146,7 @@ func (m *Muxer) RemoveElementaryStream(pid uint16) error {
 	}
 
 	m.pmt.ElementaryStreams = append(m.pmt.ElementaryStreams[:foundIdx], m.pmt.ElementaryStreams[foundIdx+1:]...)
-	delete(m.esContexts, pid)
+	delete(m.esContexts, uint32(pid))
 	m.pmtBytes.Reset()
 	m.pmtUpdated = true
 	return nil
@@ -162,7 +162,7 @@ func (m *Muxer) SetPCRPID(pid uint16) {
 // Currently only PES packets are supported
 // Be aware that after successful call WriteData will set d.AdaptationField.StuffingLength value to zero
 func (m *Muxer) WriteData(d *MuxerData) (int, error) {
-	ctx, ok := m.esContexts[d.PID]
+	ctx, ok := m.esContexts[uint32(d.PID)]
 	if !ok {
 		return 0, ErrPIDNotFound
 	}

@@ -25,7 +25,7 @@ var poolOfTempPayload = &poolTempPayload{
 }
 
 // poolPacketSlice is a pool of packet references slices
-// you should use it whenever this kind of object created or destroyed
+// You should use it whenever this kind of object created or destroyed
 type poolPacketSlice struct {
 	sp sync.Pool
 }
@@ -37,13 +37,13 @@ func (pps *poolPacketSlice) get() []*Packet {
 }
 
 // put returns reference to packet slice back to pool
-// don't use packet slice after a call to put
+// Don't use packet slice after a call to put
 func (pps *poolPacketSlice) put(ps []*Packet) {
 	pps.sp.Put(&ps)
 }
 
 // poolTempPayload is a pool for temporary payload in parseData()
-// don't use it anywhere else to avoid pool pollution
+// Don't use it anywhere else to avoid pool pollution
 type poolTempPayload struct {
 	sp sync.Pool
 }
@@ -51,7 +51,7 @@ type poolTempPayload struct {
 // get returns the byte slice of a 'size' length
 func (ptp *poolTempPayload) get(size int) (payload []byte) {
 	payload = *(ptp.sp.Get().(*[]byte))
-	// Reset slice length or grow it to requested size to use with copy
+	// Reset slice length or grow it to requested size for use with copy
 	if cap(payload) >= size {
 		payload = payload[:size]
 	} else {
@@ -62,7 +62,7 @@ func (ptp *poolTempPayload) get(size int) (payload []byte) {
 }
 
 // put returns reference to the payload slice back to pool
-// don't use the payload after a call to put
+// Don't use the payload after a call to put
 func (ptp *poolTempPayload) put(payload []byte) {
 	ptp.sp.Put(&payload)
 }
