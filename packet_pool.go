@@ -25,11 +25,11 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 
 	// Empty buffer if we detect a discontinuity
 	if hasDiscontinuity(mps, p) {
-		// Reset current slice or get new from pool
+		// Reset current slice or make new
 		if cap(mps) > 0 {
 			mps = mps[:0]
 		} else {
-			mps = poolOfPacketSlice.get()
+			mps = make([]*Packet, 0, 10)
 		}
 	}
 
@@ -41,8 +41,7 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 	// Flush buffer if new payload starts here
 	if p.Header.PayloadUnitStartIndicator {
 		ps = mps
-		// Get new slice from pool
-		mps = poolOfPacketSlice.get()
+		mps = make([]*Packet, 0, cap(mps))
 	}
 
 	mps = append(mps, p)
