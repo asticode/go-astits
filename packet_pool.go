@@ -48,7 +48,7 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 
 	// Check if PSI payload is complete
 	if b.programMap != nil &&
-		(b.pid == PIDPAT || b.programMap.exists(b.pid)) &&
+		(b.pid == PIDPAT || b.programMap.existsUnlocked(b.pid)) &&
 		isPSIComplete(mps) {
 		ps = mps
 		mps = nil
@@ -74,8 +74,8 @@ func newPacketPool(programMap *programMap) *packetPool {
 	}
 }
 
-// add adds a new packet to the pool
-func (b *packetPool) add(p *Packet) (ps []*Packet) {
+// addUnlocked adds a new packet to the pool
+func (b *packetPool) addUnlocked(p *Packet) (ps []*Packet) {
 	// Throw away packet if error indicator
 	if p.Header.TransportErrorIndicator {
 		return
@@ -98,8 +98,8 @@ func (b *packetPool) add(p *Packet) (ps []*Packet) {
 	return acc.add(p)
 }
 
-// dump dumps the packet pool by looking for the first item with packets inside
-func (b *packetPool) dump() (ps []*Packet) {
+// dumpUnlocked dumps the packet pool by looking for the first item with packets inside
+func (b *packetPool) dumpUnlocked() (ps []*Packet) {
 	var keys []int
 	for k := range b.b {
 		keys = append(keys, int(k))

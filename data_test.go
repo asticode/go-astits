@@ -52,7 +52,7 @@ func TestParseData(t *testing.T) {
 		}}, ds)
 
 	// PSI
-	pm.set(uint16(256), uint16(1))
+	pm.setUnlocked(uint16(256), uint16(1))
 	p = psiBytes()
 	ps = []*Packet{
 		{
@@ -81,7 +81,7 @@ func TestIsPSIPayload(t *testing.T) {
 		}
 	}
 	assert.Equal(t, []int{0, 16, 17, 18, 19, 20, 30, 31}, pids)
-	pm.set(uint16(1), uint16(0))
+	pm.setUnlocked(uint16(1), uint16(0))
 	assert.True(t, isPSIPayload(uint16(1), pm))
 }
 

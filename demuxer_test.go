@@ -161,7 +161,7 @@ func TestDemuxerNextDataPATPMT(t *testing.T) {
 func TestDemuxerRewind(t *testing.T) {
 	r := bytes.NewReader([]byte("content"))
 	dmx := NewDemuxer(context.Background(), r)
-	dmx.packetPool.add(&Packet{Header: PacketHeader{PID: 1}})
+	dmx.packetPool.addUnlocked(&Packet{Header: PacketHeader{PID: 1}})
 	dmx.dataBuffer = append(dmx.dataBuffer, &DemuxerData{})
 	b := make([]byte, 2)
 	_, err := r.Read(b)

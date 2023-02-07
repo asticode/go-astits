@@ -12,22 +12,22 @@ func newProgramMap() *programMap {
 	}
 }
 
-// exists checks whether the program with this pid exists
-func (m programMap) exists(pid uint16) (ok bool) {
+// existsUnlocked checks whether the program with this pid exists
+func (m programMap) existsUnlocked(pid uint16) (ok bool) {
 	_, ok = m.p[uint32(pid)]
 	return
 }
 
-// set sets a new program id
-func (m programMap) set(pid, number uint16) {
+// setUnlocked sets a new program id
+func (m programMap) setUnlocked(pid, number uint16) {
 	m.p[uint32(pid)] = number
 }
 
-func (m programMap) unset(pid uint16) {
+func (m programMap) unsetUnlocked(pid uint16) {
 	delete(m.p, uint32(pid))
 }
 
-func (m programMap) toPATData() *PATData {
+func (m programMap) toPATDataUnlocked() *PATData {
 	d := &PATData{
 		Programs:          make([]*PATProgram, 0, len(m.p)),
 		TransportStreamID: uint16(PSITableIDPAT),

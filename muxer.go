@@ -97,7 +97,7 @@ func NewMuxer(ctx context.Context, w io.Writer, opts ...func(*Muxer)) *Muxer {
 	m.bitsWriter = astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: m.w})
 
 	// TODO multiple programs support
-	m.pm.set(pmtStartPID, programNumberStart)
+	m.pm.setUnlocked(pmtStartPID, programNumberStart)
 	m.pmUpdated = true
 
 	for _, opt := range opts {
@@ -320,7 +320,7 @@ func (m *Muxer) WriteTables() (int, error) {
 }
 
 func (m *Muxer) generatePAT() error {
-	d := m.pm.toPATData()
+	d := m.pm.toPATDataUnlocked()
 
 	versionNumber := m.patVersion.get()
 	if m.pmUpdated {

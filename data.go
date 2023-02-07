@@ -112,7 +112,7 @@ func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerDa
 // isPSIPayload checks whether the payload is a PSI one
 func isPSIPayload(pid uint16, pm *programMap) bool {
 	return pid == PIDPAT || // PAT
-		pm.exists(pid) || // PMT
+		pm.existsUnlocked(pid) || // PMT
 		((pid >= 0x10 && pid <= 0x14) || (pid >= 0x1e && pid <= 0x1f)) //DVB
 }
 
