@@ -54,8 +54,8 @@ func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerDa
 	}
 
 	// Get the slice for payload from pool
-	payload := poolOfTempPayload.get(l)
-	defer poolOfTempPayload.put(payload)
+	payload := bytesPool.get(l)
+	defer bytesPool.put(payload)
 
 	// Append payload
 	var c int
@@ -136,8 +136,8 @@ func isPSIComplete(ps []*Packet) bool {
 	}
 
 	// Get the slice for payload from pool
-	payload := poolOfTempPayload.get(l)
-	defer poolOfTempPayload.put(payload)
+	payload := bytesPool.get(l)
+	defer bytesPool.put(payload)
 
 	// Append payload
 	var o int

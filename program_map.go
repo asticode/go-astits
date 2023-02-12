@@ -2,6 +2,7 @@ package astits
 
 // programMap represents a program ids map
 type programMap struct {
+	// We use map[uint32] instead map[uint16] as go runtime provide optimized hash functions for (u)int32/64 keys
 	p map[uint32]uint16 // map[ProgramMapID]ProgramNumber
 }
 

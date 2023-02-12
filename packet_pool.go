@@ -60,6 +60,7 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 
 // packetPool represents a queue of packets for each PID in the stream
 type packetPool struct {
+	// We use map[uint32] instead map[uint16] as go runtime provide optimized hash functions for (u)int32/64 keys
 	b map[uint32]*packetAccumulator // Indexed by PID
 
 	programMap *programMap

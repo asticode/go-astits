@@ -45,6 +45,7 @@ type Muxer struct {
 	buf       bytes.Buffer
 	bufWriter *astikit.BitsWriter
 
+	// We use map[uint32] instead map[uint16] as go runtime provide optimized hash functions for (u)int32/64 keys
 	esContexts              map[uint32]*esContext
 	tablesRetransmitCounter int
 }
