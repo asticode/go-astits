@@ -7,15 +7,15 @@ var bytesPool = &bytesPooler{
 	sp: sync.Pool{
 		New: func() interface{} {
 			// Prepare the slice of somewhat sensible initial size to minimize calls to runtime.growslice
-			return &tempPayload{
+			return &bytesPoolItem{
 				s: make([]byte, 0, 1024),
 			}
 		},
 	},
 }
 
-// tempPayload is an object containing payload slice
-type tempPayload struct {
+// bytesPoolItem is an object containing payload slice
+type bytesPoolItem struct {
 	s []byte
 }
 
@@ -25,9 +25,9 @@ type bytesPooler struct {
 	sp sync.Pool
 }
 
-// get returns the tempPayload object with byte slice of a 'size' length
-func (bp *bytesPooler) get(size int) (payload *tempPayload) {
-	payload = bp.sp.Get().(*tempPayload)
+// get returns the bytesPoolItem object with byte slice of a 'size' length
+func (bp *bytesPooler) get(size int) (payload *bytesPoolItem) {
+	payload = bp.sp.Get().(*bytesPoolItem)
 	// Reset slice length or grow it to requested size for use with copy
 	if cap(payload.s) >= size {
 		payload.s = payload.s[:size]
@@ -40,6 +40,6 @@ func (bp *bytesPooler) get(size int) (payload *tempPayload) {
 
 // put returns reference to the payload slice back to pool
 // Don't use the payload after a call to put
-func (bp *bytesPooler) put(payload *tempPayload) {
+func (bp *bytesPooler) put(payload *bytesPoolItem) {
 	bp.sp.Put(payload)
 }
