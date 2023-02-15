@@ -139,7 +139,7 @@ func (dmx *Demuxer) NextData() (d *DemuxerData, err error) {
 			if err == ErrNoMorePackets {
 				for {
 					// Dump packet pool
-					if ps = dmx.packetPool.dump(); len(ps) == 0 {
+					if ps = dmx.packetPool.dumpUnlocked(); len(ps) == 0 {
 						break
 					}
 
@@ -165,7 +165,7 @@ func (dmx *Demuxer) NextData() (d *DemuxerData, err error) {
 		}
 
 		// Add packet to the pool
-		if ps = dmx.packetPool.add(p); len(ps) == 0 {
+		if ps = dmx.packetPool.addUnlocked(p); len(ps) == 0 {
 			continue
 		}
 
@@ -195,7 +195,7 @@ func (dmx *Demuxer) updateData(ds []*DemuxerData) (d *DemuxerData) {
 				for _, pgm := range v.PAT.Programs {
 					// Program number 0 is reserved to NIT
 					if pgm.ProgramNumber > 0 {
-						dmx.programMap.set(pgm.ProgramMapID, pgm.ProgramNumber)
+						dmx.programMap.setUnlocked(pgm.ProgramMapID, pgm.ProgramNumber)
 					}
 				}
 			}

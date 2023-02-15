@@ -3,7 +3,6 @@ package astits
 import (
 	"encoding/binary"
 	"fmt"
-
 	"github.com/asticode/go-astikit"
 )
 
@@ -54,18 +53,27 @@ func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerDa
 		l += len(p.Payload)
 	}
 
+	// Get the slice for payload from pool
+	payload := bytesPool.get(l)
+	defer bytesPool.put(payload)
+
 	// Append payload
-	var payload = make([]byte, l)
 	var c int
 	for _, p := range ps {
-		c += copy(payload[c:], p.Payload)
+		c += copy(payload.s[c:], p.Payload)
 	}
 
 	// Create reader
-	i := astikit.NewBytesIterator(payload)
+	i := astikit.NewBytesIterator(payload.s)
 
 	// Parse PID
 	pid := ps[0].Header.PID
+
+	// Copy first packet headers, so we can safely deallocate original payload
+	fp := &Packet{
+		Header:          ps[0].Header,
+		AdaptationField: ps[0].AdaptationField,
+	}
 
 	// Parse payload
 	if pid == PIDCAT {
@@ -80,8 +88,8 @@ func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerDa
 		}
 
 		// Append data
-		ds = psiData.toData(ps[0], pid)
-	} else if isPESPayload(payload) {
+		ds = psiData.toData(fp, pid)
+	} else if isPESPayload(payload.s) {
 		// Parse PES data
 		var pesData *PESData
 		if pesData, err = parsePESData(i); err != nil {
@@ -90,11 +98,13 @@ func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerDa
 		}
 
 		// Append data
-		ds = append(ds, &DemuxerData{
-			FirstPacket: ps[0],
-			PES:         pesData,
-			PID:         pid,
-		})
+		ds = []*DemuxerData{
+			{
+				FirstPacket: fp,
+				PES:         pesData,
+				PID:         pid,
+			},
+		}
 	}
 	return
 }
@@ -102,7 +112,7 @@ func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerDa
 // isPSIPayload checks whether the payload is a PSI one
 func isPSIPayload(pid uint16, pm *programMap) bool {
 	return pid == PIDPAT || // PAT
-		pm.exists(pid) || // PMT
+		pm.existsUnlocked(pid) || // PMT
 		((pid >= 0x10 && pid <= 0x14) || (pid >= 0x1e && pid <= 0x1f)) //DVB
 }
 
@@ -125,15 +135,18 @@ func isPSIComplete(ps []*Packet) bool {
 		l += len(p.Payload)
 	}
 
+	// Get the slice for payload from pool
+	payload := bytesPool.get(l)
+	defer bytesPool.put(payload)
+
 	// Append payload
-	var payload = make([]byte, l)
 	var o int
 	for _, p := range ps {
-		o += copy(payload[o:], p.Payload)
+		o += copy(payload.s[o:], p.Payload)
 	}
 
 	// Create reader
-	i := astikit.NewBytesIterator(payload)
+	i := astikit.NewBytesIterator(payload.s)
 
 	// Get next byte
 	b, err := i.NextByte()

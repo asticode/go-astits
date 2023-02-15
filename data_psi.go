@@ -458,6 +458,7 @@ func parsePSISectionSyntaxData(i *astikit.BytesIterator, h *PSISectionHeader, sh
 // toData parses the PSI tables and returns a set of DemuxerData
 func (d *PSIData) toData(firstPacket *Packet, pid uint16) (ds []*DemuxerData) {
 	// Loop through sections
+	ds = make([]*DemuxerData, 0, len(d.Sections))
 	for _, s := range d.Sections {
 		// No data
 		if s.Syntax == nil || s.Syntax.Data == nil {
