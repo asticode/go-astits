@@ -2,7 +2,6 @@ package astits
 
 import (
 	"sort"
-	"sync"
 )
 
 // packetAccumulator keeps track of packets for a single PID and decides when to flush them
@@ -26,7 +25,12 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 
 	// Empty buffer if we detect a discontinuity
 	if hasDiscontinuity(mps, p) {
-		mps = make([]*Packet, 0, cap(mps))
+		// Reset current slice or make new
+		if cap(mps) > 0 {
+			mps = mps[:0]
+		} else {
+			mps = make([]*Packet, 0, 10)
+		}
 	}
 
 	// Throw away packet if it's the same as the previous one
@@ -44,7 +48,7 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 
 	// Check if PSI payload is complete
 	if b.programMap != nil &&
-		(b.pid == PIDPAT || b.programMap.exists(b.pid)) &&
+		(b.pid == PIDPAT || b.programMap.existsUnlocked(b.pid)) &&
 		isPSIComplete(mps) {
 		ps = mps
 		mps = nil
@@ -56,8 +60,8 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 
 // packetPool represents a queue of packets for each PID in the stream
 type packetPool struct {
-	b map[uint16]*packetAccumulator // Indexed by PID
-	m *sync.Mutex
+	// We use map[uint32] instead map[uint16] as go runtime provide optimized hash functions for (u)int32/64 keys
+	b map[uint32]*packetAccumulator // Indexed by PID
 
 	programMap *programMap
 }
@@ -65,15 +69,14 @@ type packetPool struct {
 // newPacketPool creates a new packet pool with an optional parser and programMap
 func newPacketPool(programMap *programMap) *packetPool {
 	return &packetPool{
-		b: make(map[uint16]*packetAccumulator),
-		m: &sync.Mutex{},
+		b: make(map[uint32]*packetAccumulator),
 
 		programMap: programMap,
 	}
 }
 
-// add adds a new packet to the pool
-func (b *packetPool) add(p *Packet) (ps []*Packet) {
+// addUnlocked adds a new packet to the pool
+func (b *packetPool) addUnlocked(p *Packet) (ps []*Packet) {
 	// Throw away packet if error indicator
 	if p.Header.TransportErrorIndicator {
 		return
@@ -85,33 +88,27 @@ func (b *packetPool) add(p *Packet) (ps []*Packet) {
 		return
 	}
 
-	// Lock
-	b.m.Lock()
-	defer b.m.Unlock()
-
 	// Make sure accumulator exists
-	acc, ok := b.b[p.Header.PID]
+	acc, ok := b.b[uint32(p.Header.PID)]
 	if !ok {
 		acc = newPacketAccumulator(p.Header.PID, b.programMap)
-		b.b[p.Header.PID] = acc
+		b.b[uint32(p.Header.PID)] = acc
 	}
 
 	// Add to the accumulator
 	return acc.add(p)
 }
 
-// dump dumps the packet pool by looking for the first item with packets inside
-func (b *packetPool) dump() (ps []*Packet) {
-	b.m.Lock()
-	defer b.m.Unlock()
+// dumpUnlocked dumps the packet pool by looking for the first item with packets inside
+func (b *packetPool) dumpUnlocked() (ps []*Packet) {
 	var keys []int
 	for k := range b.b {
 		keys = append(keys, int(k))
 	}
 	sort.Ints(keys)
 	for _, k := range keys {
-		ps = b.b[uint16(k)].q
-		delete(b.b, uint16(k))
+		ps = b.b[uint32(k)].q
+		delete(b.b, uint32(k))
 		if len(ps) > 0 {
 			return
 		}
