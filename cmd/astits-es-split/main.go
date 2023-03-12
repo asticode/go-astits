@@ -47,7 +47,7 @@ func newMuxerOut(name string, discard bool) (*muxerOut, error) {
 
 func (m *muxerOut) Close() error {
 	if err := m.Flush(); err != nil {
-		return fmt.Errorf("error flushing %s: %w", m.name, err)
+		log.Printf("Error flushing %s: %v", m.name, err)
 	}
 	if m.closer != nil {
 		if err := m.closer.Close(); err != nil {
