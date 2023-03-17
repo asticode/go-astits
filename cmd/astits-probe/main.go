@@ -70,18 +70,24 @@ func main() {
 	case "data":
 		// Fetch data
 		if err = data(dmx); err != nil {
-			log.Fatal(fmt.Errorf("astits: fetching data failed: %w", err))
+			if !errors.Is(err, astits.ErrNoMorePackets) {
+				log.Fatal(fmt.Errorf("astits: fetching data failed: %w", err))
+			}
 		}
 	case "packets":
 		// Fetch packets
 		if err = packets(dmx); err != nil {
-			log.Fatal(fmt.Errorf("astits: fetching packets failed: %w", err))
+			if !errors.Is(err, astits.ErrNoMorePackets) {
+				log.Fatal(fmt.Errorf("astits: fetching packets failed: %w", err))
+			}
 		}
 	default:
 		// Fetch the programs
 		var pgms []*Program
 		if pgms, err = programs(dmx); err != nil {
-			log.Fatal(fmt.Errorf("astits: fetching programs failed: %w", err))
+			if !errors.Is(err, astits.ErrNoMorePackets) {
+				log.Fatal(fmt.Errorf("astits: fetching programs failed: %w", err))
+			}
 		}
 
 		// Print
