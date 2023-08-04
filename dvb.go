@@ -31,9 +31,9 @@ func parseDVBTime(i *astikit.BytesIterator) (t time.Time, err error) {
 	if mt == 14 || mt == 15 {
 		k = 1
 	}
-	var y = yt + k
+	var y = 1900 + yt + k
 	var m = mt - 1 - k*12
-	t, _ = time.Parse("06-01-02", fmt.Sprintf("%d-%d-%d", y, m, d))
+	t = time.Date(y, time.Month(m), d, 0, 0, 0, 0, time.UTC)
 
 	// Time
 	var s time.Duration

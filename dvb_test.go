@@ -62,3 +62,9 @@ func TestWriteDVBDurationSeconds(t *testing.T) {
 	assert.Equal(t, n, buf.Len())
 	assert.Equal(t, dvbDurationSecondsBytes, buf.Bytes())
 }
+
+func BenchmarkDVBTime(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		parseDVBTime(astikit.NewBytesIterator(dvbTimeBytes))
+	}
+}
