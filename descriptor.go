@@ -2002,6 +2002,10 @@ func calcDescriptorLength(d *Descriptor) uint8 {
 		return calcDescriptorUserDefinedLength(d.UserDefined)
 	}
 
+	if d.Length == 0 {
+		return 0
+	}
+
 	switch d.Tag {
 	case DescriptorTagAC3:
 		return calcDescriptorAC3Length(d.AC3)
@@ -2067,6 +2071,10 @@ func writeDescriptor(w *astikit.BitsWriter, d *Descriptor) (int, error) {
 	}
 
 	written := int(length) + 2
+
+	if d.Length == 0 {
+		return written, nil
+	}
 
 	if d.Tag >= 0x80 && d.Tag <= 0xfe {
 		return written, writeDescriptorUserDefined(w, d.UserDefined)
