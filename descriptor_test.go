@@ -2,9 +2,10 @@ package astits
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 var descriptors = []*Descriptor{{
@@ -702,4 +703,32 @@ func BenchmarkParseDescriptor(b *testing.B) {
 			}
 		})
 	}
+}
+
+func FuzzDescriptor(f *testing.F) {
+	bufExpected := bytes.Buffer{}
+	bufExpected.Write([]byte{0x00, 0x00}) // reserve two bytes for length
+	wExpected := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &bufExpected})
+
+	for _, tc := range descriptorTestTable {
+		tc.bytesFunc(wExpected)
+	}
+
+	descLen := uint16(bufExpected.Len() - 2)
+	descBytes := bufExpected.Bytes()
+	descBytes[0] = byte(descLen>>8) | 0b11110000 // program_info_length is preceded by 4 reserved bits
+	descBytes[1] = byte(descLen & 0xff)
+
+	f.Add(descBytes)
+
+	f.Fuzz(func(t *testing.T, b []byte) {
+		ds, err := parseDescriptors(astikit.NewBytesIterator(b))
+
+		if err == nil {
+			bufActual := bytes.Buffer{}
+			wActual := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: &bufActual})
+
+			writeDescriptorsWithLength(wActual, ds)
+		}
+	})
 }
