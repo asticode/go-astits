@@ -24,10 +24,10 @@ jobs:
     - name: Run tests
       run: go test -race -covermode atomic -coverprofile=covprofile ./...
 
-    - name: Install goveralls
-      run: go install github.com/mattn/goveralls@latest
-
-    - name: Send coverage
+    - if: github.event_name != 'pull_request'
+      name: Send coverage
       env:
         COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
-      run: goveralls -coverprofile=covprofile -service=github
+      run: |
+        go install github.com/mattn/goveralls@latest
+        goveralls -coverprofile=covprofile -service=github
