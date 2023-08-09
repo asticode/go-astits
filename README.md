@@ -1,6 +1,6 @@
 [![GoReportCard](http://goreportcard.com/badge/github.com/asticode/go-astits)](http://goreportcard.com/report/github.com/asticode/go-astits)
 [![GoDoc](https://godoc.org/github.com/asticode/go-astits?status.svg)](https://godoc.org/github.com/asticode/go-astits)
-[![Travis](https://travis-ci.org/asticode/go-astits.svg?branch=master)](https://travis-ci.org/asticode/go-astits#)
+[![Test](https://github.com/asticode/go-astits/actions/workflows/test.yml/badge.svg)](https://github.com/asticode/go-astits/actions/workflows/test.yml)
 [![Coveralls](https://coveralls.io/repos/github/asticode/go-astits/badge.svg?branch=master)](https://coveralls.io/github/asticode/go-astits)
 
 This is a Golang library to natively demux and mux MPEG Transport Streams (ts) in GO.
@@ -12,6 +12,10 @@ WARNING: this library is not yet production ready. Use at your own risks!
 To install the library use the following:
 
     go get -u github.com/asticode/go-astits/...
+
+To install the executables use the following:
+
+    go install github.com/asticode/go-astits/cmd
     
 # Before looking at the code...
 

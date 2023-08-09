@@ -1238,17 +1238,18 @@ func newDescriptorVBIData(i *astikit.BytesIterator, offsetEnd int) (d *Descripto
 		// Data service descriptor
 		offsetDataEnd := i.Offset() + dataServiceDescriptorLength
 		for i.Offset() < offsetDataEnd {
+			// Get next byte
+			if b, err = i.NextByte(); err != nil {
+				err = fmt.Errorf("astits: fetching next byte failed: %w", err)
+				return
+			}
+
 			if srv.DataServiceID == VBIDataServiceIDClosedCaptioning ||
 				srv.DataServiceID == VBIDataServiceIDEBUTeletext ||
 				srv.DataServiceID == VBIDataServiceIDInvertedTeletext ||
 				srv.DataServiceID == VBIDataServiceIDMonochrome442Samples ||
 				srv.DataServiceID == VBIDataServiceIDVPS ||
 				srv.DataServiceID == VBIDataServiceIDWSS {
-				// Get next byte
-				if b, err = i.NextByte(); err != nil {
-					err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-					return
-				}
 
 				// Append data
 				srv.Descriptors = append(srv.Descriptors, &DescriptorVBIDataDescriptor{
@@ -2001,6 +2002,10 @@ func calcDescriptorLength(d *Descriptor) uint8 {
 		return calcDescriptorUserDefinedLength(d.UserDefined)
 	}
 
+	if d.Length == 0 {
+		return 0
+	}
+
 	switch d.Tag {
 	case DescriptorTagAC3:
 		return calcDescriptorAC3Length(d.AC3)
@@ -2066,6 +2071,10 @@ func writeDescriptor(w *astikit.BitsWriter, d *Descriptor) (int, error) {
 	}
 
 	written := int(length) + 2
+
+	if d.Length == 0 {
+		return written, nil
+	}
 
 	if d.Tag >= 0x80 && d.Tag <= 0xfe {
 		return written, writeDescriptorUserDefined(w, d.UserDefined)

@@ -25,7 +25,7 @@ func TestParseData(t *testing.T) {
 	assert.Equal(t, cds, ds)
 
 	// Do nothing for CAT
-	ps = []*Packet{{Header: &PacketHeader{PID: PIDCAT}}}
+	ps = []*Packet{{Header: PacketHeader{PID: PIDCAT}}}
 	ds, err = parseData(ps, nil, pm)
 	assert.NoError(t, err)
 	assert.Empty(t, ds)
@@ -34,34 +34,42 @@ func TestParseData(t *testing.T) {
 	p := pesWithHeaderBytes()
 	ps = []*Packet{
 		{
-			Header:  &PacketHeader{PID: uint16(256)},
+			Header:  PacketHeader{PID: uint16(256)},
 			Payload: p[:33],
 		},
 		{
-			Header:  &PacketHeader{PID: uint16(256)},
+			Header:  PacketHeader{PID: uint16(256)},
 			Payload: p[33:],
 		},
 	}
 	ds, err = parseData(ps, nil, pm)
 	assert.NoError(t, err)
-	assert.Equal(t, []*DemuxerData{{FirstPacket: ps[0], PES: pesWithHeader(), PID: uint16(256)}}, ds)
+	assert.Equal(t, []*DemuxerData{
+		{
+			FirstPacket: &Packet{Header: ps[0].Header, AdaptationField: ps[0].AdaptationField},
+			PES:         pesWithHeader(),
+			PID:         uint16(256),
+		}}, ds)
 
 	// PSI
-	pm.set(uint16(256), uint16(1))
+	pm.setUnlocked(uint16(256), uint16(1))
 	p = psiBytes()
 	ps = []*Packet{
 		{
-			Header:  &PacketHeader{PID: uint16(256)},
+			Header:  PacketHeader{PID: uint16(256)},
 			Payload: p[:33],
 		},
 		{
-			Header:  &PacketHeader{PID: uint16(256)},
+			Header:  PacketHeader{PID: uint16(256)},
 			Payload: p[33:],
 		},
 	}
 	ds, err = parseData(ps, nil, pm)
 	assert.NoError(t, err)
-	assert.Equal(t, psi.toData(ps[0], uint16(256)), ds)
+	assert.Equal(t, psi.toData(
+		&Packet{Header: ps[0].Header, AdaptationField: ps[0].AdaptationField},
+		uint16(256),
+	), ds)
 }
 
 func TestIsPSIPayload(t *testing.T) {
@@ -73,7 +81,7 @@ func TestIsPSIPayload(t *testing.T) {
 		}
 	}
 	assert.Equal(t, []int{0, 16, 17, 18, 19, 20, 30, 31}, pids)
-	pm.set(uint16(1), uint16(0))
+	pm.setUnlocked(uint16(1), uint16(0))
 	assert.True(t, isPSIPayload(uint16(1), pm))
 }
 

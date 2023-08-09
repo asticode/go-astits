@@ -1,54 +1,42 @@
 package astits
 
-import "sync"
-
 // programMap represents a program ids map
 type programMap struct {
-	m *sync.Mutex
-	p map[uint16]uint16 // map[ProgramMapID]ProgramNumber
+	// We use map[uint32] instead map[uint16] as go runtime provide optimized hash functions for (u)int32/64 keys
+	p map[uint32]uint16 // map[ProgramMapID]ProgramNumber
 }
 
 // newProgramMap creates a new program ids map
 func newProgramMap() *programMap {
 	return &programMap{
-		m: &sync.Mutex{},
-		p: make(map[uint16]uint16),
+		p: make(map[uint32]uint16),
 	}
 }
 
-// exists checks whether the program with this pid exists
-func (m programMap) exists(pid uint16) (ok bool) {
-	m.m.Lock()
-	defer m.m.Unlock()
-	_, ok = m.p[pid]
+// existsUnlocked checks whether the program with this pid exists
+func (m programMap) existsUnlocked(pid uint16) (ok bool) {
+	_, ok = m.p[uint32(pid)]
 	return
 }
 
-// set sets a new program id
-func (m programMap) set(pid, number uint16) {
-	m.m.Lock()
-	defer m.m.Unlock()
-	m.p[pid] = number
+// setUnlocked sets a new program id
+func (m programMap) setUnlocked(pid, number uint16) {
+	m.p[uint32(pid)] = number
 }
 
-func (m programMap) unset(pid uint16) {
-	m.m.Lock()
-	defer m.m.Unlock()
-	delete(m.p, pid)
+func (m programMap) unsetUnlocked(pid uint16) {
+	delete(m.p, uint32(pid))
 }
 
-func (m programMap) toPATData() *PATData {
-	m.m.Lock()
-	defer m.m.Unlock()
-
+func (m programMap) toPATDataUnlocked() *PATData {
 	d := &PATData{
-		Programs:          []*PATProgram{},
+		Programs:          make([]*PATProgram, 0, len(m.p)),
 		TransportStreamID: uint16(PSITableIDPAT),
 	}
 
 	for pid, pnr := range m.p {
 		d.Programs = append(d.Programs, &PATProgram{
-			ProgramMapID:  pid,
+			ProgramMapID:  uint16(pid),
 			ProgramNumber: pnr,
 		})
 	}

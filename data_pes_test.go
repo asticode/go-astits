@@ -242,9 +242,6 @@ var pesTestCases = []pesTestCase{
 		},
 		func(w *astikit.BitsWriter, withStuffing bool, withCRC bool) {
 			w.Write([]byte("data")) // Data
-			if withStuffing {
-				w.Write([]byte("stuff")) // Stuffing
-			}
 		},
 		&PESData{
 			Data: []byte("data"),
