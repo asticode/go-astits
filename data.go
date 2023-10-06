@@ -3,6 +3,7 @@ package astits
 import (
 	"encoding/binary"
 	"fmt"
+
 	"github.com/asticode/go-astikit"
 )
 
@@ -113,7 +114,8 @@ func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerDa
 func isPSIPayload(pid uint16, pm *programMap) bool {
 	return pid == PIDPAT || // PAT
 		pm.existsUnlocked(pid) || // PMT
-		((pid >= 0x10 && pid <= 0x14) || (pid >= 0x1e && pid <= 0x1f)) //DVB
+		(((pid >= 0x10 && pid <= 0x14) || (pid >= 0x1e && pid <= 0x1f)) && //DVB
+			!pm.existsLocked(pid)) // for non-DVB
 }
 
 // isPESPayload checks whether the payload is a PES one

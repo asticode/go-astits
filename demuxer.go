@@ -199,6 +199,11 @@ func (dmx *Demuxer) updateData(ds []*DemuxerData) (d *DemuxerData) {
 					}
 				}
 			}
+			if v.PMT != nil {
+				for _, es := range v.PMT.ElementaryStreams {
+					dmx.programMap.setLocked(es.ElementaryPID, v.PMT.ProgramNumber)
+				}
+			}
 		}
 	}
 	return
