@@ -4,26 +4,13 @@ package astits
 type programMap struct {
 	// We use map[uint32] instead map[uint16] as go runtime provide optimized hash functions for (u)int32/64 keys
 	p map[uint32]uint16 // map[ProgramMapID]ProgramNumber
-	s map[uint32]uint16 // map[StreamID]ProgramNumber
 }
 
 // newProgramMap creates a new program ids map
 func newProgramMap() *programMap {
 	return &programMap{
 		p: make(map[uint32]uint16),
-		s: make(map[uint32]uint16),
 	}
-}
-
-// setLocked sets a new stream id to the program
-func (m programMap) setLocked(pid, number uint16) {
-	m.s[uint32(pid)] = number
-}
-
-// existsLocked checks whether the stream with this pid exists
-func (m programMap) existsLocked(pid uint16) (ok bool) {
-	_, ok = m.s[uint32(pid)]
-	return
 }
 
 // existsUnlocked checks whether the program with this pid exists

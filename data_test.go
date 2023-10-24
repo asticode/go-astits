@@ -11,6 +11,7 @@ import (
 func TestParseData(t *testing.T) {
 	// Init
 	pm := newProgramMap()
+	esm := newElementaryStreamMap()
 	ps := []*Packet{}
 
 	// Custom parser
@@ -20,13 +21,13 @@ func TestParseData(t *testing.T) {
 		skip = true
 		return
 	}
-	ds, err := parseData(ps, c, pm)
+	ds, err := parseData(ps, c, pm, esm)
 	assert.NoError(t, err)
 	assert.Equal(t, cds, ds)
 
 	// Do nothing for CAT
 	ps = []*Packet{{Header: PacketHeader{PID: PIDCAT}}}
-	ds, err = parseData(ps, nil, pm)
+	ds, err = parseData(ps, nil, pm, esm)
 	assert.NoError(t, err)
 	assert.Empty(t, ds)
 
@@ -42,7 +43,7 @@ func TestParseData(t *testing.T) {
 			Payload: p[33:],
 		},
 	}
-	ds, err = parseData(ps, nil, pm)
+	ds, err = parseData(ps, nil, pm, esm)
 	assert.NoError(t, err)
 	assert.Equal(t, []*DemuxerData{
 		{
@@ -64,7 +65,7 @@ func TestParseData(t *testing.T) {
 			Payload: p[33:],
 		},
 	}
-	ds, err = parseData(ps, nil, pm)
+	ds, err = parseData(ps, nil, pm, esm)
 	assert.NoError(t, err)
 	assert.Equal(t, psi.toData(
 		&Packet{Header: ps[0].Header, AdaptationField: ps[0].AdaptationField},
@@ -74,15 +75,16 @@ func TestParseData(t *testing.T) {
 
 func TestIsPSIPayload(t *testing.T) {
 	pm := newProgramMap()
+	esm := newElementaryStreamMap()
 	var pids []int
 	for i := 0; i <= 255; i++ {
-		if isPSIPayload(uint16(i), pm) {
+		if isPSIPayload(uint16(i), pm, esm) {
 			pids = append(pids, i)
 		}
 	}
 	assert.Equal(t, []int{0, 16, 17, 18, 19, 20, 30, 31}, pids)
 	pm.setUnlocked(uint16(1), uint16(0))
-	assert.True(t, isPSIPayload(uint16(1), pm))
+	assert.True(t, isPSIPayload(uint16(1), pm, esm))
 }
 
 func TestIsPESPayload(t *testing.T) {
