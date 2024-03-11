@@ -3,6 +3,7 @@
 ## Unreleased
 
  - Length check array length before index use
+ - [SA-2570] Add ParsePacketWithoutPayload function
 
 ## v1.5.0
  - Add serialisation methods for PAT and PMT packets

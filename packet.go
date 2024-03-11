@@ -69,23 +69,28 @@ type PacketAdaptationExtensionField struct {
 
 var ErrNoRoomInBuffer = errors.New("No room to serialise into buffer")
 
-//ParsePacket parses a packet into
+// ParsePacket parses a packet into
 func ParsePacket(b []byte) (p *Packet, err error) {
 	return parsePacket(astikit.NewBytesIterator(b))
 }
 
-//ParsePSIPacket parses a known PSI packet
+// ParsePacketWithoutPayload parses a packet without copying the packet payload
+func ParsePacketWithoutPayload(b []byte) (p *Packet, err error) {
+	return parsePacketWithoutPayload(astikit.NewBytesIterator(b))
+}
+
+// ParsePSIPacket parses a known PSI packet
 func ParsePSIPacket(p *Packet) (*PSIData, error) {
 	return parsePSIData(astikit.NewBytesIterator(p.Payload))
 }
 
-//ParsePESPacket parses a known PES packet
+// ParsePESPacket parses a known PES packet
 func ParsePESPacket(p *Packet) (d *PESData, err error) {
 	//Need to protect against posibility of reading a header that doesn't have payload attached
 	return parsePESData(astikit.NewBytesIterator(p.Payload))
 }
 
-//ParsePESPacket parses a known PES packet
+// ParsePESPacket parses a known PES packet
 func ParsePESPacketHeader(p *Packet) (d *PESData, err error) {
 	//Need to protect against posibility of reading a header that doesn't have payload attached
 	i := astikit.NewBytesIterator(p.Payload)
@@ -194,6 +199,43 @@ func parsePacket(i *astikit.BytesIterator) (p *Packet, err error) {
 		i.Seek(payloadOffset(offsetStart, p.Header, p.AdaptationField))
 		p.Payload = i.Dump()
 	}
+	return
+}
+
+func parsePacketWithoutPayload(i *astikit.BytesIterator) (p *Packet, err error) {
+	// Get next byte
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = fmt.Errorf("astits: getting next byte failed: %w", err)
+		return
+	}
+
+	// Packet must start with a sync byte
+	if b != syncByte {
+		err = ErrPacketMustStartWithASyncByte
+		return
+	}
+
+	// Create packet
+	p = &Packet{}
+
+	// In case packet size is bigger than 188 bytes, we don't care for the first bytes
+	i.Seek(i.Len() - 188 + 1)
+
+	// Parse header
+	if p.Header, err = parsePacketHeader(i); err != nil {
+		err = fmt.Errorf("astits: parsing packet header failed: %w", err)
+		return
+	}
+
+	// Parse adaptation field
+	if p.Header.HasAdaptationField {
+		if p.AdaptationField, err = parsePacketAdaptationField(i); err != nil {
+			err = fmt.Errorf("astits: parsing packet adaptation field failed: %w", err)
+			return
+		}
+	}
+
 	return
 }
 
