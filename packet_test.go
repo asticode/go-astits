@@ -106,31 +106,32 @@ var packetAdaptationField = &PacketAdaptationField{
 func packetAdaptationFieldBytes(a PacketAdaptationField) []byte {
 	buf := &bytes.Buffer{}
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
-	w.Write(uint8(36))                // Length
-	w.Write(a.DiscontinuityIndicator) // Discontinuity indicator
-	w.Write("1")                      // Random access indicator
-	w.Write("1")                      // Elementary stream priority indicator
-	w.Write("1")                      // PCR flag
-	w.Write("1")                      // OPCR flag
-	w.Write("1")                      // Splicing point flag
-	w.Write("1")                      // Transport data flag
-	w.Write("1")                      // Adaptation field extension flag
-	w.Write(pcrBytes())               // PCR
-	w.Write(pcrBytes())               // OPCR
-	w.Write(uint8(2))                 // Splice countdown
-	w.Write(uint8(4))                 // Transport private data length
-	w.Write([]byte("test"))           // Transport private data
-	w.Write(uint8(11))                // Adaptation extension length
-	w.Write("1")                      // LTW flag
-	w.Write("1")                      // Piecewise rate flag
-	w.Write("1")                      // Seamless splice flag
-	w.Write("11111")                  // Reserved
-	w.Write("1")                      // LTW valid flag
-	w.Write("010101010101010")        // LTW offset
-	w.Write("11")                     // Piecewise rate reserved
-	w.Write("1010101010101010101010") // Piecewise rate
-	w.Write(dtsBytes())               // Splice type + DTS next access unit
-	w.Write([]byte("stuff"))          // Stuffing bytes
+	w.Write(uint8(36))                            // Length
+	w.Write(a.DiscontinuityIndicator)             // Discontinuity indicator
+	w.Write("1")                                  // Random access indicator
+	w.Write("1")                                  // Elementary stream priority indicator
+	w.Write("1")                                  // PCR flag
+	w.Write("1")                                  // OPCR flag
+	w.Write("1")                                  // Splicing point flag
+	w.Write("1")                                  // Transport data flag
+	w.Write("1")                                  // Adaptation field extension flag
+	w.Write(pcrBytes())                           // PCR
+	w.Write(pcrBytes())                           // OPCR
+	w.Write(uint8(2))                             // Splice countdown
+	w.Write(uint8(4))                             // Transport private data length
+	w.Write([]byte("test"))                       // Transport private data
+	w.Write(uint8(11))                            // Adaptation extension length
+	w.Write("1")                                  // LTW flag
+	w.Write("1")                                  // Piecewise rate flag
+	w.Write("1")                                  // Seamless splice flag
+	w.Write("1")                                  // AF descriptor not present flag
+	w.Write("1111")                               // Reserved
+	w.Write("1")                                  // LTW valid flag
+	w.Write("010101010101010")                    // LTW offset
+	w.Write("11")                                 // Piecewise rate reserved
+	w.Write("1010101010101010101010")             // Piecewise rate
+	w.Write(dtsBytes())                           // Splice type + DTS next access unit
+	w.Write([]byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF}) // Stuffing bytes
 	return buf.Bytes()
 }
 
@@ -138,6 +139,28 @@ func TestParsePacketAdaptationField(t *testing.T) {
 	v, err := parsePacketAdaptationField(astikit.NewBytesIterator(packetAdaptationFieldBytes(*packetAdaptationField)))
 	assert.Equal(t, packetAdaptationField, v)
 	assert.NoError(t, err)
+}
+
+func TestParseSerialisedPacketAdaptationField(t *testing.T) {
+	b := packetAdaptationFieldBytes(*packetAdaptationField)
+	v, err := parsePacketAdaptationField(astikit.NewBytesIterator(b))
+	assert.Equal(t, packetAdaptationField, v)
+	assert.NoError(t, err)
+	buf := make([]byte, len(b))
+	err = v.Serialise(buf)
+	assert.NoError(t, err)
+	assert.Equal(t, b, buf)
+}
+
+func TestParseSerialisePacketWithAdaptationField(t *testing.T) {
+	b := []byte{0x47, 0x40, 0x64, 0x37, 0x91, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x02, 0xb0, 0x22, 0x00, 0x01, 0xc1, 0x00, 0x00, 0xe0, 0x65, 0xf0, 0x00, 0x1b, 0xe0, 0x65, 0xf0, 0x06, 0x28, 0x04, 0x64, 0x00, 0x20, 0x00, 0x03, 0xe0, 0x66, 0xf0, 0x00, 0x03, 0xe0, 0xc8, 0xf0, 0x00, 0x63, 0x97, 0x62, 0xbf}
+	fmt.Println(len(b))
+	p, err := parsePacket(astikit.NewBytesIterator(b))
+	assert.NoError(t, err)
+	buf := make([]byte, 188)
+	_, err = p.Serialise(buf)
+	assert.NoError(t, err)
+	assert.Equal(t, b, buf)
 }
 
 var pcr = &ClockReference{

@@ -4,6 +4,7 @@
 
  - Length check array length before index use
  - [SA-2570] Add ParsePacketWithoutPayload function
+ - Implement Serialise for Packet Adaptation Field
 
 ## v1.5.0
  - Add serialisation methods for PAT and PMT packets
