@@ -82,11 +82,11 @@ func dtsBytes() []byte {
 	w := astikit.NewBitsWriter(astikit.BitsWriterOptions{Writer: buf})
 	w.Write("0010")            // Flag
 	w.Write("101")             // 32...30
-	w.Write("0")               // Dummy
+	w.Write("1")               // Dummy
 	w.Write("010101010101010") // 29...15
-	w.Write("0")               // Dummy
+	w.Write("1")               // Dummy
 	w.Write("101010101010100") // 14...0
-	w.Write("0")               // Dummy
+	w.Write("1")               // Dummy
 	return buf.Bytes()
 }
 

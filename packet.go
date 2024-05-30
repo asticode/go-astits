@@ -1,6 +1,8 @@
 package astits
 
 import (
+	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 
@@ -108,6 +110,13 @@ func ParsePESPacketHeader(p *Packet) (d *PESData, err error) {
 	return
 }
 
+func printBytes(b []byte, len int) {
+	for _, v := range b[:len] {
+		fmt.Printf("%x ", v)
+	}
+	fmt.Println()
+}
+
 func (p *Packet) Serialise(b []byte) (int, error) {
 	if len(b) < 188 {
 		return 0, errors.New("b not large enough to hold a packet")
@@ -116,14 +125,14 @@ func (p *Packet) Serialise(b []byte) (int, error) {
 	p.Header.Serialise(b)
 	payloadStart := 4
 	if p.Header.HasAdaptationField {
-		return 4, errors.New("Serialising adaptation field unimplemented")
-		err := p.AdaptationField.Serialise(b)
+		err := p.AdaptationField.Serialise(b[payloadStart:])
 		if err != nil {
 			return payloadStart, err
 		}
-		payloadStart += p.AdaptationField.Length
+		payloadStart += p.AdaptationField.Length + 1
 	}
 	copy(b[payloadStart:], p.Payload)
+
 	return payloadStart, nil
 }
 
@@ -132,11 +141,11 @@ func (h *PacketHeader) Serialise(b []byte) {
 	if h.TransportErrorIndicator {
 		teiBit = 0x80
 	}
-	if h.TransportPriority {
-		tpBit = 0x20
-	}
 	if h.PayloadUnitStartIndicator {
 		pusiBit = 0x40
+	}
+	if h.TransportPriority {
+		tpBit = 0x20
 	}
 	pidBits := uint8((h.PID & uint16(0x1f00)) >> 8)
 	b[1] = teiBit | tpBit | pusiBit | pidBits
@@ -154,7 +163,137 @@ func (h *PacketHeader) Serialise(b []byte) {
 	b[3] = afBit | pBit | ccBits | tscBits
 }
 
-func (p *PacketAdaptationField) Serialise(b []byte) error {
+func (a *PacketAdaptationField) Serialise(b []byte) error {
+	buf := new(bytes.Buffer)
+
+	// Write adaptation_field_length
+	buf.WriteByte(byte(a.Length))
+
+	if a.Length > 0 {
+		// Write Flags
+		flags := byte(0)
+		if a.DiscontinuityIndicator {
+			flags |= 0x80
+		}
+		if a.RandomAccessIndicator {
+			flags |= 0x40
+		}
+		if a.ElementaryStreamPriorityIndicator {
+			flags |= 0x20
+		}
+		if a.HasPCR {
+			flags |= 0x10
+		}
+		if a.HasOPCR {
+			flags |= 0x08
+		}
+		if a.HasSplicingCountdown {
+			flags |= 0x04
+		}
+		if a.HasTransportPrivateData {
+			flags |= 0x02
+		}
+		if a.HasAdaptationExtensionField {
+			flags |= 0x01
+		}
+		buf.WriteByte(flags)
+
+		// Write PCR
+		if a.HasPCR {
+			pcr := uint64(a.PCR.Base<<15) | uint64(a.PCR.Extension&0x1FF) | (uint64(0x3f) << 9)
+			buf.Write([]byte{
+				byte(pcr >> 40),
+				byte(pcr >> 32),
+				byte(pcr >> 24),
+				byte(pcr >> 16),
+				byte(pcr >> 8),
+				byte(pcr),
+			})
+		}
+
+		// Write OPCR
+		if a.HasOPCR {
+			opcr := uint64(a.OPCR.Base<<15) | (uint64(a.OPCR.Extension & 0x1FF)) | (uint64(0x3f) << 9)
+			buf.Write([]byte{
+				byte(opcr >> 40),
+				byte(opcr >> 32),
+				byte(opcr >> 24),
+				byte(opcr >> 16),
+				byte(opcr >> 8),
+				byte(opcr),
+			})
+		}
+
+		// Write Splicing countdown
+		if a.HasSplicingCountdown {
+			buf.WriteByte(byte(a.SpliceCountdown))
+		}
+
+		// Write Transport private data
+		if a.HasTransportPrivateData {
+			buf.WriteByte(byte(a.TransportPrivateDataLength))
+			buf.Write(a.TransportPrivateData)
+		}
+
+		// Write Adaptation extension field
+		if a.HasAdaptationExtensionField {
+			buf.WriteByte(byte(a.AdaptationExtensionField.Length))
+			if a.AdaptationExtensionField.Length > 0 {
+				extensionFlags := byte(0x1F)
+				if a.AdaptationExtensionField.HasLegalTimeWindow {
+					extensionFlags |= 0x80
+				}
+				if a.AdaptationExtensionField.HasPiecewiseRate {
+					extensionFlags |= 0x40
+				}
+				if a.AdaptationExtensionField.HasSeamlessSplice {
+					extensionFlags |= 0x20
+				}
+				buf.WriteByte(extensionFlags)
+
+				if a.AdaptationExtensionField.HasLegalTimeWindow {
+					ltw := (uint16(0) << 15) | a.AdaptationExtensionField.LegalTimeWindowOffset
+					if a.AdaptationExtensionField.LegalTimeWindowIsValid {
+						ltw |= 0x8000
+					}
+					binary.Write(buf, binary.BigEndian, ltw)
+				}
+
+				if a.AdaptationExtensionField.HasPiecewiseRate {
+					piecewiseRate := 0xc00000 | 0x3fffff&a.AdaptationExtensionField.PiecewiseRate
+					buf.Write([]byte{
+						byte(piecewiseRate >> 16),
+						byte(piecewiseRate >> 8),
+						byte(piecewiseRate),
+					})
+				}
+
+				if a.AdaptationExtensionField.HasSeamlessSplice {
+					dtsNextAU := a.AdaptationExtensionField.DTSNextAccessUnit.Base
+					buf.WriteByte(byte(a.AdaptationExtensionField.SpliceType<<4) | byte(dtsNextAU>>29)&0xe | 0x01)
+					buf.Write([]byte{
+
+						byte(dtsNextAU >> 22),
+						byte(dtsNextAU>>14 | 0x01),
+						byte(dtsNextAU >> 7),
+						byte(dtsNextAU<<1 | 0x01),
+					})
+				}
+			}
+		}
+
+		// Add stuffing bytes if needed
+		for buf.Len() < a.Length+1 { //Include the length byte
+			buf.WriteByte(0xFF)
+		}
+	}
+
+	// Ensure the buffer length is correct
+	if len(buf.Bytes()) > len(b) {
+		return fmt.Errorf("astits: not enough room in buffer")
+	}
+	copy(b, buf.Bytes())
+
 	return nil
 }
 
