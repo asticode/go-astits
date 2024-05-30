@@ -2,8 +2,13 @@
 
 ## Unreleased
 
+## v1.8.0
  - Length check array length before index use
+
+## v1.7.0
  - [SA-2570] Add ParsePacketWithoutPayload function
+
+## v1.6.0 
  - Implement Serialise for Packet Adaptation Field
 
 ## v1.5.0
