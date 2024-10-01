@@ -1,17 +1,12 @@
 package astits
 
 import (
-	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
-	"io"
-	"os"
 	"testing"
 
 	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/stretchr/testify.v1/require"
 )
 
 func packet(h PacketHeader, a PacketAdaptationField, i []byte) ([]byte, *Packet) {

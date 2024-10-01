@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+## v1.9.0
  - [SA-3019] Add UnmarshalPacketWithoutPayload function
 
 ## v1.8.0
