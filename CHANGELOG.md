@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+ - [SA-3019] Add UnmarshalPacketWithoutPayload function
+
 ## v1.8.0
  - Length check array length before index use
 

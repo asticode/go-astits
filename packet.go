@@ -17,11 +17,17 @@ const (
 	ScramblingControlScrambledWithOddKey  = 3
 )
 
+const (
+	MpegTsPacketSize       = 188
+	mpegTsPacketHeaderSize = 3
+	pcrBytesSize           = 6
+)
+
 // Packet represents a packet
 // https://en.wikipedia.org/wiki/MPEG_transport_stream
 type Packet struct {
 	AdaptationField *PacketAdaptationField
-	Header          *PacketHeader
+	Header          PacketHeader
 	Payload         []byte // This is only the payload content
 }
 
@@ -54,6 +60,8 @@ type PacketAdaptationField struct {
 	SpliceCountdown                   int             // Indicates how many TS packets from this one a splicing point occurs (Two's complement signed; may be negative)
 	TransportPrivateDataLength        int
 	TransportPrivateData              []byte
+	StuffingLength                    int  // Only used in writePacketAdaptationField to request stuffing
+	IsOneByteStuffing                 bool // Only used for one byte stuffing - if true, adaptation field will be written as one uint8(0). Not part of TS format
 }
 
 // PacketAdaptationExtensionField represents a packet adaptation extension field
@@ -316,7 +324,7 @@ func parsePacket(i *astikit.BytesIterator) (p *Packet, err error) {
 	p = &Packet{}
 
 	// In case packet size is bigger than 188 bytes, we don't care for the first bytes
-	i.Seek(i.Len() - 188 + 1)
+	i.Seek(i.Len() - MpegTsPacketSize + 1)
 	offsetStart := i.Offset()
 
 	// Parse header
@@ -378,8 +386,41 @@ func parsePacketWithoutPayload(i *astikit.BytesIterator) (p *Packet, err error) 
 	return
 }
 
+func UnmarshalPacketWithoutPayload(data []byte, p *Packet) error {
+	i := astikit.NewBytesIterator(data)
+	var b byte
+	var err error
+	if b, err = i.NextByte(); err != nil {
+		return fmt.Errorf("astits: getting next byte failed: %w", err)
+	}
+
+	// Packet must start with a sync byte
+	if b != syncByte {
+		return ErrPacketMustStartWithASyncByte
+	}
+
+	// In case packet size is bigger than 188 bytes, we don't care for the first bytes
+	i.Seek(i.Len() - MpegTsPacketSize + 1)
+
+	// Parse header
+	if err := unmarshalPacketHeader(i, &p.Header); err != nil {
+		return fmt.Errorf("astits: parsing packet header failed: %w", err)
+	}
+
+	// Parse adaptation field
+	if p.Header.HasAdaptationField {
+		if p.AdaptationField, err = parsePacketAdaptationField(i); err != nil {
+			return fmt.Errorf("astits: parsing packet adaptation field failed: %w", err)
+		}
+	} else {
+		p.AdaptationField = nil
+	}
+
+	return nil
+}
+
 // payloadOffset returns the payload offset
-func payloadOffset(offsetStart int, h *PacketHeader, a *PacketAdaptationField) (offset int) {
+func payloadOffset(offsetStart int, h PacketHeader, a *PacketAdaptationField) (offset int) {
 	offset = offsetStart + 3
 	if h.HasAdaptationField {
 		offset += 1 + a.Length
@@ -387,17 +428,36 @@ func payloadOffset(offsetStart int, h *PacketHeader, a *PacketAdaptationField) (
 	return
 }
 
-// parsePacketHeader parses the packet header
-func parsePacketHeader(i *astikit.BytesIterator) (h *PacketHeader, err error) {
+func unmarshalPacketHeader(i *astikit.BytesIterator, ph *PacketHeader) (err error) {
 	// Get next bytes
 	var bs []byte
-	if bs, err = i.NextBytes(3); err != nil {
+	if bs, err = i.NextBytesNoCopy(3); err != nil {
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
+		return
+	}
+
+	ph.ContinuityCounter = uint8(bs[2] & 0xf)
+	ph.HasAdaptationField = bs[2]&0x20 > 0
+	ph.HasPayload = bs[2]&0x10 > 0
+	ph.PayloadUnitStartIndicator = bs[0]&0x40 > 0
+	ph.PID = uint16(bs[0]&0x1f)<<8 | uint16(bs[1])
+	ph.TransportErrorIndicator = bs[0]&0x80 > 0
+	ph.TransportPriority = bs[0]&0x20 > 0
+	ph.TransportScramblingControl = uint8(bs[2]) >> 6 & 0x3
+	return nil
+}
+
+// parsePacketHeader parses the packet header
+func parsePacketHeader(i *astikit.BytesIterator) (h PacketHeader, err error) {
+	// Get next bytes
+	var bs []byte
+	if bs, err = i.NextBytesNoCopy(3); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
 
 	// Create header
-	h = &PacketHeader{
+	return PacketHeader{
 		ContinuityCounter:          uint8(bs[2] & 0xf),
 		HasAdaptationField:         bs[2]&0x20 > 0,
 		HasPayload:                 bs[2]&0x10 > 0,
@@ -406,8 +466,7 @@ func parsePacketHeader(i *astikit.BytesIterator) (h *PacketHeader, err error) {
 		TransportErrorIndicator:    bs[0]&0x80 > 0,
 		TransportPriority:          bs[0]&0x20 > 0,
 		TransportScramblingControl: uint8(bs[2]) >> 6 & 0x3,
-	}
-	return
+	}, nil
 }
 
 // parsePacketAdaptationField parses the packet adaptation field
@@ -424,6 +483,8 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 
 	// Length
 	a.Length = int(b)
+
+	afStartOffset := i.Offset()
 
 	// Valid length
 	if a.Length > 0 {
@@ -514,7 +575,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 				// Legal time window
 				if a.AdaptationExtensionField.HasLegalTimeWindow {
 					var bs []byte
-					if bs, err = i.NextBytes(2); err != nil {
+					if bs, err = i.NextBytesNoCopy(2); err != nil {
 						err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 						return
 					}
@@ -525,7 +586,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 				// Piecewise rate
 				if a.AdaptationExtensionField.HasPiecewiseRate {
 					var bs []byte
-					if bs, err = i.NextBytes(3); err != nil {
+					if bs, err = i.NextBytesNoCopy(3); err != nil {
 						err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 						return
 					}
@@ -555,6 +616,9 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 			}
 		}
 	}
+
+	a.StuffingLength = a.Length - (i.Offset() - afStartOffset)
+
 	return
 }
 
@@ -562,7 +626,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 // Program clock reference, stored as 33 bits base, 6 bits reserved, 9 bits extension.
 func parsePCR(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 	var bs []byte
-	if bs, err = i.NextBytes(6); err != nil {
+	if bs, err = i.NextBytesNoCopy(6); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
 		return
 	}
