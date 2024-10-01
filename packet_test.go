@@ -1,12 +1,17 @@
 package astits
 
 import (
+	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
+	"io"
+	"os"
 	"testing"
 
 	"github.com/asticode/go-astikit"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/stretchr/testify.v1/require"
 )
 
 func packet(h PacketHeader, a PacketAdaptationField, i []byte) ([]byte, *Packet) {
@@ -34,18 +39,18 @@ func TestParsePacket(t *testing.T) {
 	assert.EqualError(t, err, ErrPacketMustStartWithASyncByte.Error())
 
 	// Valid
-	b, ep := packet(*packetHeader, *packetAdaptationField, []byte("payload"))
+	b, ep := packet(packetHeader, *packetAdaptationField, []byte("payload"))
 	p, err := parsePacket(astikit.NewBytesIterator(b))
 	assert.NoError(t, err)
 	assert.Equal(t, p, ep)
 }
 
 func TestPayloadOffset(t *testing.T) {
-	assert.Equal(t, 3, payloadOffset(0, &PacketHeader{}, nil))
-	assert.Equal(t, 7, payloadOffset(1, &PacketHeader{HasAdaptationField: true}, &PacketAdaptationField{Length: 2}))
+	assert.Equal(t, 3, payloadOffset(0, PacketHeader{}, nil))
+	assert.Equal(t, 7, payloadOffset(1, PacketHeader{HasAdaptationField: true}, &PacketAdaptationField{Length: 2}))
 }
 
-var packetHeader = &PacketHeader{
+var packetHeader = PacketHeader{
 	ContinuityCounter:          10,
 	HasAdaptationField:         true,
 	HasPayload:                 true,
@@ -70,7 +75,7 @@ func packetHeaderBytes(h PacketHeader) []byte {
 }
 
 func TestParsePacketHeader(t *testing.T) {
-	v, err := parsePacketHeader(astikit.NewBytesIterator(packetHeaderBytes(*packetHeader)))
+	v, err := parsePacketHeader(astikit.NewBytesIterator(packetHeaderBytes(packetHeader)))
 	assert.Equal(t, packetHeader, v)
 	assert.NoError(t, err)
 }
