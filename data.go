@@ -16,15 +16,16 @@ const (
 
 // DemuxerData represents a data parsed by Demuxer
 type DemuxerData struct {
-	EIT         *EITData
-	FirstPacket *Packet
-	NIT         *NITData
-	PAT         *PATData
-	PES         *PESData
-	PID         uint16
-	PMT         *PMTData
-	SDT         *SDTData
-	TOT         *TOTData
+	EIT           *EITData
+	FirstPacket   *Packet
+	NIT           *NITData
+	PAT           *PATData
+	PES           *PESData
+	PID           uint16
+	PMT           *PMTData
+	SDT           *SDTData
+	TOT           *TOTData
+	SCTE35Payload []byte
 }
 
 // MuxerData represents a data to be written by Muxer
@@ -79,7 +80,7 @@ func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerDa
 	if pid == PIDCAT {
 		// Information in a CAT payload is private and dependent on the CA system. Use the PacketsParser
 		// to parse this type of payload
-	} else if isPSIPayload(pid, pm) {
+	} else if isPSIPayload(pid, pm) || isSCTE35(payload.s) {
 		// Parse PSI data
 		var psiData *PSIData
 		if psiData, err = parsePSIData(i); err != nil {

@@ -21,22 +21,24 @@ const (
 	PSITableTypeST      = "ST"
 	PSITableTypeTDT     = "TDT"
 	PSITableTypeTOT     = "TOT"
+	PSITableTypeSCTE35  = "SCTE35"
 	PSITableTypeUnknown = "Unknown"
 )
 
 type PSITableID uint16
 
 const (
-	PSITableIDPAT  PSITableID = 0x00
-	PSITableIDPMT  PSITableID = 0x02
-	PSITableIDBAT  PSITableID = 0x4a
-	PSITableIDDIT  PSITableID = 0x7e
-	PSITableIDRST  PSITableID = 0x71
-	PSITableIDSIT  PSITableID = 0x7f
-	PSITableIDST   PSITableID = 0x72
-	PSITableIDTDT  PSITableID = 0x70
-	PSITableIDTOT  PSITableID = 0x73
-	PSITableIDNull PSITableID = 0xff
+	PSITableIDPAT    PSITableID = 0x00
+	PSITableIDPMT    PSITableID = 0x02
+	PSITableIDBAT    PSITableID = 0x4a
+	PSITableIDDIT    PSITableID = 0x7e
+	PSITableIDRST    PSITableID = 0x71
+	PSITableIDSIT    PSITableID = 0x7f
+	PSITableIDST     PSITableID = 0x72
+	PSITableIDTDT    PSITableID = 0x70
+	PSITableIDTOT    PSITableID = 0x73
+	PSITableIDSCTE35 PSITableID = 0xfc
+	PSITableIDNull   PSITableID = 0xff
 
 	PSITableIDEITStart    PSITableID = 0x4e
 	PSITableIDEITEnd      PSITableID = 0x6f
@@ -86,12 +88,13 @@ type PSISectionSyntaxHeader struct {
 
 // PSISectionSyntaxData represents a PSI section syntax data
 type PSISectionSyntaxData struct {
-	EIT *EITData
-	NIT *NITData
-	PAT *PATData
-	PMT *PMTData
-	SDT *SDTData
-	TOT *TOTData
+	EIT           *EITData
+	NIT           *NITData
+	PAT           *PATData
+	PMT           *PMTData
+	SDT           *SDTData
+	TOT           *TOTData
+	SCTE35Payload []byte
 }
 
 // parsePSIData parses a PSI data
@@ -258,6 +261,8 @@ func parsePSISectionHeader(i *astikit.BytesIterator) (h *PSISectionHeader, offse
 // (barbashov) the link above can be broken, alternative: https://dvb.org/wp-content/uploads/2019/12/a038_tm1217r37_en300468v1_17_1_-_rev-134_-_si_specification.pdf
 func (t PSITableID) Type() string {
 	switch {
+	case t == PSITableIDSCTE35:
+		return PSITableTypeSCTE35
 	case t == PSITableIDBAT:
 		return PSITableTypeBAT
 	case t >= PSITableIDEITStart && t <= PSITableIDEITEnd:
@@ -321,6 +326,7 @@ func (t PSITableID) isUnknown() bool {
 		PSITableIDSIT,
 		PSITableIDST,
 		PSITableIDTDT,
+		PSITableIDSCTE35,
 		PSITableIDTOT:
 		return false
 	}
@@ -415,6 +421,11 @@ func parsePSISectionSyntaxData(i *astikit.BytesIterator, h *PSISectionHeader, sh
 			err = fmt.Errorf("astits: parsing NIT section failed: %w", err)
 			return
 		}
+	case PSITableIDSCTE35:
+		if d.SCTE35Payload, err = parseSCTE35Payload(i, h); err != nil {
+			err = fmt.Errorf("astits: parsing SCTE35 payload failed: %w", err)
+			return
+		}
 	case PSITableIDPAT:
 		if d.PAT, err = parsePATSection(i, offsetSectionsEnd, sh.TableIDExtension); err != nil {
 			err = fmt.Errorf("astits: parsing PAT section failed: %w", err)
@@ -477,6 +488,8 @@ func (d *PSIData) toData(firstPacket *Packet, pid uint16) (ds []*DemuxerData) {
 			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PID: pid, SDT: s.Syntax.Data.SDT})
 		case PSITableIDTOT:
 			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PID: pid, TOT: s.Syntax.Data.TOT})
+		case PSITableIDSCTE35:
+			ds = append(ds, &DemuxerData{FirstPacket: firstPacket, PID: pid, SCTE35Payload: s.Syntax.Data.SCTE35Payload})
 		}
 		if s.Header.TableID >= PSITableIDEITStart && s.Header.TableID <= PSITableIDEITEnd {
 			ds = append(ds, &DemuxerData{EIT: s.Syntax.Data.EIT, FirstPacket: firstPacket, PID: pid})
