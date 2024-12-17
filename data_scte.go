@@ -1,41 +1,30 @@
 package astits
 
-import "github.com/asticode/go-astikit"
+import (
+	"fmt"
 
-func parseSCTE35Payload(it *astikit.BytesIterator, h *PSISectionHeader) ([]byte, error) {
-	header := make([]byte, 3)
-	header[0] = byte(h.TableID)
-	if h.SectionSyntaxIndicator {
-		header[1] |= 0x80
-	}
-	if h.PrivateBit {
-		header[1] |= 0x40
-	}
+	"github.com/asticode/go-astikit"
+)
 
-	// reserved/sap_type for scte, flipping to 1s for now
-	header[1] |= 0x30
+const (
+	scte35TableID = 0xfc
+)
 
-	header[1] |= uint8((h.SectionLength >> 8) & 0x0f)
-	header[2] = uint8(h.SectionLength & 0xff)
-
-	buf, err := it.NextBytes(int(h.SectionLength))
-	if err != nil {
-		return nil, err
-	}
-
-	payload := make([]byte, 0, len(header)+int(h.SectionLength))
-	payload = append(payload, header...)
-	payload = append(payload, buf...)
-	return payload, nil
-}
-
-func isSCTE35(payload []byte) bool {
+func extractSCTE35Payload(it *astikit.BytesIterator) ([]byte, error) {
+	payload := it.Dump()
 	if len(payload) == 0 {
-		return false
+		return nil, fmt.Errorf("empty payload")
 	}
-	tableIDIndex := int(payload[0]) + 1
-	if len(payload) < tableIDIndex {
-		return false
+	start := int(payload[0]) + 1
+	if start >= len(payload) || start < 0 {
+		return nil, fmt.Errorf("invalid SCTE35 start index: %d", start)
 	}
-	return payload[tableIDIndex] == byte(PSITableIDSCTE35)
+	if payload[start] != scte35TableID {
+		return nil, fmt.Errorf("invalid SCTE35 table id: %x", payload[0])
+	}
+	b0 := payload[start+1]
+	b1 := payload[start+2]
+	size := uint16(b0&0xf)<<8 | uint16(b1)
+	end := size + 4
+	return payload[start:end], nil
 }

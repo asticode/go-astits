@@ -34,6 +34,7 @@ type Demuxer struct {
 	packetBuffer *packetBuffer
 	packetPool   *packetPool
 	programMap   *programMap
+	scteMap      *programMap
 	r            io.Reader
 }
 
@@ -52,9 +53,10 @@ func NewDemuxer(ctx context.Context, r io.Reader, opts ...func(*Demuxer)) (d *De
 		ctx:        ctx,
 		l:          astikit.AdaptStdLogger(nil),
 		programMap: newProgramMap(),
+		scteMap:    newProgramMap(),
 		r:          r,
 	}
-	d.packetPool = newPacketPool(d.programMap)
+	d.packetPool = newPacketPool(d.programMap, d.scteMap)
 
 	// Apply options
 	for _, opt := range opts {
@@ -145,7 +147,7 @@ func (dmx *Demuxer) NextData() (d *DemuxerData, err error) {
 
 					// Parse data
 					var errParseData error
-					if ds, errParseData = parseData(ps, dmx.optPacketsParser, dmx.programMap); errParseData != nil {
+					if ds, errParseData = parseData(ps, dmx.optPacketsParser, dmx.programMap, dmx.scteMap); errParseData != nil {
 						// Log error as there may be some incomplete data here
 						// We still want to try to parse all packets, in case final data is complete
 						dmx.l.Error(fmt.Errorf("astits: parsing data failed: %w", errParseData))
@@ -170,7 +172,7 @@ func (dmx *Demuxer) NextData() (d *DemuxerData, err error) {
 		}
 
 		// Parse data
-		if ds, err = parseData(ps, dmx.optPacketsParser, dmx.programMap); err != nil {
+		if ds, err = parseData(ps, dmx.optPacketsParser, dmx.programMap, dmx.scteMap); err != nil {
 			err = fmt.Errorf("astits: building new data failed: %w", err)
 			return
 		}
@@ -191,6 +193,13 @@ func (dmx *Demuxer) updateData(ds []*DemuxerData) (d *DemuxerData) {
 
 		// Update program map
 		for _, v := range ds {
+			if v.PMT != nil {
+				for _, es := range v.PMT.ElementaryStreams {
+					if es.StreamType == StreamTypeSCTE35 && !dmx.scteMap.existsUnlocked(es.ElementaryPID) {
+						dmx.scteMap.setUnlocked(es.ElementaryPID, v.PMT.ProgramNumber)
+					}
+				}
+			}
 			if v.PAT != nil {
 				for _, pgm := range v.PAT.Programs {
 					// Program number 0 is reserved to NIT
@@ -208,7 +217,7 @@ func (dmx *Demuxer) updateData(ds []*DemuxerData) (d *DemuxerData) {
 func (dmx *Demuxer) Rewind() (n int64, err error) {
 	dmx.dataBuffer = []*DemuxerData{}
 	dmx.packetBuffer = nil
-	dmx.packetPool = newPacketPool(dmx.programMap)
+	dmx.packetPool = newPacketPool(dmx.programMap, dmx.scteMap)
 	if n, err = rewind(dmx.r); err != nil {
 		err = fmt.Errorf("astits: rewinding reader failed: %w", err)
 		return

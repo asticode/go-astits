@@ -8,14 +8,16 @@ import (
 type packetAccumulator struct {
 	pid        uint16
 	programMap *programMap
+	scteMap    *programMap
 	q          []*Packet
 }
 
 // newPacketAccumulator creates a new packet queue for a single PID
-func newPacketAccumulator(pid uint16, programMap *programMap) *packetAccumulator {
+func newPacketAccumulator(pid uint16, programMap, scteMap *programMap) *packetAccumulator {
 	return &packetAccumulator{
 		pid:        pid,
 		programMap: programMap,
+		scteMap:    scteMap,
 	}
 }
 
@@ -54,6 +56,13 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 		mps = nil
 	}
 
+	// psi structure is very similar to the private section scte data is
+	// is present, so we can use the same function to check if it's complete
+	if b.scteMap != nil && b.scteMap.existsUnlocked(b.pid) && isPSIComplete(mps) {
+		ps = mps
+		mps = nil
+	}
+
 	b.q = mps
 	return
 }
@@ -64,14 +73,16 @@ type packetPool struct {
 	b map[uint32]*packetAccumulator // Indexed by PID
 
 	programMap *programMap
+	scteMap    *programMap
 }
 
 // newPacketPool creates a new packet pool with an optional parser and programMap
-func newPacketPool(programMap *programMap) *packetPool {
+func newPacketPool(programMap, scteMap *programMap) *packetPool {
 	return &packetPool{
 		b: make(map[uint32]*packetAccumulator),
 
 		programMap: programMap,
+		scteMap:    scteMap,
 	}
 }
 
@@ -91,7 +102,7 @@ func (b *packetPool) addUnlocked(p *Packet) (ps []*Packet) {
 	// Make sure accumulator exists
 	acc, ok := b.b[uint32(p.Header.PID)]
 	if !ok {
-		acc = newPacketAccumulator(p.Header.PID, b.programMap)
+		acc = newPacketAccumulator(p.Header.PID, b.programMap, b.scteMap)
 		b.b[uint32(p.Header.PID)] = acc
 	}
 
