@@ -86,13 +86,12 @@ type PSISectionSyntaxHeader struct {
 
 // PSISectionSyntaxData represents a PSI section syntax data
 type PSISectionSyntaxData struct {
-	EIT           *EITData
-	NIT           *NITData
-	PAT           *PATData
-	PMT           *PMTData
-	SDT           *SDTData
-	TOT           *TOTData
-	SCTE35Payload []byte
+	EIT *EITData
+	NIT *NITData
+	PAT *PATData
+	PMT *PMTData
+	SDT *SDTData
+	TOT *TOTData
 }
 
 // parsePSIData parses a PSI data
