@@ -2077,10 +2077,6 @@ func calcDescriptorLength(d *Descriptor) uint8 {
 		return calcDescriptorUserDefinedLength(d.UserDefined)
 	}
 
-	// if d.Length == 0 {
-	// 	return 0
-	// }
-
 	switch d.Tag {
 	case DescriptorTagAC3:
 		return calcDescriptorAC3Length(d.AC3)
