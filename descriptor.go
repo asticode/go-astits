@@ -1150,7 +1150,7 @@ func newDescriptorTeletext(i *astikit.BytesIterator, offsetEnd int) (d *Descript
 		}
 
 		// Type
-		itm.Type = uint8(b) >> 3
+		itm.Type = uint8(b >> 3)
 
 		// Magazine
 		itm.Magazine = uint8(b & 0x7)
@@ -1443,6 +1443,9 @@ func parseDescriptors(i *astikit.BytesIterator) (o []*Descriptor, err error) {
 }
 
 func calcDescriptorUserDefinedLength(d []byte) uint8 {
+	if d == nil {
+		return 0
+	}
 	return uint8(len(d))
 }
 
@@ -1455,6 +1458,9 @@ func writeDescriptorUserDefined(w *astikit.BitsWriter, d []byte) error {
 }
 
 func calcDescriptorAC3Length(d *DescriptorAC3) uint8 {
+	if d == nil {
+		return 0
+	}
 	ret := 1 // flags
 
 	if d.HasComponentType {
@@ -1502,6 +1508,9 @@ func writeDescriptorAC3(w *astikit.BitsWriter, d *DescriptorAC3) error {
 }
 
 func calcDescriptorAVCVideoLength(d *DescriptorAVCVideo) uint8 {
+	if d == nil {
+		return 0
+	}
 	return 4
 }
 
@@ -1525,6 +1534,9 @@ func writeDescriptorAVCVideo(w *astikit.BitsWriter, d *DescriptorAVCVideo) error
 }
 
 func calcDescriptorComponentLength(d *DescriptorComponent) uint8 {
+	if d == nil {
+		return 0
+	}
 	return uint8(6 + len(d.Text))
 }
 
@@ -1545,6 +1557,9 @@ func writeDescriptorComponent(w *astikit.BitsWriter, d *DescriptorComponent) err
 }
 
 func calcDescriptorContentLength(d *DescriptorContent) uint8 {
+	if d == nil {
+		return 0
+	}
 	return uint8(2 * len(d.Items))
 }
 
@@ -1561,6 +1576,9 @@ func writeDescriptorContent(w *astikit.BitsWriter, d *DescriptorContent) error {
 }
 
 func calcDescriptorDataStreamAlignmentLength(d *DescriptorDataStreamAlignment) uint8 {
+	if d == nil {
+		return 0
+	}
 	return 1
 }
 
@@ -1573,6 +1591,9 @@ func writeDescriptorDataStreamAlignment(w *astikit.BitsWriter, d *DescriptorData
 }
 
 func calcDescriptorEnhancedAC3Length(d *DescriptorEnhancedAC3) uint8 {
+	if d == nil {
+		return 0
+	}
 	ret := 1 // flags
 
 	if d.HasComponentType {
@@ -1642,6 +1663,9 @@ func writeDescriptorEnhancedAC3(w *astikit.BitsWriter, d *DescriptorEnhancedAC3)
 }
 
 func calcDescriptorExtendedEventLength(d *DescriptorExtendedEvent) (descriptorLength, lengthOfItems uint8) {
+	if d == nil {
+		return 0, 0
+	}
 	ret := 1 + 3 + 1 // numbers, language and items length
 
 	itemsRet := 0
@@ -1687,6 +1711,9 @@ func writeDescriptorExtendedEvent(w *astikit.BitsWriter, d *DescriptorExtendedEv
 }
 
 func calcDescriptorExtensionSupplementaryAudioLength(d *DescriptorExtensionSupplementaryAudio) int {
+	if d == nil {
+		return 0
+	}
 	ret := 1
 	if d.HasLanguageCode {
 		ret += 3
@@ -1696,6 +1723,9 @@ func calcDescriptorExtensionSupplementaryAudioLength(d *DescriptorExtensionSuppl
 }
 
 func calcDescriptorExtensionLength(d *DescriptorExtension) uint8 {
+	if d == nil {
+		return 0
+	}
 	ret := 1 // tag
 
 	switch d.Tag {
@@ -1748,6 +1778,9 @@ func writeDescriptorExtension(w *astikit.BitsWriter, d *DescriptorExtension) err
 }
 
 func calcDescriptorISO639LanguageAndAudioTypeLength(d *DescriptorISO639LanguageAndAudioType) uint8 {
+	if d == nil {
+		return 0
+	}
 	return 3 + 1 // language code + type
 }
 
@@ -1761,6 +1794,9 @@ func writeDescriptorISO639LanguageAndAudioType(w *astikit.BitsWriter, d *Descrip
 }
 
 func calcDescriptorLocalTimeOffsetLength(d *DescriptorLocalTimeOffset) uint8 {
+	if d == nil {
+		return 0
+	}
 	return uint8(13 * len(d.Items))
 }
 
@@ -1789,6 +1825,9 @@ func writeDescriptorLocalTimeOffset(w *astikit.BitsWriter, d *DescriptorLocalTim
 }
 
 func calcDescriptorMaximumBitrateLength(d *DescriptorMaximumBitrate) uint8 {
+	if d == nil {
+		return 0
+	}
 	return 3
 }
 
@@ -1802,6 +1841,9 @@ func writeDescriptorMaximumBitrate(w *astikit.BitsWriter, d *DescriptorMaximumBi
 }
 
 func calcDescriptorNetworkNameLength(d *DescriptorNetworkName) uint8 {
+	if d == nil {
+		return 0
+	}
 	return uint8(len(d.Name))
 }
 
@@ -1814,6 +1856,9 @@ func writeDescriptorNetworkName(w *astikit.BitsWriter, d *DescriptorNetworkName)
 }
 
 func calcDescriptorParentalRatingLength(d *DescriptorParentalRating) uint8 {
+	if d == nil {
+		return 0
+	}
 	return uint8(4 * len(d.Items))
 }
 
@@ -1829,6 +1874,9 @@ func writeDescriptorParentalRating(w *astikit.BitsWriter, d *DescriptorParentalR
 }
 
 func calcDescriptorPrivateDataIndicatorLength(d *DescriptorPrivateDataIndicator) uint8 {
+	if d == nil {
+		return 0
+	}
 	return 4
 }
 
@@ -1841,6 +1889,9 @@ func writeDescriptorPrivateDataIndicator(w *astikit.BitsWriter, d *DescriptorPri
 }
 
 func calcDescriptorPrivateDataSpecifierLength(d *DescriptorPrivateDataSpecifier) uint8 {
+	if d == nil {
+		return 0
+	}
 	return 4
 }
 
@@ -1853,6 +1904,9 @@ func writeDescriptorPrivateDataSpecifier(w *astikit.BitsWriter, d *DescriptorPri
 }
 
 func calcDescriptorRegistrationLength(d *DescriptorRegistration) uint8 {
+	if d == nil {
+		return 0
+	}
 	return uint8(4 + len(d.AdditionalIdentificationInfo))
 }
 
@@ -1866,6 +1920,9 @@ func writeDescriptorRegistration(w *astikit.BitsWriter, d *DescriptorRegistratio
 }
 
 func calcDescriptorServiceLength(d *DescriptorService) uint8 {
+	if d == nil {
+		return 0
+	}
 	ret := 3 // type and lengths
 	ret += len(d.Name)
 	ret += len(d.Provider)
@@ -1885,6 +1942,9 @@ func writeDescriptorService(w *astikit.BitsWriter, d *DescriptorService) error {
 }
 
 func calcDescriptorShortEventLength(d *DescriptorShortEvent) uint8 {
+	if d == nil {
+		return 0
+	}
 	ret := 3 + 1 + 1 // language code and lengths
 	ret += len(d.EventName)
 	ret += len(d.Text)
@@ -1906,6 +1966,9 @@ func writeDescriptorShortEvent(w *astikit.BitsWriter, d *DescriptorShortEvent) e
 }
 
 func calcDescriptorStreamIdentifierLength(d *DescriptorStreamIdentifier) uint8 {
+	if d == nil {
+		return 0
+	}
 	return 1
 }
 
@@ -1918,6 +1981,9 @@ func writeDescriptorStreamIdentifier(w *astikit.BitsWriter, d *DescriptorStreamI
 }
 
 func calcDescriptorSubtitlingLength(d *DescriptorSubtitling) uint8 {
+	if d == nil {
+		return 0
+	}
 	return uint8(8 * len(d.Items))
 }
 
@@ -1935,6 +2001,9 @@ func writeDescriptorSubtitling(w *astikit.BitsWriter, d *DescriptorSubtitling) e
 }
 
 func calcDescriptorTeletextLength(d *DescriptorTeletext) uint8 {
+	if d == nil {
+		return 0
+	}
 	return uint8(5 * len(d.Items))
 }
 
@@ -1953,6 +2022,9 @@ func writeDescriptorTeletext(w *astikit.BitsWriter, d *DescriptorTeletext) error
 }
 
 func calcDescriptorVBIDataLength(d *DescriptorVBIData) uint8 {
+	if d == nil {
+		return 0
+	}
 	return uint8(3 * len(d.Services))
 }
 
@@ -1986,6 +2058,9 @@ func writeDescriptorVBIData(w *astikit.BitsWriter, d *DescriptorVBIData) error {
 }
 
 func calcDescriptorUnknownLength(d *DescriptorUnknown) uint8 {
+	if d == nil {
+		return 0
+	}
 	return uint8(len(d.Content))
 }
 
@@ -2002,9 +2077,9 @@ func calcDescriptorLength(d *Descriptor) uint8 {
 		return calcDescriptorUserDefinedLength(d.UserDefined)
 	}
 
-	if d.Length == 0 {
-		return 0
-	}
+	// if d.Length == 0 {
+	// 	return 0
+	// }
 
 	switch d.Tag {
 	case DescriptorTagAC3:
