@@ -129,6 +129,12 @@ func parsePESData(i *astikit.BytesIterator) (d *PESData, err error) {
 		return
 	}
 
+	var dataAvailable = i.Len() - dataStart
+	if int(d.Header.PacketLength) > dataAvailable {
+		dataEnd = dataAvailable + dataStart
+		d.Header.PacketLength = uint16(dataAvailable)
+	}
+
 	// Validation
 	if dataEnd < dataStart {
 		err = fmt.Errorf("astits: data end %d is before data start %d", dataEnd, dataStart)
