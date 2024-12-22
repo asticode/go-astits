@@ -3,6 +3,7 @@ package astits
 import (
 	"encoding/binary"
 	"fmt"
+
 	"github.com/asticode/go-astikit"
 )
 
@@ -35,7 +36,7 @@ type MuxerData struct {
 }
 
 // parseData parses a payload spanning over multiple packets and returns a set of data
-func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerData, err error) {
+func parseData(ps []*Packet, prs PacketsParser, pm *programMap, esm *elementaryStreamMap) (ds []*DemuxerData, err error) {
 	// Use custom parser first
 	if prs != nil {
 		var skip bool
@@ -79,7 +80,7 @@ func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerDa
 	if pid == PIDCAT {
 		// Information in a CAT payload is private and dependent on the CA system. Use the PacketsParser
 		// to parse this type of payload
-	} else if isPSIPayload(pid, pm) {
+	} else if isPSIPayload(pid, pm, esm) {
 		// Parse PSI data
 		var psiData *PSIData
 		if psiData, err = parsePSIData(i); err != nil {
@@ -110,10 +111,11 @@ func parseData(ps []*Packet, prs PacketsParser, pm *programMap) (ds []*DemuxerDa
 }
 
 // isPSIPayload checks whether the payload is a PSI one
-func isPSIPayload(pid uint16, pm *programMap) bool {
+func isPSIPayload(pid uint16, pm *programMap, esm *elementaryStreamMap) bool {
 	return pid == PIDPAT || // PAT
 		pm.existsUnlocked(pid) || // PMT
-		((pid >= 0x10 && pid <= 0x14) || (pid >= 0x1e && pid <= 0x1f)) //DVB
+		(((pid >= 0x10 && pid <= 0x14) || (pid >= 0x1e && pid <= 0x1f)) && //DVB
+			!esm.existsLocked(pid)) // for non-DVB
 }
 
 // isPESPayload checks whether the payload is a PES one
