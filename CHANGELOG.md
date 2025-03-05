@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+## v1.9.1
 - [SA-3344] guard against nil adaptation field
 
 ## v1.9.0
