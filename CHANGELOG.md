@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- [SA-3344] guard against nil adaptation field
+
 ## v1.9.0
  - [SA-3019] Add UnmarshalPacketWithoutPayload function
 

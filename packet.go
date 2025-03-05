@@ -132,6 +132,9 @@ func (p *Packet) Serialise(b []byte) (int, error) {
 	b[0] = syncByte
 	p.Header.Serialise(b)
 	payloadStart := 4
+	if p.Header.HasAdaptationField && p.AdaptationField == nil {
+		return 0, errors.New("adaptation field not implemented")
+	}
 	if p.Header.HasAdaptationField {
 		err := p.AdaptationField.Serialise(b[payloadStart:])
 		if err != nil {
