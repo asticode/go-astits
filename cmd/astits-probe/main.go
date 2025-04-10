@@ -11,9 +11,7 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 
 	"github.com/asticode/go-astikit"
 	"github.com/asticode/go-astits"
@@ -105,23 +103,6 @@ func main() {
 			}
 		}
 	}
-}
-
-func handleSignals() {
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch)
-	go func() {
-		for s := range ch {
-			if s != syscall.SIGURG {
-				log.Printf("Received signal %s\n", s)
-			}
-			switch s {
-			case syscall.SIGABRT, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM:
-				cancel()
-				return
-			}
-		}
-	}()
 }
 
 func buildReader(ctx context.Context) (r io.Reader, err error) {
@@ -403,6 +384,8 @@ func (s Stream) String() (o string) {
 		t = "H264 video"
 	case astits.StreamTypeH265Video:
 		t = "H265 video"
+	case astits.StreamTypeAACLATMAudio:
+		t = "AAC LATM Audio"
 	}
 
 	// Output
