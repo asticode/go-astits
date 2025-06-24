@@ -118,13 +118,6 @@ func ParsePESPacketHeader(p *Packet) (d *PESData, err error) {
 	return
 }
 
-func printBytes(b []byte, len int) {
-	for _, v := range b[:len] {
-		fmt.Printf("%x ", v)
-	}
-	fmt.Println()
-}
-
 func (p *Packet) Serialise(b []byte) (int, error) {
 	if len(b) < 188 {
 		return 0, errors.New("b not large enough to hold a packet")
@@ -389,8 +382,7 @@ func parsePacketWithoutPayload(i *astikit.BytesIterator) (p *Packet, err error) 
 	return
 }
 
-func UnmarshalPacketWithoutPayload(data []byte, p *Packet) error {
-	i := astikit.NewBytesIterator(data)
+func UnmarshalPacketWithoutPayload(i BytesIterator, p *Packet) error {
 	var b byte
 	var err error
 	if b, err = i.NextByte(); err != nil {
@@ -431,7 +423,7 @@ func payloadOffset(offsetStart int, h PacketHeader, a *PacketAdaptationField) (o
 	return
 }
 
-func unmarshalPacketHeader(i *astikit.BytesIterator, ph *PacketHeader) (err error) {
+func unmarshalPacketHeader(i BytesIterator, ph *PacketHeader) (err error) {
 	// Get next bytes
 	var bs []byte
 	if bs, err = i.NextBytesNoCopy(3); err != nil {
@@ -472,8 +464,18 @@ func parsePacketHeader(i *astikit.BytesIterator) (h PacketHeader, err error) {
 	}, nil
 }
 
+type BytesIterator interface {
+	NextByte() (b byte, err error)
+	Offset() int
+	NextBytes(n int) (bs []byte, err error)
+	NextBytesNoCopy(n int) (bs []byte, err error)
+	Skip(n int)
+	Seek(n int)
+	Len() int
+}
+
 // parsePacketAdaptationField parses the packet adaptation field
-func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationField, err error) {
+func parsePacketAdaptationField(i BytesIterator) (a *PacketAdaptationField, err error) {
 	// Create adaptation field
 	a = &PacketAdaptationField{}
 
@@ -627,7 +629,7 @@ func parsePacketAdaptationField(i *astikit.BytesIterator) (a *PacketAdaptationFi
 
 // parsePCR parses a Program Clock Reference
 // Program clock reference, stored as 33 bits base, 6 bits reserved, 9 bits extension.
-func parsePCR(i *astikit.BytesIterator) (cr *ClockReference, err error) {
+func parsePCR(i BytesIterator) (cr *ClockReference, err error) {
 	var bs []byte
 	if bs, err = i.NextBytesNoCopy(6); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)

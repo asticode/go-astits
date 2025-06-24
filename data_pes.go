@@ -391,7 +391,7 @@ func parseDSMTrickMode(i byte) (m *DSMTrickMode) {
 }
 
 // parsePTSOrDTS parses a PTS or a DTS
-func parsePTSOrDTS(i *astikit.BytesIterator) (cr *ClockReference, err error) {
+func parsePTSOrDTS(i BytesIterator) (cr *ClockReference, err error) {
 	var bs []byte
 	if bs, err = i.NextBytes(5); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
@@ -402,7 +402,7 @@ func parsePTSOrDTS(i *astikit.BytesIterator) (cr *ClockReference, err error) {
 }
 
 // parseESCR parses an ESCR
-func parseESCR(i *astikit.BytesIterator) (cr *ClockReference, err error) {
+func parseESCR(i BytesIterator) (cr *ClockReference, err error) {
 	var bs []byte
 	if bs, err = i.NextBytes(6); err != nil {
 		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
