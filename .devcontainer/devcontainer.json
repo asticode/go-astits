@@ -1,0 +1,23 @@
+{
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	"containerEnv": {
+		"GOCACHE": "${containerWorkspaceFolder}/.devcontainer/tmp/gocache",
+		"GOMODCACHE": "${containerWorkspaceFolder}/.devcontainer/tmp/gomodcache"
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"golang.go"
+			],
+			"settings": {
+				"remote.autoForwardPorts": false
+			}
+		}
+	},
+	"mounts": [
+		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/root/.ssh,readonly,type=bind"
+	],
+	"name": "asticode/go-astits"
+}
