@@ -14,6 +14,13 @@ RUN apk add git openssh-client
 
 ARG GO_VERSION
 
-ADD https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz /tmp/go.tar.gz
-RUN tar -C /opt -xzf /tmp/go.tar.gz
+RUN <<_EOF_ sh
+arch=$(apk --print-arch)
+goArch="amd64"
+case \${arch} in
+    aarch64) goArch="arm64" ;;
+esac
+wget -O /tmp/go.tar.gz https://dl.google.com/go/go${GO_VERSION}.linux-\${goArch}.tar.gz
+tar -C /opt -xzf /tmp/go.tar.gz
+_EOF_
 ENV PATH="$PATH:/opt/go/bin"
