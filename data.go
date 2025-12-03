@@ -182,3 +182,26 @@ func isPSIComplete(ps []*Packet) bool {
 
 	return i.Len() >= i.Offset()
 }
+
+// isPESComplete checks whether payload fully contains PES packet
+func isPESComplete(payload []byte) bool {
+	i := astikit.NewBytesIterator(payload)
+
+	i.Seek(4)
+
+	// Get next bytes
+	var bs []byte
+	var err error
+	if bs, err = i.NextBytesNoCopy(2); err != nil {
+		return false
+	}
+
+	pesLength := uint16(bs[0])<<8 | uint16(bs[1])
+
+	if pesLength == 0 {
+		// any length
+		return false
+	}
+
+	return int(pesLength)+pesHeaderLength <= len(payload)
+}

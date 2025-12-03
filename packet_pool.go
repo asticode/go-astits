@@ -23,6 +23,7 @@ func newPacketAccumulator(pid uint16, programMap *programMap) *packetAccumulator
 func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 	mps := b.q
 
+	var needSkipBufferMPS bool
 	// Empty buffer if we detect a discontinuity
 	if hasDiscontinuity(mps, p) {
 		// Reset current slice or make new
@@ -31,6 +32,8 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 		} else {
 			mps = make([]*Packet, 0, 10)
 		}
+	} else {
+		needSkipBufferMPS = len(mps) == 0 || isPacketsAlreadySent(mps)
 	}
 
 	// Throw away packet if it's the same as the previous one
@@ -40,7 +43,9 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 
 	// Flush buffer if new payload starts here
 	if p.Header.PayloadUnitStartIndicator {
-		ps = mps
+		if !needSkipBufferMPS {
+			ps = mps
+		}
 		mps = make([]*Packet, 0, cap(mps))
 	}
 
@@ -52,6 +57,8 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 		isPSIComplete(mps) {
 		ps = mps
 		mps = nil
+	} else if needSkipBufferMPS && isPayloadCompletePES(p) {
+		ps = mps
 	}
 
 	b.q = mps
@@ -110,6 +117,10 @@ func (b *packetPool) dumpUnlocked() (ps []*Packet) {
 		ps = b.b[uint32(k)].q
 		delete(b.b, uint32(k))
 		if len(ps) > 0 {
+			if isPacketsAlreadySent(ps) {
+				ps = nil
+				continue
+			}
 			return
 		}
 	}
@@ -149,4 +160,12 @@ func hasDiscontinuity(ps []*Packet, p *Packet) bool {
 func isSameAsPrevious(ps []*Packet, p *Packet) bool {
 	l := len(ps)
 	return l > 0 && p.Header.HasPayload && p.Header.ContinuityCounter == ps[l-1].Header.ContinuityCounter
+}
+
+func isPayloadCompletePES(packet *Packet) bool {
+	return packet.Header.PayloadUnitStartIndicator && isPESPayload(packet.Payload) && isPESComplete(packet.Payload)
+}
+
+func isPacketsAlreadySent(ps []*Packet) bool {
+	return len(ps) == 1 && isPayloadCompletePES(ps[0])
 }
