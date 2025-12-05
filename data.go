@@ -182,3 +182,42 @@ func isPSIComplete(ps []*Packet) bool {
 
 	return i.Len() >= i.Offset()
 }
+
+// isPESComplete checks whether payload fully contains PES packet
+func isPESComplete(ps []*Packet) bool {
+	// Get payload length
+	var l int
+	for _, p := range ps {
+		l += len(p.Payload)
+	}
+
+	// Get the slice for payload from pool
+	payload := bytesPool.get(l)
+	defer bytesPool.put(payload)
+
+	// Append payload
+	var o int
+	for _, p := range ps {
+		o += copy(payload.s[o:], p.Payload)
+	}
+
+	// Create reader
+	i := astikit.NewBytesIterator(payload.s)
+
+	// Skip first 3 bytes that are there to identify the PES payload
+	i.Seek(3)
+
+	// Parse header
+	h, _, dataEnd, err := parsePESHeader(i)
+	if err != nil {
+		err = fmt.Errorf("astits: parsing PES header failed: %w", err)
+		return false
+	}
+
+	if h.PacketLength == 0 {
+		// There's no other way to know whether the packet is complete
+		return false
+	}
+
+	return i.Len() >= dataEnd
+}
