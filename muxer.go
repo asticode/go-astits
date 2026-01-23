@@ -343,7 +343,7 @@ func (m *Muxer) generatePAT() error {
 		Header: &PSISectionHeader{
 			SectionLength:          calcPATSectionLength(d),
 			SectionSyntaxIndicator: true,
-			TableID:                PSITableID(PSITableIDPAT),
+			TableID:                PSITableIDPAT,
 		},
 		Syntax: syntax,
 	}
