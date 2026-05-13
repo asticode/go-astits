@@ -49,13 +49,17 @@ const (
 	DescriptorTagStreamIdentifier           = 0x52
 	DescriptorTagSubtitling                 = 0x59
 	DescriptorTagTeletext                   = 0x56
+	DescriptorTagSatelliteDeliverySystem    = 0x43
+	DescriptorTagCableDeliverySystem        = 0x44
 	DescriptorTagVBIData                    = 0x45
 	DescriptorTagVBITeletext                = 0x46
+	DescriptorTagTerrestrialDeliverySystem  = 0x5A
 )
 
 // Descriptor extension tags
 // Chapter: 6.3 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 const (
+	DescriptorTagExtensionT2DeliverySystem   = 0x04
 	DescriptorTagExtensionSupplementaryAudio = 0x6
 )
 
@@ -91,6 +95,7 @@ const (
 type Descriptor struct {
 	AC3                        *DescriptorAC3
 	AVCVideo                   *DescriptorAVCVideo
+	CableDeliverySystem        *DescriptorCableDeliverySystem
 	Component                  *DescriptorComponent
 	Content                    *DescriptorContent
 	DataStreamAlignment        *DescriptorDataStreamAlignment
@@ -106,12 +111,14 @@ type Descriptor struct {
 	PrivateDataIndicator       *DescriptorPrivateDataIndicator
 	PrivateDataSpecifier       *DescriptorPrivateDataSpecifier
 	Registration               *DescriptorRegistration
+	SatelliteDeliverySystem    *DescriptorSatelliteDeliverySystem
 	Service                    *DescriptorService
 	ShortEvent                 *DescriptorShortEvent
 	StreamIdentifier           *DescriptorStreamIdentifier
 	Subtitling                 *DescriptorSubtitling
 	Tag                        uint8 // the tag defines the structure of the contained data following the descriptor length.
 	Teletext                   *DescriptorTeletext
+	TerrestrialDeliverySystem  *DescriptorTerrestrialDeliverySystem
 	Unknown                    *DescriptorUnknown
 	UserDefined                []byte
 	VBIData                    *DescriptorVBIData
@@ -612,6 +619,7 @@ func newDescriptorExtendedEventItem(i *astikit.BytesIterator) (d *DescriptorExte
 // Chapter: 6.2.16 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
 type DescriptorExtension struct {
 	SupplementaryAudio *DescriptorExtensionSupplementaryAudio
+	T2DeliverySystem   *DescriptorExtensionT2DeliverySystem
 	Tag                uint8
 	Unknown            *[]byte
 }
@@ -629,6 +637,11 @@ func newDescriptorExtension(i *astikit.BytesIterator, offsetEnd int) (d *Descrip
 
 	// Switch on tag
 	switch d.Tag {
+	case DescriptorTagExtensionT2DeliverySystem:
+		if d.T2DeliverySystem, err = newDescriptorExtensionT2DeliverySystem(i, offsetEnd); err != nil {
+			err = fmt.Errorf("astits: parsing T2 Delivery System extension descriptor failed: %w", err)
+			return
+		}
 	case DescriptorTagExtensionSupplementaryAudio:
 		if d.SupplementaryAudio, err = newDescriptorExtensionSupplementaryAudio(i, offsetEnd); err != nil {
 			err = fmt.Errorf("astits: parsing extension supplementary audio descriptor failed: %w", err)
@@ -1265,6 +1278,349 @@ func newDescriptorVBIData(i *astikit.BytesIterator, offsetEnd int) (d *Descripto
 	return
 }
 
+// decodeBCD decodes BCD-encoded bytes into an integer
+func decodeBCD(data []byte) uint64 {
+	var result uint64
+	for _, b := range data {
+		hi := uint64((b >> 4) & 0x0F)
+		lo := uint64(b & 0x0F)
+		result = result*100 + hi*10 + lo
+	}
+	return result
+}
+
+// DescriptorSatelliteDeliverySystem represents a satellite delivery system descriptor
+// Chapter: 6.2.13.2 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+type DescriptorSatelliteDeliverySystem struct {
+	Frequency        uint32 // in 10 kHz units (BCD decoded)
+	OrbitalPosition  uint16 // BCD: e.g. 0x0282 = 28.2°
+	WestEastFlag     bool   // false=west, true=east
+	Polarization     uint8  // 0=H, 1=V, 2=left, 3=right
+	RollOff          uint8  // 0=0.35, 1=0.25, 2=0.20
+	ModulationSystem bool   // false=DVB-S, true=DVB-S2
+	ModulationType   uint8  // 0=auto, 1=QPSK, 2=8PSK, 3=16-QAM
+	SymbolRate       uint32 // in 100 sym/s units (BCD decoded)
+	FECInner         uint8  // 0=not defined, 1=1/2, 2=2/3, 3=3/4, 4=5/6, 5=7/8, 6=8/9, 7=3/5, 8=4/5, 9=9/10
+}
+
+func newDescriptorSatelliteDeliverySystem(i *astikit.BytesIterator) (d *DescriptorSatelliteDeliverySystem, err error) {
+	// Get frequency bytes (4 bytes BCD)
+	var bs []byte
+	if bs, err = i.NextBytesNoCopy(4); err != nil {
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
+		return
+	}
+
+	// Create descriptor
+	d = &DescriptorSatelliteDeliverySystem{
+		Frequency: uint32(decodeBCD(bs)),
+	}
+
+	// Get orbital position bytes (2 bytes BCD)
+	if bs, err = i.NextBytesNoCopy(2); err != nil {
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
+		return
+	}
+
+	// Orbital position
+	d.OrbitalPosition = uint16(bs[0])<<8 | uint16(bs[1])
+
+	// Get next byte
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
+		return
+	}
+
+	// West/east flag
+	d.WestEastFlag = b&0x80 > 0
+
+	// Polarization
+	d.Polarization = uint8((b >> 5) & 0x3)
+
+	// Roll off
+	d.RollOff = uint8((b >> 3) & 0x3)
+
+	// Modulation system
+	d.ModulationSystem = b&0x04 > 0
+
+	// Modulation type
+	d.ModulationType = uint8(b & 0x3)
+
+	// Get symbol rate + FEC inner bytes (4 bytes)
+	if bs, err = i.NextBytesNoCopy(4); err != nil {
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
+		return
+	}
+
+	// Symbol rate (top 28 bits = BCD, 3.5 bytes)
+	srBytes := []byte{bs[0], bs[1], bs[2], (bs[3] >> 4) & 0x0F}
+	d.SymbolRate = uint32(decodeBCD(srBytes[:3]))*10 + uint32((bs[3]>>4)&0x0F)
+
+	// FEC inner (bottom 4 bits)
+	d.FECInner = uint8(bs[3] & 0x0F)
+	return
+}
+
+// DescriptorTerrestrialDeliverySystem represents a terrestrial delivery system descriptor
+// Chapter: 6.2.13.4 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+type DescriptorTerrestrialDeliverySystem struct {
+	Frequency            uint32 // centre frequency in 10 Hz units
+	Bandwidth            uint8  // 0=8MHz, 1=7MHz, 2=6MHz, 3=5MHz
+	Priority             bool
+	TimeSlicingIndicator bool
+	MPEFECIndicator      bool
+	Constellation        uint8 // 0=QPSK, 1=16-QAM, 2=64-QAM
+	HierarchyInformation uint8
+	CodeRateHPStream     uint8
+	CodeRateLPStream     uint8
+	GuardInterval        uint8 // 0=1/32, 1=1/16, 2=1/8, 3=1/4
+	TransmissionMode     uint8 // 0=2k, 1=8k, 2=4k
+	OtherFrequencyFlag   bool
+}
+
+func newDescriptorTerrestrialDeliverySystem(i *astikit.BytesIterator) (d *DescriptorTerrestrialDeliverySystem, err error) {
+	// Get frequency bytes (4 bytes, big-endian uint32)
+	var bs []byte
+	if bs, err = i.NextBytesNoCopy(4); err != nil {
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
+		return
+	}
+
+	// Create descriptor
+	d = &DescriptorTerrestrialDeliverySystem{
+		Frequency: uint32(bs[0])<<24 | uint32(bs[1])<<16 | uint32(bs[2])<<8 | uint32(bs[3]),
+	}
+
+	// Get next byte
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
+		return
+	}
+
+	// Bandwidth
+	d.Bandwidth = uint8((b >> 5) & 0x7)
+
+	// Priority
+	d.Priority = b&0x10 > 0
+
+	// Time slicing indicator
+	d.TimeSlicingIndicator = b&0x08 > 0
+
+	// MPE-FEC indicator
+	d.MPEFECIndicator = b&0x04 > 0
+
+	// Get next byte
+	if b, err = i.NextByte(); err != nil {
+		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
+		return
+	}
+
+	// Constellation
+	d.Constellation = uint8((b >> 6) & 0x3)
+
+	// Hierarchy information
+	d.HierarchyInformation = uint8((b >> 3) & 0x7)
+
+	// Code rate HP stream
+	d.CodeRateHPStream = uint8(b & 0x7)
+
+	// Get next byte
+	if b, err = i.NextByte(); err != nil {
+		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
+		return
+	}
+
+	// Code rate LP stream
+	d.CodeRateLPStream = uint8((b >> 5) & 0x7)
+
+	// Guard interval
+	d.GuardInterval = uint8((b >> 3) & 0x3)
+
+	// Transmission mode
+	d.TransmissionMode = uint8((b >> 1) & 0x3)
+
+	// Other frequency flag
+	d.OtherFrequencyFlag = b&0x1 > 0
+
+	// Skip reserved bytes (4 bytes)
+	if _, err = i.NextBytes(4); err != nil {
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
+		return
+	}
+	return
+}
+
+// DescriptorCableDeliverySystem represents a cable delivery system descriptor
+// Chapter: 6.2.13.1 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+type DescriptorCableDeliverySystem struct {
+	Frequency  uint32 // in 100 Hz units (BCD decoded)
+	FECOuter   uint8
+	Modulation uint8  // 0=not defined, 1=16-QAM, 2=32-QAM, 3=64-QAM, 4=128-QAM, 5=256-QAM
+	SymbolRate uint32 // in 100 sym/s units (BCD decoded)
+	FECInner   uint8
+}
+
+func newDescriptorCableDeliverySystem(i *astikit.BytesIterator) (d *DescriptorCableDeliverySystem, err error) {
+	// Get frequency bytes (4 bytes BCD)
+	var bs []byte
+	if bs, err = i.NextBytesNoCopy(4); err != nil {
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
+		return
+	}
+
+	// Create descriptor
+	d = &DescriptorCableDeliverySystem{
+		Frequency: uint32(decodeBCD(bs)),
+	}
+
+	// Get reserved + FEC outer bytes (2 bytes)
+	if bs, err = i.NextBytesNoCopy(2); err != nil {
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
+		return
+	}
+
+	// FEC outer (bottom 4 bits of second byte)
+	d.FECOuter = uint8(bs[1] & 0x0F)
+
+	// Get next byte
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
+		return
+	}
+
+	// Modulation
+	d.Modulation = uint8(b)
+
+	// Get symbol rate + FEC inner bytes (4 bytes)
+	if bs, err = i.NextBytesNoCopy(4); err != nil {
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
+		return
+	}
+
+	// Symbol rate (top 28 bits = BCD, 3.5 bytes)
+	d.SymbolRate = uint32(decodeBCD(bs[:3]))*10 + uint32((bs[3]>>4)&0x0F)
+
+	// FEC inner (bottom 4 bits)
+	d.FECInner = uint8(bs[3] & 0x0F)
+	return
+}
+
+// DescriptorExtensionT2DeliverySystem represents a T2 delivery system extension descriptor
+// Chapter: 6.4.6 | Link: https://www.etsi.org/deliver/etsi_en/300400_300499/300468/01.15.01_60/en_300468v011501p.pdf
+type DescriptorExtensionT2DeliverySystem struct {
+	PLPID              uint8
+	T2SystemID         uint16
+	HasExtendedInfo    bool
+	SISOorMISO         uint8 // 0=SISO, 1=MISO
+	Bandwidth          uint8 // 0=8MHz, 1=7MHz, 2=6MHz, 3=5MHz, 4=10MHz, 5=1.712MHz
+	GuardInterval      uint8
+	TransmissionMode   uint8
+	OtherFrequencyFlag bool
+	TFSFlag            bool
+	Cells              []T2Cell
+}
+
+// T2Cell represents a cell in the T2 delivery system descriptor
+type T2Cell struct {
+	CellID            uint16
+	CentreFrequencies []uint32 // in 10 Hz units
+}
+
+func newDescriptorExtensionT2DeliverySystem(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorExtensionT2DeliverySystem, err error) {
+	// Get PLP ID
+	var b byte
+	if b, err = i.NextByte(); err != nil {
+		err = fmt.Errorf("astits: fetching next byte failed: %w", err)
+		return
+	}
+
+	// Create descriptor
+	d = &DescriptorExtensionT2DeliverySystem{
+		PLPID: uint8(b),
+	}
+
+	// Get T2 system ID (2 bytes)
+	var bs []byte
+	if bs, err = i.NextBytesNoCopy(2); err != nil {
+		err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
+		return
+	}
+
+	// T2 system ID
+	d.T2SystemID = uint16(bs[0])<<8 | uint16(bs[1])
+
+	// Check for extended info
+	if i.Offset() < offsetEnd {
+		d.HasExtendedInfo = true
+
+		// Get next byte
+		if b, err = i.NextByte(); err != nil {
+			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
+			return
+		}
+
+		// SISO/MISO
+		d.SISOorMISO = uint8((b >> 6) & 0x3)
+
+		// Bandwidth
+		d.Bandwidth = uint8((b >> 2) & 0x0F)
+
+		// Get next byte
+		if b, err = i.NextByte(); err != nil {
+			err = fmt.Errorf("astits: fetching next byte failed: %w", err)
+			return
+		}
+
+		// Guard interval
+		d.GuardInterval = uint8((b >> 5) & 0x7)
+
+		// Transmission mode
+		d.TransmissionMode = uint8((b >> 2) & 0x7)
+
+		// Other frequency flag
+		d.OtherFrequencyFlag = b&0x02 > 0
+
+		// TFS flag
+		d.TFSFlag = b&0x01 > 0
+
+		// Cell loop
+		for i.Offset() < offsetEnd {
+			var cell T2Cell
+
+			// Cell ID (2 bytes)
+			if bs, err = i.NextBytesNoCopy(2); err != nil {
+				err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
+				return
+			}
+			cell.CellID = uint16(bs[0])<<8 | uint16(bs[1])
+
+			// Frequency loop length
+			if b, err = i.NextByte(); err != nil {
+				err = fmt.Errorf("astits: fetching next byte failed: %w", err)
+				return
+			}
+			freqLoopLength := int(b)
+
+			// Frequencies (4 bytes each)
+			freqEnd := i.Offset() + freqLoopLength
+			for i.Offset() < freqEnd {
+				if bs, err = i.NextBytesNoCopy(4); err != nil {
+					err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
+					return
+				}
+				freq := uint32(bs[0])<<24 | uint32(bs[1])<<16 | uint32(bs[2])<<8 | uint32(bs[3])
+				cell.CentreFrequencies = append(cell.CentreFrequencies, freq)
+			}
+
+			d.Cells = append(d.Cells, cell)
+		}
+	}
+	return
+}
+
 // parseDescriptors parses descriptors
 func parseDescriptors(i *astikit.BytesIterator) (o []*Descriptor, err error) {
 	// Get next 2 bytes
@@ -1387,6 +1743,21 @@ func parseDescriptors(i *astikit.BytesIterator) (o []*Descriptor, err error) {
 					case DescriptorTagRegistration:
 						if d.Registration, err = newDescriptorRegistration(i, offsetDescriptorEnd); err != nil {
 							err = fmt.Errorf("astits: parsing Registration descriptor failed: %w", err)
+							return
+						}
+					case DescriptorTagSatelliteDeliverySystem:
+						if d.SatelliteDeliverySystem, err = newDescriptorSatelliteDeliverySystem(i); err != nil {
+							err = fmt.Errorf("astits: parsing Satellite Delivery System descriptor failed: %w", err)
+							return
+						}
+					case DescriptorTagTerrestrialDeliverySystem:
+						if d.TerrestrialDeliverySystem, err = newDescriptorTerrestrialDeliverySystem(i); err != nil {
+							err = fmt.Errorf("astits: parsing Terrestrial Delivery System descriptor failed: %w", err)
+							return
+						}
+					case DescriptorTagCableDeliverySystem:
+						if d.CableDeliverySystem, err = newDescriptorCableDeliverySystem(i); err != nil {
+							err = fmt.Errorf("astits: parsing Cable Delivery System descriptor failed: %w", err)
 							return
 						}
 					case DescriptorTagService:
@@ -1729,6 +2100,8 @@ func calcDescriptorExtensionLength(d *DescriptorExtension) uint8 {
 	ret := 1 // tag
 
 	switch d.Tag {
+	case DescriptorTagExtensionT2DeliverySystem:
+		ret += calcDescriptorExtensionT2DeliverySystemLength(d.T2DeliverySystem)
 	case DescriptorTagExtensionSupplementaryAudio:
 		ret += calcDescriptorExtensionSupplementaryAudioLength(d.SupplementaryAudio)
 	default:
@@ -1757,12 +2130,61 @@ func writeDescriptorExtensionSupplementaryAudio(w *astikit.BitsWriter, d *Descri
 	return b.Err()
 }
 
+func writeDescriptorExtensionT2DeliverySystem(w *astikit.BitsWriter, d *DescriptorExtensionT2DeliverySystem) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	// PLP ID
+	b.Write(d.PLPID)
+
+	// T2 system ID
+	b.Write(uint8(d.T2SystemID >> 8))
+	b.Write(uint8(d.T2SystemID & 0xFF))
+
+	if d.HasExtendedInfo {
+		// SISO/MISO (2 bits) + bandwidth (4 bits) + reserved (2 bits)
+		var byte3 uint8
+		byte3 |= (d.SISOorMISO & 0x3) << 6
+		byte3 |= (d.Bandwidth & 0x0F) << 2
+		// reserved bits 1-0 set to 0
+		b.Write(byte3)
+
+		// Guard interval (3 bits) + transmission mode (3 bits) + other freq flag (1) + TFS flag (1)
+		var byte4 uint8
+		byte4 |= (d.GuardInterval & 0x7) << 5
+		byte4 |= (d.TransmissionMode & 0x7) << 2
+		if d.OtherFrequencyFlag {
+			byte4 |= 0x02
+		}
+		if d.TFSFlag {
+			byte4 |= 0x01
+		}
+		b.Write(byte4)
+
+		// Cells
+		for _, cell := range d.Cells {
+			b.Write(uint8(cell.CellID >> 8))
+			b.Write(uint8(cell.CellID & 0xFF))
+			b.Write(uint8(len(cell.CentreFrequencies) * 4))
+			for _, freq := range cell.CentreFrequencies {
+				b.Write(freq)
+			}
+		}
+	}
+
+	return b.Err()
+}
+
 func writeDescriptorExtension(w *astikit.BitsWriter, d *DescriptorExtension) error {
 	b := astikit.NewBitsWriterBatch(w)
 
 	b.Write(d.Tag)
 
 	switch d.Tag {
+	case DescriptorTagExtensionT2DeliverySystem:
+		err := writeDescriptorExtensionT2DeliverySystem(w, d.T2DeliverySystem)
+		if err != nil {
+			return err
+		}
 	case DescriptorTagExtensionSupplementaryAudio:
 		err := writeDescriptorExtensionSupplementaryAudio(w, d.SupplementaryAudio)
 		if err != nil {
@@ -2072,6 +2494,155 @@ func writeDescriptorUnknown(w *astikit.BitsWriter, d *DescriptorUnknown) error {
 	return b.Err()
 }
 
+// encodeBCD encodes an integer into BCD bytes
+func encodeBCD(val uint64, numBytes int) []byte {
+	result := make([]byte, numBytes)
+	for i := numBytes - 1; i >= 0; i-- {
+		lo := val % 10
+		val /= 10
+		hi := val % 10
+		val /= 10
+		result[i] = byte(hi<<4 | lo)
+	}
+	return result
+}
+
+func calcDescriptorSatelliteDeliverySystemLength(d *DescriptorSatelliteDeliverySystem) uint8 {
+	if d == nil {
+		return 0
+	}
+	return 11
+}
+
+func writeDescriptorSatelliteDeliverySystem(w *astikit.BitsWriter, d *DescriptorSatelliteDeliverySystem) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	// Frequency (4 BCD bytes)
+	b.Write(encodeBCD(uint64(d.Frequency), 4))
+
+	// Orbital position (2 bytes, raw)
+	b.Write(uint8(d.OrbitalPosition >> 8))
+	b.Write(uint8(d.OrbitalPosition & 0xFF))
+
+	// West/east, polarization, roll-off, modulation system, modulation type
+	var flags uint8
+	if d.WestEastFlag {
+		flags |= 0x80
+	}
+	flags |= (d.Polarization & 0x3) << 5
+	flags |= (d.RollOff & 0x3) << 3
+	if d.ModulationSystem {
+		flags |= 0x04
+	}
+	flags |= d.ModulationType & 0x3
+	b.Write(flags)
+
+	// Symbol rate (top 28 bits BCD = 7 digits) + FEC inner (bottom 4 bits)
+	sr := uint64(d.SymbolRate)
+	srBytes := encodeBCD(sr/10, 3)
+	lastNibble := uint8(sr % 10)
+	b.Write(srBytes)
+	b.Write(lastNibble<<4 | (d.FECInner & 0x0F))
+
+	return b.Err()
+}
+
+func calcDescriptorTerrestrialDeliverySystemLength(d *DescriptorTerrestrialDeliverySystem) uint8 {
+	if d == nil {
+		return 0
+	}
+	return 11
+}
+
+func writeDescriptorTerrestrialDeliverySystem(w *astikit.BitsWriter, d *DescriptorTerrestrialDeliverySystem) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	// Centre frequency (uint32 big-endian)
+	b.Write(d.Frequency)
+
+	// Bandwidth (3 bits), priority (1), time slicing (1), MPE-FEC (1), reserved (2)
+	var byte4 uint8
+	byte4 |= (d.Bandwidth & 0x7) << 5
+	if d.Priority {
+		byte4 |= 0x10
+	}
+	if d.TimeSlicingIndicator {
+		byte4 |= 0x08
+	}
+	if d.MPEFECIndicator {
+		byte4 |= 0x04
+	}
+	// reserved bits 1-0 set to 0
+	b.Write(byte4)
+
+	// Constellation (2 bits), hierarchy (3), code rate HP (3)
+	var byte5 uint8
+	byte5 |= (d.Constellation & 0x3) << 6
+	byte5 |= (d.HierarchyInformation & 0x7) << 3
+	byte5 |= d.CodeRateHPStream & 0x7
+	b.Write(byte5)
+
+	// Code rate LP (3 bits), guard interval (2), transmission mode (2), other freq flag (1)
+	var byte6 uint8
+	byte6 |= (d.CodeRateLPStream & 0x7) << 5
+	byte6 |= (d.GuardInterval & 0x3) << 3
+	byte6 |= (d.TransmissionMode & 0x3) << 1
+	if d.OtherFrequencyFlag {
+		byte6 |= 0x01
+	}
+	b.Write(byte6)
+
+	// Reserved (4 bytes)
+	b.Write(uint32(0xFFFFFFFF))
+
+	return b.Err()
+}
+
+func calcDescriptorCableDeliverySystemLength(d *DescriptorCableDeliverySystem) uint8 {
+	if d == nil {
+		return 0
+	}
+	return 11
+}
+
+func writeDescriptorCableDeliverySystem(w *astikit.BitsWriter, d *DescriptorCableDeliverySystem) error {
+	b := astikit.NewBitsWriterBatch(w)
+
+	// Frequency (4 BCD bytes)
+	b.Write(encodeBCD(uint64(d.Frequency), 4))
+
+	// Reserved (12 bits) + FEC outer (4 bits) = 2 bytes
+	b.Write(uint8(0xFF))
+	b.Write(uint8(0xF0 | (d.FECOuter & 0x0F)))
+
+	// Modulation
+	b.Write(d.Modulation)
+
+	// Symbol rate (top 28 bits BCD) + FEC inner (bottom 4 bits)
+	sr := uint64(d.SymbolRate)
+	srBytes := encodeBCD(sr/10, 3)
+	lastNibble := uint8(sr % 10)
+	b.Write(srBytes)
+	b.Write(lastNibble<<4 | (d.FECInner & 0x0F))
+
+	return b.Err()
+}
+
+func calcDescriptorExtensionT2DeliverySystemLength(d *DescriptorExtensionT2DeliverySystem) int {
+	if d == nil {
+		return 0
+	}
+	ret := 3 // PLP ID (1) + T2 system ID (2)
+	if d.HasExtendedInfo {
+		ret += 2 // SISO/MISO + bandwidth byte (1) + guard/transmission byte (1)
+		for _, cell := range d.Cells {
+			ret += 3 // cell ID (2) + freq loop length (1)
+			ret += 4 * len(cell.CentreFrequencies)
+		}
+	}
+	return ret
+}
+
 func calcDescriptorLength(d *Descriptor) uint8 {
 	if d.Tag >= 0x80 && d.Tag <= 0xfe {
 		return calcDescriptorUserDefinedLength(d.UserDefined)
@@ -2082,6 +2653,12 @@ func calcDescriptorLength(d *Descriptor) uint8 {
 		return calcDescriptorAC3Length(d.AC3)
 	case DescriptorTagAVCVideo:
 		return calcDescriptorAVCVideoLength(d.AVCVideo)
+	case DescriptorTagSatelliteDeliverySystem:
+		return calcDescriptorSatelliteDeliverySystemLength(d.SatelliteDeliverySystem)
+	case DescriptorTagCableDeliverySystem:
+		return calcDescriptorCableDeliverySystemLength(d.CableDeliverySystem)
+	case DescriptorTagTerrestrialDeliverySystem:
+		return calcDescriptorTerrestrialDeliverySystemLength(d.TerrestrialDeliverySystem)
 	case DescriptorTagComponent:
 		return calcDescriptorComponentLength(d.Component)
 	case DescriptorTagContent:
@@ -2156,6 +2733,12 @@ func writeDescriptor(w *astikit.BitsWriter, d *Descriptor) (int, error) {
 		return written, writeDescriptorAC3(w, d.AC3)
 	case DescriptorTagAVCVideo:
 		return written, writeDescriptorAVCVideo(w, d.AVCVideo)
+	case DescriptorTagSatelliteDeliverySystem:
+		return written, writeDescriptorSatelliteDeliverySystem(w, d.SatelliteDeliverySystem)
+	case DescriptorTagCableDeliverySystem:
+		return written, writeDescriptorCableDeliverySystem(w, d.CableDeliverySystem)
+	case DescriptorTagTerrestrialDeliverySystem:
+		return written, writeDescriptorTerrestrialDeliverySystem(w, d.TerrestrialDeliverySystem)
 	case DescriptorTagComponent:
 		return written, writeDescriptorComponent(w, d.Component)
 	case DescriptorTagContent:

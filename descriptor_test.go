@@ -318,6 +318,139 @@ var descriptorTestTable = []descriptorTest{
 			}},
 	},
 	{
+		"SatelliteDeliverySystem",
+		func(w *astikit.BitsWriter) {
+			w.Write(uint8(DescriptorTagSatelliteDeliverySystem)) // Tag
+			w.Write(uint8(11))                                   // Length
+			w.Write([]byte{0x11, 0x77, 0x80, 0x00})              // Frequency BCD: 11778000 → 11778000 (in 10 kHz)
+			w.Write([]byte{0x02, 0x82})                          // Orbital position BCD: 0x0282 = 28.2°
+			w.Write("1")                                         // West/east flag (east)
+			w.Write("01")                                        // Polarization (V)
+			w.Write("00")                                        // Roll off (0.35)
+			w.Write("1")                                         // Modulation system (DVB-S2)
+			w.Write("01")                                        // Modulation type (QPSK)
+			w.Write([]byte{0x02, 0x75, 0x00})                    // Symbol rate BCD top 3 bytes: 027500
+			w.Write("0000")                                      // Symbol rate BCD bottom nibble: 0
+			w.Write("0011")                                      // FEC inner: 3/4
+		},
+		Descriptor{
+			Tag:    DescriptorTagSatelliteDeliverySystem,
+			Length: 11,
+			SatelliteDeliverySystem: &DescriptorSatelliteDeliverySystem{
+				Frequency:        11778000,
+				OrbitalPosition:  0x0282,
+				WestEastFlag:     true,
+				Polarization:     1,
+				RollOff:          0,
+				ModulationSystem: true,
+				ModulationType:   1,
+				SymbolRate:       275000,
+				FECInner:         3,
+			}},
+	},
+	{
+		"TerrestrialDeliverySystem",
+		func(w *astikit.BitsWriter) {
+			w.Write(uint8(DescriptorTagTerrestrialDeliverySystem)) // Tag
+			w.Write(uint8(11))                                     // Length
+			w.Write(uint32(506000000))                             // Centre frequency (10 Hz units)
+			w.Write("000")                                         // Bandwidth (8MHz)
+			w.Write("1")                                           // Priority
+			w.Write("0")                                           // Time slicing indicator
+			w.Write("0")                                           // MPE-FEC indicator
+			w.Write("00")                                          // Reserved
+			w.Write("01")                                          // Constellation (16-QAM)
+			w.Write("001")                                         // Hierarchy information
+			w.Write("010")                                         // Code rate HP stream
+			w.Write("011")                                         // Code rate LP stream
+			w.Write("01")                                          // Guard interval (1/16)
+			w.Write("01")                                          // Transmission mode (8k)
+			w.Write("1")                                           // Other frequency flag
+			w.Write(uint32(0xFFFFFFFF))                            // Reserved (4 bytes)
+		},
+		Descriptor{
+			Tag:    DescriptorTagTerrestrialDeliverySystem,
+			Length: 11,
+			TerrestrialDeliverySystem: &DescriptorTerrestrialDeliverySystem{
+				Frequency:            506000000,
+				Bandwidth:            0,
+				Priority:             true,
+				TimeSlicingIndicator: false,
+				MPEFECIndicator:      false,
+				Constellation:        1,
+				HierarchyInformation: 1,
+				CodeRateHPStream:     2,
+				CodeRateLPStream:     3,
+				GuardInterval:        1,
+				TransmissionMode:     1,
+				OtherFrequencyFlag:   true,
+			}},
+	},
+	{
+		"CableDeliverySystem",
+		func(w *astikit.BitsWriter) {
+			w.Write(uint8(DescriptorTagCableDeliverySystem)) // Tag
+			w.Write(uint8(11))                               // Length
+			w.Write([]byte{0x03, 0x06, 0x00, 0x00})          // Frequency BCD: 03060000 (306.0000 MHz in 100 Hz)
+			w.Write([]byte{0xFF, 0xF0})                      // Reserved(12 bits) + FEC outer(4 bits): reserved=0xFFF, FEC=0
+			w.Write(uint8(5))                                // Modulation (256-QAM)
+			w.Write([]byte{0x06, 0x90, 0x00})                // Symbol rate BCD top 3 bytes: 069000
+			w.Write("0000")                                  // Symbol rate BCD bottom nibble: 0
+			w.Write("0001")                                  // FEC inner: 1/2
+		},
+		Descriptor{
+			Tag:    DescriptorTagCableDeliverySystem,
+			Length: 11,
+			CableDeliverySystem: &DescriptorCableDeliverySystem{
+				Frequency:  3060000,
+				FECOuter:   0,
+				Modulation: 5,
+				SymbolRate: 690000,
+				FECInner:   1,
+			}},
+	},
+	{
+		"ExtensionT2DeliverySystem",
+		func(w *astikit.BitsWriter) {
+			w.Write(uint8(DescriptorTagExtension))                 // Tag
+			w.Write(uint8(13))                                     // Length
+			w.Write(uint8(DescriptorTagExtensionT2DeliverySystem)) // Extension tag
+			w.Write(uint8(0x01))                                   // PLP ID
+			w.Write(uint16(0x1234))                                // T2 system ID
+			w.Write("01")                                          // SISO/MISO (MISO)
+			w.Write("0000")                                        // Bandwidth (8MHz)
+			w.Write("00")                                          // Reserved
+			w.Write("001")                                         // Guard interval
+			w.Write("010")                                         // Transmission mode
+			w.Write("1")                                           // Other frequency flag
+			w.Write("0")                                           // TFS flag
+			w.Write(uint16(0x0001))                                // Cell ID
+			w.Write(uint8(4))                                      // Frequency loop length (4 bytes = 1 freq)
+			w.Write(uint32(506000000))                             // Centre frequency
+		},
+		Descriptor{
+			Tag:    DescriptorTagExtension,
+			Length: 13,
+			Extension: &DescriptorExtension{
+				T2DeliverySystem: &DescriptorExtensionT2DeliverySystem{
+					PLPID:              1,
+					T2SystemID:         0x1234,
+					HasExtendedInfo:    true,
+					SISOorMISO:         1,
+					Bandwidth:          0,
+					GuardInterval:      1,
+					TransmissionMode:   2,
+					OtherFrequencyFlag: true,
+					TFSFlag:            false,
+					Cells: []T2Cell{{
+						CellID:            1,
+						CentreFrequencies: []uint32{506000000},
+					}},
+				},
+				Tag: DescriptorTagExtensionT2DeliverySystem,
+			}},
+	},
+	{
 		"Component",
 		func(w *astikit.BitsWriter) {
 			w.Write(uint8(DescriptorTagComponent)) // Tag
