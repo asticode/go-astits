@@ -35,6 +35,7 @@ type Demuxer struct {
 	packetPool   *packetPool
 	programMap   *programMap
 	r            io.Reader
+	streamMap    *elementaryStreamMap
 }
 
 // PacketsParser represents an object capable of parsing a set of packets containing a unique payload spanning over those packets
@@ -53,6 +54,7 @@ func NewDemuxer(ctx context.Context, r io.Reader, opts ...func(*Demuxer)) (d *De
 		l:          astikit.AdaptStdLogger(nil),
 		programMap: newProgramMap(),
 		r:          r,
+		streamMap:  newElementaryStreamMap(),
 	}
 	d.packetPool = newPacketPool(d.programMap)
 
@@ -145,7 +147,7 @@ func (dmx *Demuxer) NextData() (d *DemuxerData, err error) {
 
 					// Parse data
 					var errParseData error
-					if ds, errParseData = parseData(ps, dmx.optPacketsParser, dmx.programMap); errParseData != nil {
+					if ds, errParseData = parseData(ps, dmx.optPacketsParser, dmx.programMap, dmx.streamMap); errParseData != nil {
 						// Log error as there may be some incomplete data here
 						// We still want to try to parse all packets, in case final data is complete
 						dmx.l.Error(fmt.Errorf("astits: parsing data failed: %w", errParseData))
@@ -170,7 +172,7 @@ func (dmx *Demuxer) NextData() (d *DemuxerData, err error) {
 		}
 
 		// Parse data
-		if ds, err = parseData(ps, dmx.optPacketsParser, dmx.programMap); err != nil {
+		if ds, err = parseData(ps, dmx.optPacketsParser, dmx.programMap, dmx.streamMap); err != nil {
 			err = fmt.Errorf("astits: building new data failed: %w", err)
 			return
 		}
@@ -197,6 +199,11 @@ func (dmx *Demuxer) updateData(ds []*DemuxerData) (d *DemuxerData) {
 					if pgm.ProgramNumber > 0 {
 						dmx.programMap.setUnlocked(pgm.ProgramMapID, pgm.ProgramNumber)
 					}
+				}
+			}
+			if v.PMT != nil {
+				for _, es := range v.PMT.ElementaryStreams {
+					dmx.streamMap.setUnlocked(es.ElementaryPID, v.PMT.ProgramNumber)
 				}
 			}
 		}
