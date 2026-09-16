@@ -46,6 +46,13 @@ func (b *packetAccumulator) add(p *Packet) (ps []*Packet) {
 
 	mps = append(mps, p)
 
+	// A single call can only return one payload: if this packet already flushed the
+	// previous one, keep the new payload queued instead of overwriting the result.
+	if len(ps) > 0 {
+		b.q = mps
+		return
+	}
+
 	// Check if PSI payload is complete
 	if b.programMap != nil &&
 		(b.pid == PIDPAT || b.programMap.existsUnlocked(b.pid)) &&
