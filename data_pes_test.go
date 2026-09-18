@@ -383,6 +383,7 @@ func pesWithHeaderBytes() []byte {
 	pesTestCases[1].headerBytesFunc(w, true, true)
 	pesTestCases[1].optionalHeaderBytesFunc(w, true, true)
 	pesTestCases[1].bytesFunc(w, true, true)
+	buf.Write(make([]byte, 100)) // Add some extra bytes
 	return buf.Bytes()
 }
 
@@ -399,6 +400,7 @@ func TestParsePESData(t *testing.T) {
 			tc.headerBytesFunc(w, true, true)
 			tc.optionalHeaderBytesFunc(w, true, true)
 			tc.bytesFunc(w, true, true)
+			buf.Write(make([]byte, 100)) // Add some extra bytes
 			d, err := parsePESData(astikit.NewBytesIterator(buf.Bytes()))
 			assert.NoError(t, err)
 			assert.Equal(t, tc.pesData, d)
