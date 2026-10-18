@@ -50,6 +50,25 @@ func TestWritePMTSection(t *testing.T) {
 	assert.Equal(t, pmtBytes(), buf.Bytes())
 }
 
+func TestStreamTypeToPESStreamID(t *testing.T) {
+	for st, id := range map[StreamType]uint8{
+		StreamTypeMPEG1Video:   0xe0,
+		StreamTypeH264Video:    0xe0,
+		StreamTypeH265Video:    0xe0,
+		StreamTypeMPEG1Audio:   0xc0,
+		StreamTypeMPEG2Audio:   0xc0,
+		StreamTypeAACAudio:     0xc0,
+		StreamTypeAACLATMAudio: 0xc0,
+		StreamTypeAC3Audio:     0xbd,
+		StreamTypeEAC3Audio:    0xbd,
+		StreamTypeDTSAudio:     0xbd,
+		StreamTypePrivateData:  0xbd,
+		StreamTypeMetadata:     0xfc,
+	} {
+		assert.Equal(t, id, st.ToPESStreamID(), st.String())
+	}
+}
+
 func BenchmarkParsePMTSection(b *testing.B) {
 	b.ReportAllocs()
 	bs := pmtBytes()

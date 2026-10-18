@@ -240,6 +240,8 @@ func (t StreamType) String() string {
 	return "Unknown"
 }
 
+// ToPESStreamID returns the PES stream_id (ISO/IEC 13818-1 Table 2-22) that the muxer writes for the stream type
+// when the PES header leaves it at 0.
 func (t StreamType) ToPESStreamID() uint8 {
 	switch t {
 	case StreamTypeMPEG1Video, StreamTypeMPEG2Video, StreamTypeMPEG4Video, StreamTypeH264Video,
@@ -247,13 +249,12 @@ func (t StreamType) ToPESStreamID() uint8 {
 		return 0xe0
 	case StreamTypeDIRACVideo:
 		return 0xfd
-	case StreamTypeMPEG2Audio, StreamTypeAACAudio, StreamTypeAACLATMAudio:
+	case StreamTypeMPEG1Audio, StreamTypeMPEG2Audio, StreamTypeAACAudio, StreamTypeAACLATMAudio:
 		return 0xc0
-	case StreamTypeAC3Audio, StreamTypeEAC3Audio: // m2ts_mode???
-		return 0xfd
-	case StreamTypePrivateSection, StreamTypePrivateData, StreamTypeMetadata:
+	case StreamTypePrivateSection, StreamTypeMetadata:
 		return 0xfc
 	default:
+		// private_stream_1, which also carries AC-3 and E-AC-3 (ATSC A/52 Annex A, ETSI EN 300 468 Annex D)
 		return 0xbd
 	}
 }
