@@ -186,10 +186,27 @@ func isPSIComplete(ps []*Packet) bool {
 
 // isPESComplete checks whether payload fully contains PES packet
 func isPESComplete(ps []*Packet) bool {
+	var header [6]byte
+	var n int
+	for _, p := range ps {
+		n += copy(header[n:], p.Payload)
+		if n == len(header) {
+			break
+		}
+	}
+	if n < len(header) || binary.BigEndian.Uint16(header[4:]) == 0 {
+		return false
+	}
+
 	// Get payload length
 	var l int
 	for _, p := range ps {
 		l += len(p.Payload)
+	}
+
+	// PES_packet_length excludes the six-byte fixed header.
+	if l < len(header)+int(binary.BigEndian.Uint16(header[4:])) {
+		return false
 	}
 
 	// Get the slice for payload from pool
