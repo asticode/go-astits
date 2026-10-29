@@ -101,3 +101,73 @@ func TestIsPESPayload(t *testing.T) {
 	w.Write("000000000000000000000001")
 	assert.True(t, isPESPayload(buf.Bytes()))
 }
+
+func BenchmarkIsPESComplete(b *testing.B) {
+	for _, tc := range []struct {
+		name    string
+		packets int
+		bounded bool
+		partial bool
+	}{
+		{"unbounded_1", 1, false, false},
+		{"unbounded_256", 256, false, false},
+		{"bounded_partial_256", 256, true, true},
+		{"bounded_complete_256", 256, true, false},
+		{"bounded_complete_1", 1, true, false},
+	} {
+		b.Run(tc.name, func(b *testing.B) {
+			payload := make([]byte, tc.packets*184)
+			copy(payload, []byte{0, 0, 1, 0xe0, 0, 0, 0x80, 0, 0})
+			if tc.bounded {
+				length := len(payload) - 6
+				if tc.partial {
+					length++
+				}
+				payload[4], payload[5] = byte(length>>8), byte(length)
+			}
+			packets := make([]*Packet, tc.packets)
+			for i := range packets {
+				packets[i] = &Packet{Payload: payload[i*184 : (i+1)*184]}
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				isPESComplete(packets)
+			}
+		})
+	}
+}
+
+func TestIsPESComplete_PreservesHeaderValidation(t *testing.T) {
+	for _, payload := range [][]byte{
+		{0, 0, 1, 0xbe, 0, 1, 42}, // No optional header.
+		{0, 0, 1, 0xe0, 0, 4, 0x80, 0, 0, 42},
+		{0, 0, 1, 0xe0, 0, 0, 0x80, 0, 0, 42}, // Unbounded video.
+		{0, 0, 1, 0xe0, 0, 1, 0x80, 0x80, 5},  // Truncated PTS despite full declared length.
+		{0, 0, 1, 0xe0, 0, 8, 0x80, 0x80, 5, 0x21, 0, 1, 0, 1},
+		{0, 0, 1, 0xe0, 0, 4, 0x80, 1, 1, 0x80}, // Truncated extension.
+	} {
+		for end := 0; end <= len(payload); end++ {
+			data := payload[:end]
+			want := false
+			if len(data) >= 3 {
+				i := astikit.NewBytesIterator(data)
+				i.Seek(3)
+				h, _, dataEnd, err := parsePESHeader(i)
+				want = err == nil && h.PacketLength != 0 && i.Len() >= dataEnd
+			}
+			for split := 0; split <= end; split++ {
+				packets := []*Packet{{Payload: data[:split]}, {}, {Payload: data[split:]}}
+				assert.Equal(t, want, isPESComplete(packets), "payload=%x end=%d split=%d", payload, end, split)
+			}
+		}
+	}
+}
+
+func TestIsPESComplete_UnboundedAndPartialDoNotAllocate(t *testing.T) {
+	for _, length := range []byte{0, 255} {
+		packets := []*Packet{{Payload: []byte{0, 0, 1, 0xe0, 0, length, 0x80, 0, 0}}}
+		assert.False(t, isPESComplete(packets))
+		assert.Zero(t, testing.AllocsPerRun(100, func() { isPESComplete(packets) }))
+	}
+}

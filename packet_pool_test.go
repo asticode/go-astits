@@ -127,3 +127,16 @@ func TestPacketPoolUnboundedPESFollowedByOnePacketPES(t *testing.T) {
 	ps = pp.addUnlocked(p4)
 	assert.Equal(t, []*Packet{p3}, ps, "the one-packet PES must be returned by the next flush")
 }
+
+func TestPacketPoolBoundedPESCompletesWithoutNextStart(t *testing.T) {
+	b := newPacketPool(nil)
+	packets := []*Packet{
+		{Header: PacketHeader{PID: 256, ContinuityCounter: 0, HasPayload: true, PayloadUnitStartIndicator: true}, Payload: []byte{0, 0, 1, 0xe0, 0}},
+		{Header: PacketHeader{PID: 256, ContinuityCounter: 1, HasPayload: true}, Payload: []byte{5, 0x80, 0, 0, 42}},
+		{Header: PacketHeader{PID: 256, ContinuityCounter: 2, HasPayload: true}, Payload: []byte{43}},
+	}
+	assert.Empty(t, b.addUnlocked(packets[0]))
+	assert.Empty(t, b.addUnlocked(packets[1]))
+	assert.Equal(t, packets, b.addUnlocked(packets[2]))
+	assert.Empty(t, b.dumpUnlocked())
+}
