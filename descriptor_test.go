@@ -425,8 +425,8 @@ var descriptorTestTable = []descriptorTest{
 			w.Write("1")                                           // Other frequency flag
 			w.Write("0")                                           // TFS flag
 			w.Write(uint16(0x0001))                                // Cell ID
-			w.Write(uint8(4))                                      // Frequency loop length (4 bytes = 1 freq)
 			w.Write(uint32(506000000))                             // Centre frequency
+			w.Write(uint8(0))                                      // Subcell info loop length
 		},
 		Descriptor{
 			Tag:    DescriptorTagExtension,
@@ -445,6 +445,57 @@ var descriptorTestTable = []descriptorTest{
 					Cells: []T2Cell{{
 						CellID:            1,
 						CentreFrequencies: []uint32{506000000},
+					}},
+				},
+				Tag: DescriptorTagExtensionT2DeliverySystem,
+			}},
+	},
+	{
+		"ExtensionT2DeliverySystemTFS",
+		func(w *astikit.BitsWriter) {
+			w.Write(uint8(DescriptorTagExtension))                 // Tag
+			w.Write(uint8(31))                                     // Length
+			w.Write(uint8(DescriptorTagExtensionT2DeliverySystem)) // Extension tag
+			w.Write(uint8(0x02))                                   // PLP ID
+			w.Write(uint16(0x5678))                                // T2 system ID
+			w.Write("00")                                          // SISO/MISO (SISO)
+			w.Write("0010")                                        // Bandwidth (6MHz)
+			w.Write("00")                                          // Reserved
+			w.Write("011")                                         // Guard interval
+			w.Write("001")                                         // Transmission mode
+			w.Write("0")                                           // Other frequency flag
+			w.Write("1")                                           // TFS flag
+			w.Write(uint16(0x0002))                                // Cell ID
+			w.Write(uint8(8))                                      // Frequency loop length
+			w.Write(uint32(47400000))                              // Centre frequency
+			w.Write(uint32(48200000))                              // Centre frequency
+			w.Write(uint8(5))                                      // Subcell info loop length
+			w.Write(uint8(0x01))                                   // Cell ID extension
+			w.Write(uint32(49000000))                              // Transposer frequency
+			w.Write(uint16(0x0003))                                // Cell ID
+			w.Write(uint8(4))                                      // Frequency loop length
+			w.Write(uint32(49800000))                              // Centre frequency
+			w.Write(uint8(0))                                      // Subcell info loop length
+		},
+		Descriptor{
+			Tag:    DescriptorTagExtension,
+			Length: 31,
+			Extension: &DescriptorExtension{
+				T2DeliverySystem: &DescriptorExtensionT2DeliverySystem{
+					PLPID:            2,
+					T2SystemID:       0x5678,
+					HasExtendedInfo:  true,
+					Bandwidth:        2,
+					GuardInterval:    3,
+					TransmissionMode: 1,
+					TFSFlag:          true,
+					Cells: []T2Cell{{
+						CellID:            2,
+						CentreFrequencies: []uint32{47400000, 48200000},
+						Subcells:          []T2Subcell{{CellIDExtension: 1, TransposerFrequency: 49000000}},
+					}, {
+						CellID:            3,
+						CentreFrequencies: []uint32{49800000},
 					}},
 				},
 				Tag: DescriptorTagExtensionT2DeliverySystem,

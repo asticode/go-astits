@@ -1527,6 +1527,13 @@ type DescriptorExtensionT2DeliverySystem struct {
 type T2Cell struct {
 	CellID            uint16
 	CentreFrequencies []uint32 // in 10 Hz units
+	Subcells          []T2Subcell
+}
+
+// T2Subcell represents a subcell of a cell in the T2 delivery system descriptor
+type T2Subcell struct {
+	CellIDExtension     uint8
+	TransposerFrequency uint32 // in 10 Hz units
 }
 
 func newDescriptorExtensionT2DeliverySystem(i *astikit.BytesIterator, offsetEnd int) (d *DescriptorExtensionT2DeliverySystem, err error) {
@@ -1597,15 +1604,17 @@ func newDescriptorExtensionT2DeliverySystem(i *astikit.BytesIterator, offsetEnd 
 			}
 			cell.CellID = uint16(bs[0])<<8 | uint16(bs[1])
 
-			// Frequency loop length
-			if b, err = i.NextByte(); err != nil {
-				err = fmt.Errorf("astits: fetching next byte failed: %w", err)
-				return
+			// Without the TFS flag there is a single centre frequency
+			freqEnd := i.Offset() + 4
+			if d.TFSFlag {
+				if b, err = i.NextByte(); err != nil {
+					err = fmt.Errorf("astits: fetching next byte failed: %w", err)
+					return
+				}
+				freqEnd = i.Offset() + int(b)
 			}
-			freqLoopLength := int(b)
 
 			// Frequencies (4 bytes each)
-			freqEnd := i.Offset() + freqLoopLength
 			for i.Offset() < freqEnd {
 				if bs, err = i.NextBytesNoCopy(4); err != nil {
 					err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
@@ -1613,6 +1622,25 @@ func newDescriptorExtensionT2DeliverySystem(i *astikit.BytesIterator, offsetEnd 
 				}
 				freq := uint32(bs[0])<<24 | uint32(bs[1])<<16 | uint32(bs[2])<<8 | uint32(bs[3])
 				cell.CentreFrequencies = append(cell.CentreFrequencies, freq)
+			}
+
+			// Subcell info loop length
+			if b, err = i.NextByte(); err != nil {
+				err = fmt.Errorf("astits: fetching next byte failed: %w", err)
+				return
+			}
+
+			// Subcells (5 bytes each)
+			subcellEnd := i.Offset() + int(b)
+			for i.Offset() < subcellEnd {
+				if bs, err = i.NextBytesNoCopy(5); err != nil {
+					err = fmt.Errorf("astits: fetching next bytes failed: %w", err)
+					return
+				}
+				cell.Subcells = append(cell.Subcells, T2Subcell{
+					CellIDExtension:     bs[0],
+					TransposerFrequency: uint32(bs[1])<<24 | uint32(bs[2])<<16 | uint32(bs[3])<<8 | uint32(bs[4]),
+				})
 			}
 
 			d.Cells = append(d.Cells, cell)
@@ -2164,9 +2192,16 @@ func writeDescriptorExtensionT2DeliverySystem(w *astikit.BitsWriter, d *Descript
 		for _, cell := range d.Cells {
 			b.Write(uint8(cell.CellID >> 8))
 			b.Write(uint8(cell.CellID & 0xFF))
-			b.Write(uint8(len(cell.CentreFrequencies) * 4))
+			if d.TFSFlag {
+				b.Write(uint8(len(cell.CentreFrequencies) * 4))
+			}
 			for _, freq := range cell.CentreFrequencies {
 				b.Write(freq)
+			}
+			b.Write(uint8(len(cell.Subcells) * 5))
+			for _, s := range cell.Subcells {
+				b.Write(s.CellIDExtension)
+				b.Write(s.TransposerFrequency)
 			}
 		}
 	}
@@ -2636,8 +2671,11 @@ func calcDescriptorExtensionT2DeliverySystemLength(d *DescriptorExtensionT2Deliv
 	if d.HasExtendedInfo {
 		ret += 2 // SISO/MISO + bandwidth byte (1) + guard/transmission byte (1)
 		for _, cell := range d.Cells {
-			ret += 3 // cell ID (2) + freq loop length (1)
-			ret += 4 * len(cell.CentreFrequencies)
+			ret += 3 // cell ID (2) + subcell info loop length (1)
+			if d.TFSFlag {
+				ret++ // frequency loop length
+			}
+			ret += 4*len(cell.CentreFrequencies) + 5*len(cell.Subcells)
 		}
 	}
 	return ret
